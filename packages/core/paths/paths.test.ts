@@ -16,6 +16,12 @@ describe("paths.workspace(slug)", () => {
     expect(ws.newAgent()).toBe("/acme/agents/new");
     expect(ws.memberDetail("u1")).toBe("/acme/members/u1");
     expect(ws.inbox()).toBe("/acme/inbox");
+    expect(ws.chatWithAgent("agent one")).toBe(
+      "/acme/chat?agent=agent%20one",
+    );
+    expect(ws.chatSession("session one")).toBe(
+      "/acme/chat?session=session%20one",
+    );
     expect(ws.myIssues()).toBe("/acme/my-issues");
     expect(ws.runtimes()).toBe("/acme/runtimes");
     expect(ws.runtimeSettings("machine/runtime", "runtime one")).toBe(
