@@ -1243,6 +1243,35 @@ export function IssueDetail({ issueId, onDelete, onDone, defaultSidebarOpen = tr
     [timeline],
   );
 
+  // Clicking a highlighted span in the description reveals the comment that
+  // owns it. The reverse trip (quote -> description) lives in
+  // CommentAnchorQuote; both directions reuse the same comment anchor id and
+  // the same transient highlight the deep-link path already uses.
+  const handleCommentAnchorClick = useCallback((commentId: string) => {
+    const target = document.getElementById(`comment-${commentId}`);
+    // A resolved thread renders collapsed to a bar, so expand it first —
+    // otherwise the jump lands on a strip with the comment still hidden.
+    setResolvedExpanded(id, commentId, true);
+    requestAnimationFrame(() => {
+      (document.getElementById(`comment-${commentId}`) ?? target)?.scrollIntoView({
+        behavior: "smooth",
+        block: "center",
+      });
+    });
+    setHighlightedId(commentId);
+  }, [id, setResolvedExpanded]);
+
+  // Clear the highlight on the next interaction rather than on a timer: the
+  // point is "this is the one you asked for", which stops being useful the
+  // moment the user does something else, and a timer would fight a second
+  // click on the same span.
+  useEffect(() => {
+    if (!highlightedId) return;
+    const clear = () => setHighlightedId(null);
+    document.addEventListener("pointerdown", clear, { once: true });
+    return () => document.removeEventListener("pointerdown", clear);
+  }, [highlightedId]);
+
   // Resolve / unresolve must always clear the per-session expand entry so
   // re-resolving an already-expanded thread folds it back to the bar (the
   // expand Set is keyed only on commentId, not on resolution state). Without
@@ -2499,6 +2528,7 @@ export function IssueDetail({ issueId, onDelete, onDone, defaultSidebarOpen = tr
               flushPendingOnUnmount
               currentIssueId={id}
               commentAnchors={descriptionCommentAnchors}
+              onCommentAnchorClick={handleCommentAnchorClick}
               attachments={descEditorAttachments}
             />
 

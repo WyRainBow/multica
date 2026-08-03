@@ -31,6 +31,7 @@ import { useActorName } from "@multica/core/workspace/hooks";
 import { useTimeAgo } from "../../i18n";
 import { ContentEditor, type ContentEditorRef, ReadonlyContent, useFileDropZone, FileDropOverlay, Attachment as AttachmentRenderer, AttachmentDownloadProvider, useUploadGate, useComposerSubmit } from "../../editor";
 import { useCommentUploads } from "./use-comment-uploads";
+import { CommentAnchorQuote } from "./comment-anchor-quote";
 import { FileUploadButton } from "@multica/ui/components/common/file-upload-button";
 import { api, dispatchReasonCode } from "@multica/core/api";
 import { ReplyInput } from "./reply-input";
@@ -1041,6 +1042,13 @@ function CommentCardImpl({
               </div>
             ) : (
               <>
+                {entry.anchor_text && (
+                  <CommentAnchorQuote
+                    commentId={entry.id}
+                    text={entry.anchor_text}
+                    className="mb-1.5 ml-10"
+                  />
+                )}
                 <div className="pl-10 text-body leading-relaxed text-foreground">
                   <ReadonlyContent content={entry.content ?? ""} attachments={entry.attachments} />
                 </div>

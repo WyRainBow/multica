@@ -17,6 +17,15 @@ export interface CommentHighlightOptions {
    * changing the source to force a recompute.
    */
   anchors: () => readonly CommentAnchor[];
+  /**
+   * Called when the reader clicks a highlighted span. A getter for the same
+   * reason `anchors` is: the extension array is built once at mount, so a
+   * captured callback would go stale.
+   *
+   * Receives the DOM node so the host can position a popover against the exact
+   * span rather than the whole editor.
+   */
+  onAnchorClick?: () => ((commentId: string, element: HTMLElement) => void) | undefined;
 }
 
 /**
@@ -119,6 +128,7 @@ export const CommentHighlight = Extension.create<CommentHighlightOptions>({
 
   addProseMirrorPlugins() {
     const getAnchors = () => this.options.anchors();
+    const getAnchorClick = this.options.onAnchorClick;
 
     return [
       new Plugin({
@@ -134,6 +144,20 @@ export const CommentHighlight = Extension.create<CommentHighlightOptions>({
         props: {
           decorations(state) {
             return commentHighlightPluginKey.getState(state) as DecorationSet;
+          },
+          handleClick(_view, _pos, event) {
+            const handler = getAnchorClick?.();
+            if (!handler) return false;
+            const target = (event.target as HTMLElement | null)?.closest<HTMLElement>(
+              `[${COMMENT_HIGHLIGHT_ATTRIBUTE}]`,
+            );
+            const commentId = target?.getAttribute(COMMENT_HIGHLIGHT_ATTRIBUTE);
+            if (!target || !commentId) return false;
+            handler(commentId, target);
+            // Not consumed: the click still moves the caret, because the
+            // description stays editable and swallowing it would make a
+            // highlighted word the one place you cannot click to type.
+            return false;
           },
         },
       }),

@@ -451,3 +451,23 @@
    * shifts the paragraph around it. */
   box-shadow: 0 0 0 1px var(--comment-highlight);
 }
+
+/* Flash played when the reader jumps here from a comment's quote. Animates the
+ * ring rather than the fill so the prose underneath stays readable throughout —
+ * the point is to say "here", not to obscure the sentence being pointed at. */
+@keyframes comment-highlight-flash {
+  0%, 100% { box-shadow: 0 0 0 1px var(--comment-highlight); }
+  30% { box-shadow: 0 0 0 4px var(--find-match-active); }
+}
+
+.comment-highlight-flash {
+  animation: comment-highlight-flash 1.2s ease-in-out;
+}
+
+/* Respect a reduced-motion preference: keep the emphasis, drop the pulsing. */
+@media (prefers-reduced-motion: reduce) {
+  .comment-highlight-flash {
+    animation: none;
+    box-shadow: 0 0 0 3px var(--find-match-active);
+  }
+}

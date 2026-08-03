@@ -428,7 +428,9 @@
       "bar_authors_more_other": "{{names}} 외 {{count}}명",
       "resolve_failed": "스레드를 해결하지 못했습니다",
       "unresolve_failed": "스레드 해결을 취소하지 못했습니다"
-    }
+    },
+    "anchor_jump": "본문의 해당 위치로 이동",
+    "anchor_missing": "원본 텍스트가 수정되었습니다"
   },
   "reply": {
     "placeholder": "답글 남기기..."

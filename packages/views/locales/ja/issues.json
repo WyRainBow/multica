@@ -428,7 +428,9 @@
       "bar_authors_more_other": "{{names}} 他 {{count}} 名",
       "resolve_failed": "スレッドを解決できませんでした",
       "unresolve_failed": "スレッドの解決を取り消せませんでした"
-    }
+    },
+    "anchor_jump": "本文の該当箇所へ移動",
+    "anchor_missing": "元のテキストは編集されました"
   },
   "reply": {
     "placeholder": "返信を残す..."

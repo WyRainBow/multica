@@ -153,6 +153,8 @@ export interface EditorExtensionsOptions {
    * editor. Omitted means no inline comments on this editor.
    */
   commentAnchors?: () => readonly CommentAnchor[];
+  /** Invoked when a highlighted span is clicked. See CommentHighlightOptions. */
+  onCommentAnchorClick?: () => ((commentId: string, element: HTMLElement) => void) | undefined;
   onSubmitRef?: RefObject<(() => void) | undefined>;
   onUploadFileRef?: RefObject<
     ((file: File, uploadId: string) => Promise<UploadResult | null>) | undefined
@@ -203,11 +205,16 @@ export interface EditorExtensionsOptions {
 export function createEditorExtensions(
   options: EditorExtensionsOptions,
 ): AnyExtension[] {
-  const { placeholder: placeholderText, commentAnchors } = options;
+  const { placeholder: placeholderText, commentAnchors, onCommentAnchorClick } = options;
 
   return [
     ...(commentAnchors
-      ? [CommentHighlight.configure({ anchors: commentAnchors })]
+      ? [
+          CommentHighlight.configure({
+            anchors: commentAnchors,
+            onAnchorClick: onCommentAnchorClick,
+          }),
+        ]
       : []),
     StarterKit.configure({
       heading: { levels: [1, 2, 3] },

@@ -428,7 +428,9 @@
       "bar_authors_more_other": "{{names}} 等 {{count}} 人",
       "resolve_failed": "标记已解决失败",
       "unresolve_failed": "重新打开失败"
-    }
+    },
+    "anchor_jump": "跳转到正文对应位置",
+    "anchor_missing": "原文已被修改"
   },
   "reply": {
     "placeholder": "回复..."

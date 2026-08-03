@@ -178,6 +178,8 @@ interface ContentEditorBaseProps {
    * remounting the editor.
    */
   commentAnchors?: readonly CommentAnchor[];
+  /** Invoked when the reader clicks a highlighted inline-comment span. */
+  onCommentAnchorClick?: (commentId: string, element: HTMLElement) => void;
   /**
    * When true, the `@` suggestion picker is disabled but the mention node
    * type remains in the schema, so existing mentions pasted in from other
@@ -372,6 +374,7 @@ const ContentEditor = forwardRef<ContentEditorRef, ContentEditorProps>(
       showBubbleMenu = true,
       currentIssueId,
       commentAnchors,
+      onCommentAnchorClick,
       disableMentions = false,
       mentionMode = "default",
       mentionContextItems,
@@ -422,6 +425,8 @@ const ContentEditor = forwardRef<ContentEditorRef, ContentEditorProps>(
     // at mount, so anchors have to arrive through a ref the plugin re-reads.
     const commentAnchorsRef = useRef<readonly CommentAnchor[]>(commentAnchors ?? []);
     commentAnchorsRef.current = commentAnchors ?? [];
+    const commentAnchorClickRef = useRef(onCommentAnchorClick);
+    commentAnchorClickRef.current = onCommentAnchorClick;
 
     // In-session record of attachments freshly uploaded through this editor.
     // Surfaces (like the quick-create modal) that don't have a server-supplied
@@ -600,7 +605,12 @@ const ContentEditor = forwardRef<ContentEditorRef, ContentEditorProps>(
           : undefined,
       extensions: createEditorExtensions({
         placeholder: () => placeholderRef.current,
-        ...(commentAnchors ? { commentAnchors: () => commentAnchorsRef.current } : {}),
+        ...(commentAnchors
+          ? {
+              commentAnchors: () => commentAnchorsRef.current,
+              onCommentAnchorClick: () => commentAnchorClickRef.current,
+            }
+          : {}),
         queryClient,
         onSubmitRef,
         onUploadFileRef,
