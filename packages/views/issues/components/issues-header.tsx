@@ -67,6 +67,7 @@ import type {
   IssueProperty,
   IssueTableFacetSpec,
   IssueTableFacetsResponse,
+  WorkingAgentSummary,
 } from "@multica/core/types";
 import { ProjectIcon } from "../../projects/components/project-icon";
 import { ActorAvatar } from "../../common/actor-avatar";
@@ -338,7 +339,7 @@ function ActorSubContent({
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder={t(($) => $.filters.placeholder)}
-          className="w-full bg-transparent text-sm placeholder:text-muted-foreground outline-none"
+          className="w-full bg-transparent text-body placeholder:text-muted-foreground outline-none"
           autoFocus
         />
       </div>
@@ -355,7 +356,7 @@ function ActorSubContent({
               <UserMinus className="size-3.5 text-muted-foreground" />
               {t(($) => $.filters.no_assignee)}
               {(noAssigneeCount ?? 0) > 0 && (
-                <span className="ml-auto text-xs text-muted-foreground">
+                <span className="ml-auto text-caption text-muted-foreground">
                   {noAssigneeCount}
                 </span>
               )}
@@ -381,7 +382,7 @@ function ActorSubContent({
                   <ActorAvatar actorType="member" actorId={m.user_id} size="sm" />
                   <span className="truncate">{m.name}</span>
                   {count > 0 && (
-                    <span className="ml-auto text-xs text-muted-foreground">
+                    <span className="ml-auto text-caption text-muted-foreground">
                       {count}
                     </span>
                   )}
@@ -410,7 +411,7 @@ function ActorSubContent({
                   <ActorAvatar actorType="agent" actorId={a.id} size="sm" showStatusDot />
                   <span className="truncate">{a.name}</span>
                   {count > 0 && (
-                    <span className="ml-auto text-xs text-muted-foreground">
+                    <span className="ml-auto text-caption text-muted-foreground">
                       {count}
                     </span>
                   )}
@@ -439,7 +440,7 @@ function ActorSubContent({
                   <ActorAvatar actorType="squad" actorId={s.id} size="sm" />
                   <span className="truncate">{s.name}</span>
                   {count > 0 && (
-                    <span className="ml-auto text-xs text-muted-foreground">
+                    <span className="ml-auto text-caption text-muted-foreground">
                       {count}
                     </span>
                   )}
@@ -450,7 +451,7 @@ function ActorSubContent({
         )}
 
         {filteredMembers.length === 0 && filteredAgents.length === 0 && (!showSquads || filteredSquads.length === 0) && search && (
-          <div className="px-2 py-3 text-center text-sm text-muted-foreground">
+          <div className="px-2 py-3 text-center text-body text-muted-foreground">
             {t(($) => $.filters.no_results)}
           </div>
         )}
@@ -495,7 +496,7 @@ function ProjectSubContent({
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder={t(($) => $.filters.placeholder)}
-          className="w-full bg-transparent text-sm placeholder:text-muted-foreground outline-none"
+          className="w-full bg-transparent text-body placeholder:text-muted-foreground outline-none"
           autoFocus
         />
       </div>
@@ -511,7 +512,7 @@ function ProjectSubContent({
             <FolderMinus className="size-3.5 text-muted-foreground" />
             {t(($) => $.filters.no_project)}
             {noProjectCount > 0 && (
-              <span className="ml-auto text-xs text-muted-foreground">
+              <span className="ml-auto text-caption text-muted-foreground">
                 {noProjectCount}
               </span>
             )}
@@ -532,7 +533,7 @@ function ProjectSubContent({
               <ProjectIcon project={p} size="sm" />
               <span className="truncate">{p.title}</span>
               {count > 0 && (
-                <span className="ml-auto text-xs text-muted-foreground">
+                <span className="ml-auto text-caption text-muted-foreground">
                   {count}
                 </span>
               )}
@@ -541,7 +542,7 @@ function ProjectSubContent({
         })}
 
         {filtered.length === 0 && search && (
-          <div className="px-2 py-3 text-center text-sm text-muted-foreground">
+          <div className="px-2 py-3 text-center text-body text-muted-foreground">
             {t(($) => $.filters.no_results)}
           </div>
         )}
@@ -578,7 +579,7 @@ function LabelSubContent({
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder={t(($) => $.filters.placeholder)}
-          className="w-full bg-transparent text-sm placeholder:text-muted-foreground outline-none"
+          className="w-full bg-transparent text-body placeholder:text-muted-foreground outline-none"
           autoFocus
         />
       </div>
@@ -597,7 +598,7 @@ function LabelSubContent({
               <HoverCheck checked={checked} />
               <LabelChip label={l} />
               {count > 0 && (
-                <span className="ml-auto text-xs text-muted-foreground">
+                <span className="ml-auto text-caption text-muted-foreground">
                   {count}
                 </span>
               )}
@@ -606,7 +607,7 @@ function LabelSubContent({
         })}
 
         {filtered.length === 0 && (
-          <div className="px-2 py-3 text-center text-sm text-muted-foreground">
+          <div className="px-2 py-3 text-center text-body text-muted-foreground">
             {search ? t(($) => $.filters.no_results) : t(($) => $.filters.no_labels)}
           </div>
         )}
@@ -653,7 +654,7 @@ function ParentSubContent({
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder={t(($) => $.filters.placeholder)}
-          className="w-full bg-transparent text-sm placeholder:text-muted-foreground outline-none"
+          className="w-full bg-transparent text-body placeholder:text-muted-foreground outline-none"
           autoFocus
         />
       </div>
@@ -670,12 +671,12 @@ function ParentSubContent({
               className={FILTER_ITEM_CLASS}
             >
               <HoverCheck checked={checked} />
-              <span className="shrink-0 text-xs text-muted-foreground tabular-nums">
+              <span className="shrink-0 text-caption text-muted-foreground tabular-nums">
                 {p.identifier}
               </span>
               <span className="truncate">{p.title}</span>
               {count > 0 && (
-                <span className="ml-auto shrink-0 text-xs text-muted-foreground">
+                <span className="ml-auto shrink-0 text-caption text-muted-foreground">
                   {count}
                 </span>
               )}
@@ -684,7 +685,7 @@ function ParentSubContent({
         })}
 
         {filtered.length === 0 && (
-          <div className="px-2 py-3 text-center text-sm text-muted-foreground">
+          <div className="px-2 py-3 text-center text-body text-muted-foreground">
             {search ? t(($) => $.filters.no_results) : t(($) => $.filters.no_parents)}
           </div>
         )}
@@ -743,7 +744,7 @@ function PropertyFilterOptions({
             )}
             <span className="truncate">{option.name}</span>
             {count > 0 && (
-              <span className="ml-auto text-xs text-muted-foreground">
+              <span className="ml-auto text-caption text-muted-foreground">
                 {count}
               </span>
             )}
@@ -828,7 +829,7 @@ function DateSubContent({
               <Button
                 variant="ghost"
                 size="sm"
-                className="h-7 w-full justify-start px-0 text-sm font-normal"
+                className="h-7 w-full justify-start px-0 text-body font-normal"
               >
                 {t(($) => $.filters.date_custom_range)}
               </Button>
@@ -900,6 +901,7 @@ export function ViewRefreshIndicator({ active }: { active: boolean }) {
 
 export function IssuesHeader({
   scopedIssues,
+  workingAgents,
   allowGantt = false,
   dateFilter = null,
   onDateFilterChange,
@@ -909,6 +911,9 @@ export function IssuesHeader({
   onTableFacetChange,
 }: {
   scopedIssues: Issue[];
+  /** See IssueSurfaceController.workingAgents — the surface-scoped projection
+   *  behind the agents-working chip. */
+  workingAgents: WorkingAgentSummary[] | undefined;
   allowGantt?: boolean;
   dateFilter?: IssueDateFilter | null;
   onDateFilterChange?: (filter: IssueDateFilter | null) => void;
@@ -996,13 +1001,14 @@ export function IssuesHeader({
 
         <div className="flex shrink-0 items-center gap-1">
           {agentRunningFilter && (
-            <span className="mr-1 hidden text-xs text-muted-foreground md:inline">
+            <span className="mr-1 hidden text-caption text-muted-foreground md:inline">
               {t(($) => $.agent_activity.filter_active_label)}
             </span>
           )}
           <WorkspaceAgentWorkingChip
             value={agentRunningFilter}
             onToggle={toggleAgentRunningFilter}
+            agents={workingAgents}
           />
           <IssueDisplayControls
             scopedIssues={scopedIssues}
@@ -1246,7 +1252,7 @@ export function IssueDisplayControls({
                 <CircleDot className="size-3.5" />
                 <span className="flex-1">{t(($) => $.filters.section_status)}</span>
                 {statusFilters.length > 0 && (
-                  <span className="text-xs text-primary font-medium">
+                  <span className="text-caption text-primary font-medium">
                     {statusFilters.length}
                   </span>
                 )}
@@ -1266,7 +1272,7 @@ export function IssueDisplayControls({
                       <StatusIcon status={s} className="h-3.5 w-3.5" />
                       {t(($) => $.status[s])}
                       {count > 0 && (
-                        <span className="ml-auto text-xs text-muted-foreground">
+                        <span className="ml-auto text-caption text-muted-foreground">
                           {t(($) => $.filters.issue_count, { count })}
                         </span>
                       )}
@@ -1286,7 +1292,7 @@ export function IssueDisplayControls({
                 <SignalHigh className="size-3.5" />
                 <span className="flex-1">{t(($) => $.filters.section_priority)}</span>
                 {priorityFilters.length > 0 && (
-                  <span className="text-xs text-primary font-medium">
+                  <span className="text-caption text-primary font-medium">
                     {priorityFilters.length}
                   </span>
                 )}
@@ -1306,7 +1312,7 @@ export function IssueDisplayControls({
                       <PriorityIcon priority={p} />
                       {t(($) => $.priority[p])}
                       {count > 0 && (
-                        <span className="ml-auto text-xs text-muted-foreground">
+                        <span className="ml-auto text-caption text-muted-foreground">
                           {t(($) => $.filters.issue_count, { count })}
                         </span>
                       )}
@@ -1322,7 +1328,7 @@ export function IssueDisplayControls({
                   <CalendarDays className="size-3.5" />
                   <span className="flex-1">{t(($) => $.filters.section_date)}</span>
                   {dateFilterLabel && (
-                    <span className="max-w-36 truncate text-xs text-primary font-medium">
+                    <span className="max-w-36 truncate text-caption text-primary font-medium">
                       {dateFilterLabel}
                     </span>
                   )}
@@ -1346,7 +1352,7 @@ export function IssueDisplayControls({
                 <User className="size-3.5" />
                 <span className="flex-1">{t(($) => $.filters.section_assignee)}</span>
                 {(assigneeFilters.length > 0 || includeNoAssignee) && (
-                  <span className="text-xs text-primary font-medium">
+                  <span className="text-caption text-primary font-medium">
                     {assigneeFilters.length + (includeNoAssignee ? 1 : 0)}
                   </span>
                 )}
@@ -1374,7 +1380,7 @@ export function IssueDisplayControls({
                 <UserPen className="size-3.5" />
                 <span className="flex-1">{t(($) => $.filters.section_creator)}</span>
                 {creatorFilters.length > 0 && (
-                  <span className="text-xs text-primary font-medium">
+                  <span className="text-caption text-primary font-medium">
                     {creatorFilters.length}
                   </span>
                 )}
@@ -1399,7 +1405,7 @@ export function IssueDisplayControls({
                 <FolderKanban className="size-3.5" />
                 <span className="flex-1">{t(($) => $.filters.section_project)}</span>
                 {(projectFilters.length > 0 || includeNoProject) && (
-                  <span className="text-xs text-primary font-medium">
+                  <span className="text-caption text-primary font-medium">
                     {projectFilters.length + (includeNoProject ? 1 : 0)}
                   </span>
                 )}
@@ -1426,7 +1432,7 @@ export function IssueDisplayControls({
                 <Tag className="size-3.5" />
                 <span className="flex-1">{t(($) => $.filters.section_label)}</span>
                 {labelFilters.length > 0 && (
-                  <span className="text-xs text-primary font-medium">
+                  <span className="text-caption text-primary font-medium">
                     {labelFilters.length}
                   </span>
                 )}
@@ -1450,7 +1456,7 @@ export function IssueDisplayControls({
                 <GitBranch className="size-3.5" />
                 <span className="flex-1">{t(($) => $.filters.section_parent)}</span>
                 {parentFilters.length > 0 && (
-                  <span className="text-xs text-primary font-medium">
+                  <span className="text-caption text-primary font-medium">
                     {parentFilters.length}
                   </span>
                 )}
@@ -1481,13 +1487,13 @@ export function IssueDisplayControls({
                 >
                   <DropdownMenuSubTrigger>
                     {property.icon ? (
-                      <PropertyIcon property={property} className="size-3.5 text-xs" />
+                      <PropertyIcon property={property} className="size-3.5 text-caption" />
                     ) : (
                       <SlidersHorizontal className="size-3.5" />
                     )}
                     <span className="flex-1 truncate">{property.name}</span>
                     {selected.length > 0 && (
-                      <span className="text-xs text-primary font-medium">
+                      <span className="text-caption text-primary font-medium">
                         {selected.length}
                       </span>
                     )}
@@ -1594,7 +1600,7 @@ export function IssueDisplayControls({
                   >
                     <PropertyIcon
                       property={property}
-                      className="size-3.5 text-xs"
+                      className="size-3.5 text-caption"
                     />
                     <span>{property.name}</span>
                   </DropdownMenuRadioItem>
@@ -1643,7 +1649,7 @@ export function IssueDisplayControls({
           <PopoverContent align="end" className="w-64 p-0">
             {viewMode === "board" && (
               <div className="border-b px-3 py-2.5">
-                <span className="text-xs font-medium text-muted-foreground">
+                <span className="text-caption font-medium text-muted-foreground">
                   {t(($) => $.display.grouping_section)}
                 </span>
                 <div className="mt-2">
@@ -1653,7 +1659,7 @@ export function IssueDisplayControls({
                         <Button
                           variant="outline"
                           size="sm"
-                          className="w-full justify-between text-xs"
+                          className="w-full justify-between text-caption"
                         >
                           {groupingLabel}
                           <ChevronDown className="size-3 text-muted-foreground" />
@@ -1669,7 +1675,7 @@ export function IssueDisplayControls({
                         ))}
                         {groupableProperties.map((property) => (
                           <DropdownMenuRadioItem key={property.id} value={`property:${property.id}`}>
-                            <PropertyIcon property={property} className="size-3.5 text-xs" />
+                            <PropertyIcon property={property} className="size-3.5 text-caption" />
                             <span>{property.name}</span>
                           </DropdownMenuRadioItem>
                         ))}
@@ -1681,7 +1687,7 @@ export function IssueDisplayControls({
             )}
             {viewMode === "swimlane" && (
               <div className="border-b px-3 py-2.5">
-                <span className="text-xs font-medium text-muted-foreground">
+                <span className="text-caption font-medium text-muted-foreground">
                   {t(($) => $.display.grouping_section)}
                 </span>
                 <div className="mt-2">
@@ -1691,7 +1697,7 @@ export function IssueDisplayControls({
                         <Button
                           variant="outline"
                           size="sm"
-                          className="w-full justify-between text-xs"
+                          className="w-full justify-between text-caption"
                         >
                           {swimlaneGroupingLabel}
                           <ChevronDown className="size-3 text-muted-foreground" />
@@ -1719,10 +1725,10 @@ export function IssueDisplayControls({
               <div className="border-b px-3 py-2.5">
                 <label className="flex cursor-pointer items-center justify-between gap-3">
                   <span className="min-w-0">
-                    <span className="block text-sm">
+                    <span className="block text-body">
                       {t(($) => $.table.hierarchy)}
                     </span>
-                    <span className="block text-xs text-muted-foreground">
+                    <span className="block text-caption text-muted-foreground">
                       {t(($) => $.table.hierarchy_description)}
                     </span>
                   </span>
@@ -1736,7 +1742,7 @@ export function IssueDisplayControls({
             )}
 
             <div className="border-b px-3 py-2.5">
-              <span className="text-xs font-medium text-muted-foreground">
+              <span className="text-caption font-medium text-muted-foreground">
                 {t(($) => $.display.ordering_section)}
               </span>
               <div className="mt-2 flex items-center gap-1.5">
@@ -1746,7 +1752,7 @@ export function IssueDisplayControls({
                       <Button
                         variant="outline"
                         size="sm"
-                        className="flex-1 justify-between text-xs"
+                        className="flex-1 justify-between text-caption"
                       >
                         {sortLabel}
                         <ChevronDown className="size-3 text-muted-foreground" />
@@ -1762,7 +1768,7 @@ export function IssueDisplayControls({
                       ))}
                       {sortableProperties.map((property) => (
                         <DropdownMenuRadioItem key={property.id} value={`property:${property.id}`}>
-                          <PropertyIcon property={property} className="size-3.5 text-xs" />
+                          <PropertyIcon property={property} className="size-3.5 text-caption" />
                           <span>{property.name}</span>
                         </DropdownMenuRadioItem>
                       ))}
@@ -1789,7 +1795,7 @@ export function IssueDisplayControls({
             </div>
 
             <label className="flex cursor-pointer items-center justify-between border-b px-3 py-2.5">
-              <span className="text-sm">{t(($) => $.display.show_sub_issues)}</span>
+              <span className="text-body">{t(($) => $.display.show_sub_issues)}</span>
               <Switch
                 size="sm"
                 checked={showSubIssues}
@@ -1799,7 +1805,7 @@ export function IssueDisplayControls({
 
             {viewMode !== "table" && (
               <div className="px-3 py-2.5">
-                <span className="text-xs font-medium text-muted-foreground">
+                <span className="text-caption font-medium text-muted-foreground">
                   {t(($) => $.display.card_properties_section)}
                 </span>
                 <div className="mt-2 space-y-2">
@@ -1808,7 +1814,7 @@ export function IssueDisplayControls({
                       key={opt.key}
                       className="flex cursor-pointer items-center justify-between"
                     >
-                      <span className="text-sm">{t(($) => $.display[CARD_PROPERTY_LABEL_KEY[opt.key]])}</span>
+                      <span className="text-body">{t(($) => $.display[CARD_PROPERTY_LABEL_KEY[opt.key]])}</span>
                       <Switch
                         size="sm"
                         checked={cardProperties[opt.key]}
@@ -1821,10 +1827,10 @@ export function IssueDisplayControls({
                       key={property.id}
                       className="flex cursor-pointer items-center justify-between"
                     >
-                      <span className="flex min-w-0 items-center gap-1.5 truncate text-sm">
+                      <span className="flex min-w-0 items-center gap-1.5 truncate text-body">
                         <PropertyIcon
                           property={property}
-                          className="size-3.5 text-xs"
+                          className="size-3.5 text-caption"
                         />
                         <span className="truncate">{property.name}</span>
                       </span>
