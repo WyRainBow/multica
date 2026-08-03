@@ -28,6 +28,7 @@ import type {
 } from "@multica/core/types";
 import { toast } from "sonner";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useDocumentTitle } from "../../platform";
 import { api } from "@multica/core/api";
 import { useAuthStore } from "@multica/core/auth";
 import { useTimeAgo } from "../../i18n";
@@ -646,6 +647,7 @@ export function SkillDetailPage({ skillId }: { skillId: string }) {
     isLoading,
     error,
   } = useQuery(skillDetailOptions(wsId, skillId));
+  useDocumentTitle(skill?.name);
   const { data: agents = [], error: agentsError } = useQuery(
     agentListOptions(wsId),
   );

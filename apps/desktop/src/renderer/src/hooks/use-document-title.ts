@@ -1,8 +1,6 @@
-import { useEffect } from "react";
-
-/** Sets document.title. The tab system observes this automatically. */
-export function useDocumentTitle(title: string) {
-  useEffect(() => {
-    if (title) document.title = title;
-  }, [title]);
-}
+/**
+ * Re-export of the shared hook so desktop-only pages keep a local import path.
+ * Pages built on a shared view component do NOT call this — the component sets
+ * its own title, which is what keeps web and desktop naming pages identically.
+ */
+export { useDocumentTitle } from "@multica/views/platform";

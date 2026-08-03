@@ -5,6 +5,7 @@ import { useCanonicalIssue } from "@multica/core/issues/canonical-id";
 import { useWorkspaceId } from "@multica/core/hooks";
 import { useWorkspacePaths } from "@multica/core/paths";
 import { useNavigation } from "../../navigation";
+import { useDocumentTitle } from "../../platform";
 import { IssueDetail, IssueDetailSkeleton, IssueNotFound } from "./issue-detail";
 
 interface IssueDetailRouteProps {
@@ -51,12 +52,17 @@ export function useCanonicalIssueUrl(routeId: string, identifier: string | undef
  *  - rewrite the address bar to the canonical identifier URL. That belongs to
  *    the route and only the route — the inbox renders `IssueDetail` in a side
  *    panel, where replacing the URL would navigate the user out of the inbox.
+ *  - name the page. Same reason as the URL: the inbox's side panel is not the
+ *    page the user is on, so it must not rename the browser tab.
  */
 export function IssueDetailRoute({ routeId, onDelete }: IssueDetailRouteProps) {
   const wsId = useWorkspaceId();
   const { canonicalId, issue, isResolving, notFound } = useCanonicalIssue(wsId, routeId);
 
   useCanonicalIssueUrl(routeId, issue?.identifier);
+  // Identifier first: browser tabs and the desktop tab bar truncate hard, and
+  // `MUL-123` stays legible in the few characters that survive.
+  useDocumentTitle(issue ? `${issue.identifier}: ${issue.title}` : null);
 
   if (isResolving) return <IssueDetailSkeleton />;
 

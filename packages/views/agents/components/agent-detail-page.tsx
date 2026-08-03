@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useDocumentTitle } from "../../platform";
 import type {
   Agent,
   AgentRuntime,
@@ -88,6 +89,7 @@ export function AgentDetailPage({ agentId }: AgentDetailPageProps) {
   const { byAgent: presenceMap } = useWorkspacePresenceMap(wsId);
 
   const agent = agents.find((a) => a.id === agentId) ?? null;
+  useDocumentTitle(agent?.name);
   const presence: AgentPresenceDetail | null =
     agent ? presenceMap.get(agent.id) ?? null : null;
 

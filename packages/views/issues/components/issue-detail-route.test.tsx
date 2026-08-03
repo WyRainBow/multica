@@ -12,6 +12,15 @@ vi.mock("@multica/core/hooks", () => ({
   useWorkspaceId: () => "ws-1",
 }));
 
+// Stub only the panel body. These tests are about the route's own two jobs —
+// naming the page and canonicalising the URL — and rendering the real
+// IssueDetail would drag in the auth store, agents, labels and timeline.
+vi.mock("./issue-detail", async () => {
+  const actual =
+    await vi.importActual<typeof import("./issue-detail")>("./issue-detail");
+  return { ...actual, IssueDetail: () => <div data-testid="issue-detail" /> };
+});
+
 vi.mock("@multica/core/paths", async () => {
   const actual = await vi.importActual<typeof import("@multica/core/paths")>(
     "@multica/core/paths",
@@ -144,6 +153,51 @@ describe("IssueDetailRoute with an identifier that names no issue", () => {
 
     // A failed resolve must never rewrite the URL.
     expect(replace).not.toHaveBeenCalled();
+    qc.clear();
+  });
+});
+
+describe("IssueDetailRoute page title", () => {
+  // The route names the page; the inbox's side panel renders IssueDetail
+  // directly and must not, which is why the title lives here and not in
+  // IssueDetail.
+  it("names the tab after the issue once it resolves", async () => {
+    document.title = "Issue";
+    const issue = {
+      id: "cb240efb-154c-42a8-ae92-42b02676feca",
+      identifier: "COC-6",
+      title: "Workflow execution recovery",
+      status: "in_progress",
+      priority: "none",
+      workspace_id: "ws-1",
+      number: 6,
+    };
+    const getIssue = vi.fn().mockResolvedValue(issue);
+    setApiInstance({ getIssue } as unknown as ApiClient);
+    const qc = new QueryClient({
+      defaultOptions: { queries: { staleTime: Infinity, retry: false } },
+    });
+
+    render(
+      <QueryClientProvider client={qc}>
+        <NavigationProvider
+          value={{
+            push,
+            replace,
+            back: vi.fn(),
+            pathname: "/acme/issues/COC-6",
+            searchParams: new URLSearchParams(),
+            getShareableUrl: (p: string) => `https://app.multica.com${p}`,
+          }}
+        >
+          <IssueDetailRoute routeId="cb240efb-154c-42a8-ae92-42b02676feca" />
+        </NavigationProvider>
+      </QueryClientProvider>,
+    );
+
+    await waitFor(() =>
+      expect(document.title).toBe("COC-6: Workflow execution recovery"),
+    );
     qc.clear();
   });
 });
