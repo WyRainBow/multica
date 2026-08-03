@@ -7,10 +7,27 @@ import (
 
 	"github.com/multica-ai/multica/server/internal/events"
 	"github.com/multica-ai/multica/server/internal/handler"
+	"github.com/multica-ai/multica/server/internal/service"
 	"github.com/multica-ai/multica/server/internal/util"
 	db "github.com/multica-ai/multica/server/pkg/db/generated"
 	"github.com/multica-ai/multica/server/pkg/protocol"
 )
+
+// stringFromPayload reads a payload field that may arrive as a string, a
+// *string, or absent.
+func stringFromPayload(value any) string {
+	switch typed := value.(type) {
+	case string:
+		return typed
+	case *string:
+		if typed == nil {
+			return ""
+		}
+		return *typed
+	default:
+		return ""
+	}
+}
 
 // registerActivityListeners wires up event bus listeners that record activity
 // entries in the activity_log table. Each listener creates one or more activity
@@ -223,13 +240,36 @@ func registerActivityListeners(bus *events.Bus, queries *db.Queries) {
 		}
 
 		if descriptionChanged {
+			// `prev_description` has always travelled on this event; it was
+			// simply never read, which is why the timeline could only say that
+			// the description changed and never what changed in it.
+			// `prev_description` is a *string on the in-process bus (the issue
+			// handler sends textToPtr) but a plain string once the payload has
+			// been through JSON. Reading only one of the two silently yields
+			// "", which reports every edit as the first time anything was
+			// written.
+			prevDescription := stringFromPayload(payload["prev_description"])
+			nextDescription := ""
+			if issue.Description != nil {
+				nextDescription = *issue.Description
+			}
+			details, err := json.Marshal(
+				service.SummarizeDescriptionChange(prevDescription, nextDescription),
+			)
+			if err != nil {
+				// A summary is an enrichment, not the record. Losing it must
+				// not lose the activity itself.
+				slog.Warn("activity: failed to summarize description change",
+					"issue_id", issue.ID, "error", err)
+				details = []byte("{}")
+			}
 			activity, err := queries.CreateActivity(ctx, db.CreateActivityParams{
 				WorkspaceID: parseUUID(issue.WorkspaceID),
 				IssueID:     parseUUID(issue.ID),
 				ActorType:   util.StrToText(e.ActorType),
 				ActorID:     optionalUUID(e.ActorID),
 				Action:      "description_updated",
-				Details:     []byte("{}"),
+				Details:     details,
 			})
 			if err != nil {
 				slog.Error("activity: failed to record description change",
