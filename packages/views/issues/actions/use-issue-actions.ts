@@ -8,7 +8,9 @@ import { useAuthStore } from "@multica/core/auth";
 import { useWorkspaceId } from "@multica/core/hooks";
 import { useWorkspacePaths } from "@multica/core/paths";
 import { useModalStore } from "@multica/core/modals";
-import { useUpdateIssue } from "@multica/core/issues/mutations";
+import { useUpdateIssue,
+  useSetIssueArchived,
+} from "@multica/core/issues/mutations";
 import { pinListOptions, useCreatePin, useDeletePin } from "@multica/core/pins";
 import { copyText } from "@multica/ui/lib/clipboard";
 import { useNavigation } from "../../navigation";
@@ -25,6 +27,10 @@ export interface UseIssueActionsResult {
   openSetParent: () => void;
   removeParent: () => void;
   openAddChild: () => void;
+  /** True when the issue is currently out of view. Drives the menu label. */
+  isArchived: boolean;
+  /** Archive or restore the issue together with its sub-issue subtree. */
+  toggleArchived: () => void;
   openDeleteConfirm: (opts?: { onDeletedFallbackPath?: string }) => void;
 }
 
@@ -60,6 +66,7 @@ export function useIssueActions(issue: Issue | null): UseIssueActionsResult {
 
   const issueId = issue?.id ?? null;
   const issueIdentifier = issue?.identifier ?? null;
+  const isArchived = issue?.archived_at != null;
   const issueProjectId = issue?.project_id ?? null;
   const issueStatus = issue?.status ?? null;
 
@@ -215,6 +222,33 @@ export function useIssueActions(issue: Issue | null): UseIssueActionsResult {
     openModal("issue-add-child", { issueId });
   }, [openModal, issueId]);
 
+  const setArchived = useSetIssueArchived();
+
+  // Archiving takes the whole sub-issue subtree off the board, so the toast
+  // reports how many cards actually moved — "1 issue archived" after a
+  // requirement disappeared with its six children would read as a bug.
+  const toggleArchived = useCallback(() => {
+    if (!issueId) return;
+    const archiving = !isArchived;
+    setArchived.mutate(
+      { id: issueId, archived: archiving },
+      {
+        onSuccess: (result) =>
+          toast.success(
+            archiving
+              ? t(($) => $.actions.archive_issue_success, { count: result.issues.length })
+              : t(($) => $.actions.unarchive_issue_success, { count: result.issues.length }),
+          ),
+        onError: (err) =>
+          toast.error(
+            err instanceof Error && err.message
+              ? err.message
+              : t(($) => $.detail.update_failed),
+          ),
+      },
+    );
+  }, [issueId, isArchived, setArchived, t]);
+
   const openDeleteConfirm = useCallback(
     (opts?: { onDeletedFallbackPath?: string }) => {
       if (!issueId) return;
@@ -237,6 +271,8 @@ export function useIssueActions(issue: Issue | null): UseIssueActionsResult {
     openSetParent,
     removeParent,
     openAddChild,
+    toggleArchived,
+    isArchived,
     openDeleteConfirm,
   };
 }

@@ -1077,6 +1077,7 @@ export function IssueDisplayControls({
   const tableGrouping = useViewStore((s) => s.tableGrouping ?? "none");
   const tableHierarchy = useViewStore((s) => s.tableHierarchy ?? true);
   const showSubIssues = useViewStore((s) => s.showSubIssues);
+  const showArchived = useViewStore((s) => s.showArchived);
   const act = useViewStoreApi().getState();
   const headerWsId = useWorkspaceId();
   // Active custom-property catalog: drives the filter sections, dynamic
@@ -1800,6 +1801,15 @@ export function IssueDisplayControls({
                 size="sm"
                 checked={showSubIssues}
                 onCheckedChange={() => act.toggleShowSubIssues()}
+              />
+            </label>
+
+            <label className="flex cursor-pointer items-center justify-between border-b px-3 py-2.5">
+              <span className="text-body">{t(($) => $.display.show_archived)}</span>
+              <Switch
+                size="sm"
+                checked={showArchived}
+                onCheckedChange={() => act.toggleShowArchived()}
               />
             </label>
 

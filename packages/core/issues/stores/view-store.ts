@@ -184,6 +184,10 @@ export interface IssueViewState {
   // board / list / swimlane so users can focus on top-level parent issues.
   // Purely a display filter — it never touches the parent/child relationship.
   showSubIssues: boolean;
+  // When true, archived issues are brought back into every surface. Archiving
+  // is a visibility dimension independent of `status`, so it gets its own
+  // toggle rather than a status filter entry.
+  showArchived: boolean;
   listCollapsedStatuses: IssueStatus[];
   ganttZoom: GanttZoom;
   ganttShowCompleted: boolean;
@@ -227,6 +231,7 @@ export interface IssueViewState {
   toggleCardProperty: (key: keyof CardProperties) => void;
   toggleCardPropertyId: (propertyId: string) => void;
   toggleShowSubIssues: () => void;
+  toggleShowArchived: () => void;
   toggleListCollapsed: (status: IssueStatus) => void;
   setSwimlaneGrouping: (grouping: SwimlaneGrouping) => void;
   /** Update the lane order for the currently active swimlane grouping. */
@@ -272,6 +277,7 @@ export const viewStoreSlice = (set: StoreApi<IssueViewState>["setState"]): Issue
   },
   cardPropertyIds: [],
   showSubIssues: true,
+  showArchived: false,
   listCollapsedStatuses: [],
   ganttZoom: "week",
   ganttShowCompleted: false,
@@ -412,6 +418,8 @@ export const viewStoreSlice = (set: StoreApi<IssueViewState>["setState"]): Issue
     })),
   toggleShowSubIssues: () =>
     set((state) => ({ showSubIssues: !state.showSubIssues })),
+  toggleShowArchived: () =>
+    set((state) => ({ showArchived: !state.showArchived })),
   toggleListCollapsed: (status) =>
     set((state) => ({
       listCollapsedStatuses: state.listCollapsedStatuses.includes(status)
@@ -503,6 +511,7 @@ export const viewStorePersistOptions = (name: string) => ({
     includeNoProject: state.includeNoProject,
     labelFilters: state.labelFilters,
     parentFilters: state.parentFilters,
+    showArchived: state.showArchived,
     propertyFilters: state.propertyFilters,
     sortBy: state.sortBy,
     sortDirection: state.sortDirection,

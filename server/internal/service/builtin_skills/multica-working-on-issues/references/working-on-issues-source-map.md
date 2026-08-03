@@ -6,6 +6,27 @@ after the latest `main` merge; the prior skill cited pre-merge lines that have
 since moved (see the "drifted" column). Re-confirm with the verification command
 at the bottom before relying on an exact line.
 
+## `multica issue archive` / `unarchive` — visibility, not status
+
+| Behavior | File:line |
+|---|---|
+| CLI command `archive <id>` | `server/cmd/multica/cmd_issue.go:229` |
+| CLI command `unarchive <id>` | `server/cmd/multica/cmd_issue.go:239` |
+| `--include-archived` on `issue list` | `server/cmd/multica/cmd_issue.go:462` |
+| `runIssueArchiveState` drives both directions | `server/cmd/multica/cmd_issue.go:1461` |
+| Routes `POST /api/issues/{id}/archive` and `/unarchive` | `server/cmd/server/router.go:1143` |
+| Handler `setIssueArchived` | `server/internal/handler/issue.go:3300` |
+| Re-archiving returns 409, preserving the original `archived_at` | `server/internal/handler/issue.go:3307` |
+| Subtree walk (archives descendants at any depth) | `server/pkg/db/queries/issue.sql:393` (`ArchiveIssueSubtree`) |
+| `archived_at` / `archived_by` columns | `server/migrations/251_issue_archive.up.sql` |
+| List default hides archived | `server/internal/handler/issue.go:1035` |
+| Board / table default hides archived | `server/internal/handler/issue_table_query.go:652` |
+
+Archiving writes only `archived_at` / `archived_by`; `status` is never touched,
+which is what keeps "how did this end" answerable after the card leaves the
+board. `GET /api/issues/{id}` has no archive filter, so an archived issue stays
+readable by id and by link.
+
 ## `multica issue pull-requests` — read PR links from Multica
 
 | Behavior | File:line | Drifted from |

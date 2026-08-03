@@ -94,7 +94,8 @@
     "card_project": "项目",
     "card_labels": "标签",
     "card_child_progress": "子 issue 进度",
-    "show_sub_issues": "显示子 issue"
+    "show_sub_issues": "显示子 issue",
+    "show_archived": "显示已归档"
   },
   "view": {
     "tooltip_board": "看板视图",
@@ -554,6 +555,10 @@
     "remove_parent_issue": "移除父 issue",
     "remove_parent_issue_success": "已移除父 issue",
     "add_sub_issue": "添加子 issue...",
+    "archive_issue": "归档",
+    "unarchive_issue": "取消归档",
+    "archive_issue_success": "已归档 {{count}} 个 issue",
+    "unarchive_issue_success": "已恢复 {{count}} 个 issue",
     "delete_issue": "删除 issue"
   },
   "pickers": {

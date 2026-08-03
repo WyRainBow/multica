@@ -1155,3 +1155,30 @@ export function useUnsubscribeFromIssueSubtree(issueId: string) {
     },
   });
 }
+
+/**
+ * Archive or restore an issue and its sub-issue subtree.
+ *
+ * No optimistic patch: archiving REMOVES rows from every visible surface, and
+ * the repo's rule is that removals await the server rather than guessing. The
+ * server also decides how far the subtree reaches, which the client cannot
+ * predict from a partially-loaded cache.
+ */
+export function useSetIssueArchived() {
+  const qc = useQueryClient();
+  const wsId = useWorkspaceId();
+  return useMutation({
+    mutationFn: ({ id, archived }: { id: string; archived: boolean }) =>
+      api.setIssueArchived(id, archived),
+    onSuccess: (result) => {
+      // Seed each affected issue's detail cache so a detail view open on one of
+      // them flips immediately instead of showing a stale archive state.
+      for (const issue of result.issues) {
+        qc.setQueryData(issueKeys.detail(wsId, issue.id), issue);
+      }
+    },
+    onSettled: () => {
+      qc.invalidateQueries({ queryKey: issueKeys.all(wsId) });
+    },
+  });
+}

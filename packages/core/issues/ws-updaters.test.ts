@@ -84,6 +84,8 @@ const baseIssue: Issue = {
   labels: [labelA],
   created_at: "2025-01-01T00:00:00Z",
   updated_at: "2025-01-01T00:00:00Z",
+  archived_at: null,
+  archived_by: null,
 };
 
 const parentedIssue: Issue = {
@@ -461,6 +463,8 @@ describe("project progress invalidation", () => {
         resource_count: 0,
         created_at: "2025-01-01T00:00:00Z",
         updated_at: "2025-01-01T00:00:00Z",
+        archived_at: null,
+        archived_by: null,
       },
     ]);
   });

@@ -229,6 +229,7 @@ export function useIssueSurfaceController({
   const propertyFilters = useViewStore((s) => s.propertyFilters);
   const agentRunningFilter = useViewStore((s) => s.agentRunningFilter);
   const showSubIssues = useViewStore((s) => s.showSubIssues);
+  const showArchived = useViewStore((s) => s.showArchived);
   const ganttShowCompleted = useViewStore((s) => s.ganttShowCompleted);
   const cardProperties = useViewStore((s) => s.cardProperties);
   const swimlaneGrouping = useViewStore((s) => s.swimlaneGrouping);
@@ -451,6 +452,7 @@ export function useIssueSurfaceController({
           ? { working_issue_ids: [...workingIssueIDs] }
           : {}),
         include_sub_issues: showSubIssues,
+        ...(showArchived ? { include_archived: true } : {}),
       },
       ...(debouncedActiveSearch ? { search: debouncedActiveSearch } : {}),
       sort: {
@@ -470,6 +472,7 @@ export function useIssueSurfaceController({
     parentFilters,
     priorityFilters,
     scope,
+    showArchived,
     showSubIssues,
     sort.sort_by,
     sort.sort_direction,
@@ -649,6 +652,7 @@ export function useIssueSurfaceController({
         parentFilters,
         effectivePropertyFilters,
         agentRunningFilter,
+        showArchived,
         showSubIssues,
         dateParams,
         debouncedActiveSearch,
@@ -664,6 +668,7 @@ export function useIssueSurfaceController({
       labelFilters,
       parentFilters,
       priorityFilters,
+      showArchived,
       showSubIssues,
       statusFilters,
       viewIncludeNoProject,

@@ -519,6 +519,8 @@ const mockIssue: Issue = {
   properties: {},
   created_at: "2026-01-15T00:00:00Z",
   updated_at: "2026-01-20T00:00:00Z",
+  archived_at: null,
+  archived_by: null,
 };
 
 const mockTimeline: TimelineEntry[] = [
@@ -769,6 +771,8 @@ describe("IssueDetail (shared)", () => {
       lead_id: null,
       created_at: "2026-01-01T00:00:00Z",
       updated_at: "2026-01-01T00:00:00Z",
+      archived_at: null,
+      archived_by: null,
       issue_count: 0,
       done_count: 0,
       resource_count: 0,
@@ -1005,6 +1009,8 @@ describe("IssueDetail (shared)", () => {
         parent_id: null,
         created_at: "2026-01-18T00:00:00Z",
         updated_at: "2026-01-18T00:00:00Z",
+        archived_at: null,
+        archived_by: null,
         comment_type: "system",
         source_task_id: "task-failed",
       },
@@ -1032,6 +1038,8 @@ describe("IssueDetail (shared)", () => {
         parent_id: null,
         created_at: "2026-01-18T00:00:00Z",
         updated_at: "2026-01-18T00:00:00Z",
+        archived_at: null,
+        archived_by: null,
         comment_type: "system",
       },
     ]);
@@ -1054,6 +1062,8 @@ describe("IssueDetail (shared)", () => {
         parent_id: null,
         created_at: "2026-01-18T00:00:00Z",
         updated_at: "2026-01-18T00:00:00Z",
+        archived_at: null,
+        archived_by: null,
         comment_type: "comment",
         source_task_id: "task-success",
       },
@@ -1077,6 +1087,8 @@ describe("IssueDetail (shared)", () => {
         parent_id: null,
         created_at: "2026-01-18T00:00:00Z",
         updated_at: "2026-01-18T00:00:00Z",
+        archived_at: null,
+        archived_by: null,
         comment_type: "system",
       },
     ]);
@@ -1121,6 +1133,8 @@ describe("IssueDetail (shared)", () => {
         parent_id: null,
         created_at: "2026-01-17T00:00:00Z",
         updated_at: "2026-01-17T00:00:00Z",
+        archived_at: null,
+        archived_by: null,
         comment_type: "comment",
       },
       {
@@ -1344,6 +1358,8 @@ describe("IssueDetail (shared)", () => {
           parent_id: null,
           created_at: "2026-01-18T00:00:00Z",
           updated_at: "2026-01-18T00:00:00Z",
+          archived_at: null,
+          archived_by: null,
           comment_type: "comment",
         } as TimelineEntry,
         {
@@ -1355,6 +1371,8 @@ describe("IssueDetail (shared)", () => {
           parent_id: "comment-root",
           created_at: "2026-01-18T01:00:00Z",
           updated_at: "2026-01-18T01:00:00Z",
+          archived_at: null,
+          archived_by: null,
           comment_type: "comment",
         } as TimelineEntry,
       ]);
@@ -1426,6 +1444,8 @@ describe("IssueDetail (shared)", () => {
           parent_id: null,
           created_at: "2026-01-18T00:00:00Z",
           updated_at: "2026-01-18T00:00:00Z",
+          archived_at: null,
+          archived_by: null,
           comment_type: "comment",
           resolved_at: "2026-01-19T00:00:00Z",
         } as TimelineEntry,
@@ -1438,6 +1458,8 @@ describe("IssueDetail (shared)", () => {
           parent_id: "comment-3",
           created_at: "2026-01-18T01:00:00Z",
           updated_at: "2026-01-18T01:00:00Z",
+          archived_at: null,
+          archived_by: null,
           comment_type: "comment",
         } as TimelineEntry,
       ];
@@ -1485,6 +1507,8 @@ describe("IssueDetail (shared)", () => {
         parent_id: "comment-1",
         created_at: "2026-01-18T00:00:00Z",
         updated_at: "2026-01-18T00:00:00Z",
+        archived_at: null,
+        archived_by: null,
         comment_type: "comment",
         resolved_at: "2026-01-19T00:00:00Z",
       } as TimelineEntry,
@@ -1622,6 +1646,8 @@ describe("IssueDetail (shared)", () => {
         archived: false,
         created_at: "2026-01-01T00:00:00Z",
         updated_at: "2026-01-01T00:00:00Z",
+        archived_at: null,
+        archived_by: null,
       };
       mockApiObj.listProperties.mockResolvedValue({
         properties: [estimate],

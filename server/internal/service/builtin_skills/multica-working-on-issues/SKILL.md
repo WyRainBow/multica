@@ -209,6 +209,37 @@ on it. These are the contracts, not advice:
   `todo` when no active task / retry remains — that is the main server-owned
   status write on the agent-run path.
 
+## Archiving is not a status
+
+`archived` is a separate dimension from `status`, and the two answer different
+questions:
+
+- **`status`** — how the work ended: `done`, `cancelled`, `blocked`.
+- **archived** — whether the card should still be in view.
+
+Do NOT reach for `cancelled` to get a finished issue off the board. Cancelling
+records that the work was abandoned, which is wrong for something that shipped,
+and the distinction is unrecoverable afterwards. Archive it instead: the issue
+keeps whatever status it ended on.
+
+```bash
+multica issue archive <id>      # takes the issue AND its sub-issue subtree out of view
+multica issue unarchive <id>    # brings the same subtree back
+multica issue list --include-archived
+```
+
+Two consequences worth knowing before you use it:
+
+- **The whole subtree moves.** Archiving a requirement archives every sub-issue
+  under it, at any depth. Archive a mid-tree node and only that node's own
+  subtree goes; ancestors are untouched.
+- **Archived issues stay readable.** `issue get <id>` still returns an archived
+  issue; only list/board surfaces hide it. Links from other issues keep working.
+
+Re-archiving an already-archived issue is a `409`, not a silent no-op — the
+original `archived_at` is preserved so "when did this leave the board" stays
+answerable.
+
 ## Sub-issues: `todo` starts work now, `backlog` parks it
 
 On an agent-assigned issue, create status decides whether the assignee fires

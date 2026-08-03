@@ -42,6 +42,8 @@ function makeIssue(overrides: Partial<Issue> = {}): Issue {
     properties: {},
     created_at: "2025-01-01T00:00:00Z",
     updated_at: "2025-01-01T00:00:00Z",
+    archived_at: null,
+    archived_by: null,
     ...overrides,
   };
 }
@@ -190,6 +192,8 @@ describe("filterIssues", () => {
     workspace_id: "ws-1",
     created_at: "2025-01-01T00:00:00Z",
     updated_at: "2025-01-01T00:00:00Z",
+    archived_at: null,
+    archived_by: null,
   });
   const labelBug = makeLabel("lab-bug", "bug", "#ff0000");
   const labelFeat = makeLabel("lab-feat", "feature", "#00ff00");
