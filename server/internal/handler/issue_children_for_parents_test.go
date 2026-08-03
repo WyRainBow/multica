@@ -268,8 +268,11 @@ func newScrambledChildren(t *testing.T) (IssueResponse, []IssueResponse) {
 		}
 	})
 
-	// Scramble positions so a position-ordered result (c4, c2, c3, c1) differs
-	// from a number-ordered result (c1, c2, c3, c4).
+	// Positions deliberately disagree with creation order, so a result can only
+	// be explained by one of them: position order is (c4, c2, c3, c1), creation
+	// order is (c1, c2, c3, c4). The children also span three statuses, which
+	// is what makes this a real test — position is scoped per-(workspace,
+	// status), so a status-blind sort is the failure mode to catch.
 	scrambled := map[string]float64{c1.ID: -1, c2.ID: -8, c3.ID: -4, c4.ID: -16}
 	ctx := context.Background()
 	for id, pos := range scrambled {
@@ -282,9 +285,10 @@ func newScrambledChildren(t *testing.T) (IssueResponse, []IssueResponse) {
 	return parent, children
 }
 
-// assertNumberAscending checks the returned children match the expected
-// creation-order slice exactly and are strictly ascending by issue number.
-func assertNumberAscending(t *testing.T, got, want []IssueResponse) {
+// assertSiblingOrder checks the returned children match the expected slice
+// exactly. `want` is written in the order the caller expects to read on
+// screen, so the failure message names the child that moved.
+func assertSiblingOrder(t *testing.T, got, want []IssueResponse) {
 	t.Helper()
 	if len(got) != len(want) {
 		t.Fatalf("expected %d children, got %d", len(want), len(got))
@@ -294,17 +298,20 @@ func assertNumberAscending(t *testing.T, got, want []IssueResponse) {
 			t.Fatalf("index %d: expected child %s (number %d), got %s (number %d)",
 				i, want[i].ID, want[i].Number, got[i].ID, got[i].Number)
 		}
-		if i > 0 && got[i].Number <= got[i-1].Number {
-			t.Fatalf("children not strictly ascending by number: index %d number %d <= index %d number %d",
-				i, got[i].Number, i-1, got[i-1].Number)
-		}
 	}
 }
 
-// TestListChildIssues_OrdersByNumberAsc pins the single-parent child listing
-// to number ASC order, independent of position and status. If a future change
-// reintroduces position-based ordering, this fails.
-func TestListChildIssues_OrdersByNumberAsc(t *testing.T) {
+// TestListChildIssues_OrdersByPosition pins the single-parent child listing to
+// position order.
+//
+// This test previously pinned the OPPOSITE — number ASC, explicitly "if a
+// future change reintroduces position-based ordering, this fails". That
+// contract was chosen before the issue table gained a hierarchy view, which
+// sorts the very same children by i.position. Two orders for one parent is a
+// bug the user can see: reorder a sub-issue in the table, open the parent, and
+// the change appears to have been ignored. Position wins because it is the one
+// of the two a user can actually control.
+func TestListChildIssues_OrdersByPosition(t *testing.T) {
 	parent, children := newScrambledChildren(t)
 
 	w := httptest.NewRecorder()
@@ -317,13 +324,18 @@ func TestListChildIssues_OrdersByNumberAsc(t *testing.T) {
 		t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
 	}
 
-	assertNumberAscending(t, decodeIssueBatch(t, w), children)
+	// children is (c1, c2, c3, c4); positions -1, -8, -4, -16 put them on screen
+	// as (c4, c2, c3, c1).
+	assertSiblingOrder(t, decodeIssueBatch(t, w), []IssueResponse{
+		children[3], children[1], children[2], children[0],
+	})
 }
 
-// TestListChildrenByParents_OrdersByNumberAscWithinParent pins the batched
-// child listing to number ASC order within a parent, independent of position
-// and status.
-func TestListChildrenByParents_OrdersByNumberAscWithinParent(t *testing.T) {
+// TestListChildrenByParents_OrdersByPositionWithinParent pins the batched child
+// listing to the same order as the single-parent one. The swimlane reads this
+// endpoint; disagreeing with the sub-issues panel would sort one parent's
+// children two ways on two screens.
+func TestListChildrenByParents_OrdersByPositionWithinParent(t *testing.T) {
 	parent, children := newScrambledChildren(t)
 
 	w := httptest.NewRecorder()
@@ -334,7 +346,11 @@ func TestListChildrenByParents_OrdersByNumberAscWithinParent(t *testing.T) {
 		t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
 	}
 
-	assertNumberAscending(t, decodeIssueBatch(t, w), children)
+	// children is (c1, c2, c3, c4); positions -1, -8, -4, -16 put them on screen
+	// as (c4, c2, c3, c1).
+	assertSiblingOrder(t, decodeIssueBatch(t, w), []IssueResponse{
+		children[3], children[1], children[2], children[0],
+	})
 }
 
 // TestListChildIssues_IncludesLabels verifies both child listings bulk-load

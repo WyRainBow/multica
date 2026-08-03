@@ -301,15 +301,24 @@ WHERE i.workspace_id = $1
   );
 
 -- name: ListChildIssues :many
--- Order by number ASC so sub-issues display in stable creation order
--- (oldest first), matching how a parent's plan reads top-to-bottom. The
--- position column is computed per-(workspace, status) by NextTopPosition,
--- not relative to siblings, so ordering by it interleaves children
--- unpredictably across batches and statuses; number is a per-workspace
--- monotonic counter and is sibling-stable.
+-- Order by position, falling back to number.
+--
+-- This used to be `number ASC` alone, on the reasoning that position is
+-- computed per-(workspace, status) rather than relative to siblings and would
+-- therefore interleave children unpredictably. That reasoning still holds for
+-- position ALONE — but the issue table already sorts its hierarchy rows by
+-- i.position (see issueTableOrderBy), so the same parent's children were
+-- ordered one way in the tree and another way here. Two orders for one list is
+-- worse than an imperfect one: a user who drags a sub-issue in the table then
+-- opens the parent finds their change apparently ignored.
+--
+-- `number` as the tiebreaker is what makes this safe. Children that were never
+-- reordered share no position ordering worth trusting, and they fall back to
+-- the same stable creation order this query has always produced. Only children
+-- someone has actually moved sort ahead of that.
 SELECT * FROM issue
 WHERE parent_issue_id = $1
-ORDER BY number ASC;
+ORDER BY position ASC, number ASC;
 
 -- name: ListChildrenByParents :many
 -- Batched variant of ListChildIssues: returns all children for the given
@@ -317,12 +326,12 @@ ORDER BY number ASC;
 -- (one request per visible parent lane). Result is grouped client-side by
 -- parent_issue_id; the workspace filter is also enforced so callers can't
 -- enumerate children of parents in workspaces they don't belong to.
--- Within each parent, order by number ASC for the same sibling-stable
--- creation order as ListChildIssues.
+-- Within each parent, order by (position, number) for the same sibling order
+-- as ListChildIssues — see the rationale there.
 SELECT * FROM issue
 WHERE workspace_id = sqlc.arg('workspace_id')
   AND parent_issue_id = ANY(sqlc.arg('parent_ids')::uuid[])
-ORDER BY parent_issue_id, number ASC;
+ORDER BY parent_issue_id, position ASC, number ASC;
 
 -- name: GetIssueByOrigin :one
 -- Finds the issue stamped with a specific (origin_type, origin_id) pair.
