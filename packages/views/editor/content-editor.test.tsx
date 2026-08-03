@@ -155,6 +155,15 @@ vi.mock("@tiptap/react", () => ({
 
 import { ContentEditor, type ContentEditorRef } from "./content-editor";
 
+/**
+ * The external-value sync applies its transaction one microtask after the
+ * effect, so Tiptap's flushSync-driven re-render lands outside React's render
+ * phase. Assertions on `mockSetContent` have to drain that queue first.
+ */
+async function flushExternalSync() {
+  await act(async () => {});
+}
+
 describe("ContentEditor", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -194,7 +203,7 @@ describe("ContentEditor", () => {
     expect(mockFocus).not.toHaveBeenCalled();
   });
 
-  it("syncs editor content when value changes externally and editor is unfocused", () => {
+  it("syncs editor content when value changes externally and editor is unfocused", async () => {
     editorState.markdown = "old content";
     const { rerender } = render(<ContentEditor value="old content" />);
 
@@ -203,12 +212,58 @@ describe("ContentEditor", () => {
     // Editor still holds the old, in-sync content; external value changes.
     editorState.markdown = "old content";
     rerender(<ContentEditor value="new content from server" />);
+    await flushExternalSync();
 
     expect(mockSetContent).toHaveBeenCalledTimes(1);
     expect(mockSetContent).toHaveBeenCalledWith(
       "new content from server",
       expect.objectContaining({ emitUpdate: false, contentType: "markdown" }),
     );
+  });
+
+  it("applies the external sync after the effect, never inline (flushSync guard)", async () => {
+    // Regression: applying setContent straight from the sync effect let
+    // Tiptap's flushSync-driven re-render run while React was still
+    // rendering, which React refuses ("flushSync was called from inside a
+    // lifecycle method"). The transaction must be deferred out of the render
+    // phase — and must still land, not be dropped.
+    editorState.markdown = "old content";
+    const { rerender } = render(<ContentEditor value="old content" />);
+
+    rerender(<ContentEditor value="new content from server" />);
+    expect(mockSetContent).not.toHaveBeenCalled();
+
+    await flushExternalSync();
+    expect(mockSetContent).toHaveBeenCalledTimes(1);
+  });
+
+  it("drops a superseded external sync instead of applying stale content", async () => {
+    // Two value changes in the same tick: only the newest may reach the
+    // editor, otherwise the deferral would resurrect content the server has
+    // already moved past.
+    editorState.markdown = "old content";
+    const { rerender } = render(<ContentEditor value="old content" />);
+
+    rerender(<ContentEditor value="intermediate" />);
+    rerender(<ContentEditor value="latest from server" />);
+    await flushExternalSync();
+
+    expect(mockSetContent).toHaveBeenCalledTimes(1);
+    expect(mockSetContent).toHaveBeenCalledWith(
+      "latest from server",
+      expect.objectContaining({ emitUpdate: false, contentType: "markdown" }),
+    );
+  });
+
+  it("does not apply a pending external sync after unmount", async () => {
+    editorState.markdown = "old content";
+    const { rerender, unmount } = render(<ContentEditor value="old content" />);
+
+    rerender(<ContentEditor value="new content from server" />);
+    unmount();
+    await flushExternalSync();
+
+    expect(mockSetContent).not.toHaveBeenCalled();
   });
 
   it("treats defaultValue as mount-only", () => {
@@ -285,7 +340,7 @@ describe("ContentEditor", () => {
     expect(mockSetContent).not.toHaveBeenCalled();
   });
 
-  it("does not sync while a file upload is in flight (in-flight upload node must survive external value changes)", () => {
+  it("does not sync while a file upload is in flight (in-flight upload node must survive external value changes)", async () => {
     editorState.markdown = "old content";
     const { rerender } = render(<ContentEditor value="old content" />);
 
@@ -301,6 +356,7 @@ describe("ContentEditor", () => {
     // Once the upload settles (no uploading node), a later external change syncs.
     editorState.uploadingNodes = [];
     rerender(<ContentEditor value="new content from server" />);
+    await flushExternalSync();
     expect(mockSetContent).toHaveBeenCalledTimes(1);
   });
 
@@ -318,7 +374,7 @@ describe("ContentEditor", () => {
     expect(mockSetContent).not.toHaveBeenCalled();
   });
 
-  it("syncs even when editor is focused, as long as it is clean (focused-but-clean must not be permanently dropped)", () => {
+  it("syncs even when editor is focused, as long as it is clean (focused-but-clean must not be permanently dropped)", async () => {
     // This case is the regression test for the focused-but-clean hole:
     // user clicks into the editor (focused = true) but types nothing
     // (markdown still equals lastEmittedRef). An external update arrives.
@@ -331,6 +387,7 @@ describe("ContentEditor", () => {
     editorState.markdown = "old content"; // clean — no typing happened
 
     rerender(<ContentEditor value="new content from server" />);
+    await flushExternalSync();
 
     expect(mockSetContent).toHaveBeenCalledTimes(1);
     expect(mockSetContent).toHaveBeenCalledWith(
@@ -400,7 +457,7 @@ describe("ContentEditor", () => {
       expect(ref.current?.flushPendingUpdate()).toBeNull();
     });
 
-    it("leaves the editor clean so the next value sync is no longer blocked by the dirty guard", () => {
+    it("leaves the editor clean so the next value sync is no longer blocked by the dirty guard", async () => {
       vi.useFakeTimers();
       const ref = createRef<ContentEditorRef>();
       editorState.markdown = "draft A text";
@@ -422,6 +479,7 @@ describe("ContentEditor", () => {
       rerender(
         <ContentEditor ref={ref} value="draft B text" onUpdate={vi.fn()} debounceMs={100} />,
       );
+      await flushExternalSync();
       expect(mockSetContent).toHaveBeenCalled();
     });
 

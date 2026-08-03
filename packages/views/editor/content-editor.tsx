@@ -831,7 +831,23 @@ const ContentEditor = forwardRef<ContentEditorRef, ContentEditorProps>(
       // here avoids overwriting unsaved local edits.
       if (isDirty) return;
 
-      applyExternalContent(value);
+      // Deferred one microtask, NOT applied inline. Tiptap's React binding
+      // re-renders through `flushSync` when the document changes, and this
+      // effect can run while React is still rendering (a parent commit that
+      // itself came from a flushSync), where React refuses to flush and logs
+      // "flushSync was called from inside a lifecycle method". A microtask
+      // drains once the current render unwinds and still lands before paint,
+      // so the user never sees the stale document.
+      let cancelled = false;
+      queueMicrotask(() => {
+        // The editor can be torn down, or a newer `value` can arrive, between
+        // scheduling and running.
+        if (cancelled || editor.isDestroyed) return;
+        applyExternalContent(value);
+      });
+      return () => {
+        cancelled = true;
+      };
     }, [value, editor, applyExternalContent]);
 
     // Sync external `placeholder` changes into the mounted editor.
