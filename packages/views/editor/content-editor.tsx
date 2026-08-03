@@ -59,6 +59,7 @@ import type { IssueIdentifierResolver } from "./extensions/issue-identifier-auto
 import type { BuiltinCommandSuggestionOptions } from "./extensions/slash-command-suggestion";
 import { createEditorExtensions } from "./extensions";
 import type { CommentAnchor } from "./comment-anchors";
+import { extractOutline, type OutlineHeading } from "./outline";
 import {
   uploadAndInsertFile,
   insertUploadPlaceholder,
@@ -181,6 +182,12 @@ interface ContentEditorBaseProps {
   /** Invoked when the reader clicks a highlighted inline-comment span. */
   onCommentAnchorClick?: (commentId: string, element: HTMLElement) => void;
   /**
+   * Receives the document's headings whenever they change. Fires on mount and
+   * on every edit that alters the heading set, so a host outline stays in step
+   * with what is being typed.
+   */
+  onOutlineChange?: (headings: OutlineHeading[]) => void;
+  /**
    * When true, the `@` suggestion picker is disabled but the mention node
    * type remains in the schema, so existing mentions pasted in from other
    * Multica editors still render as the normal pill. Use for editors where
@@ -274,6 +281,13 @@ interface ContentEditorRef {
    * long documents.
    */
   focusAtAnchor: (anchor: TextAnchor) => void;
+  /**
+   * Scroll a document position into view. Used by the outline: it holds
+   * ProseMirror positions rather than DOM ids, because a heading id would have
+   * to live IN the document to survive, and the description round-trips
+   * through Markdown, which has nowhere to keep one.
+   */
+  scrollToPosition: (pos: number) => void;
   /** Drop focus from the editor. Used by `useComposerSubmit`'s
    *  `afterAccepted: "blur"` on surfaces where a send ends the turn, so the
    *  composer stops reading as "still writing". */
@@ -375,6 +389,7 @@ const ContentEditor = forwardRef<ContentEditorRef, ContentEditorProps>(
       currentIssueId,
       commentAnchors,
       onCommentAnchorClick,
+      onOutlineChange,
       disableMentions = false,
       mentionMode = "default",
       mentionContextItems,
@@ -427,6 +442,21 @@ const ContentEditor = forwardRef<ContentEditorRef, ContentEditorProps>(
     commentAnchorsRef.current = commentAnchors ?? [];
     const commentAnchorClickRef = useRef(onCommentAnchorClick);
     commentAnchorClickRef.current = onCommentAnchorClick;
+    const outlineChangeRef = useRef(onOutlineChange);
+    outlineChangeRef.current = onOutlineChange;
+    // Last emitted outline, so an edit inside a paragraph does not re-render
+    // the host on every keystroke. Only a change to the heading set counts.
+    const lastOutlineRef = useRef<string>("");
+
+    const emitOutline = useCallback((ed: Editor) => {
+      const handler = outlineChangeRef.current;
+      if (!handler) return;
+      const headings = extractOutline(ed.state.doc);
+      const signature = headings.map((h) => `${h.pos}:${h.level}:${h.text}`).join("\u0000");
+      if (signature === lastOutlineRef.current) return;
+      lastOutlineRef.current = signature;
+      handler(headings);
+    }, []);
 
     // In-session record of attachments freshly uploaded through this editor.
     // Surfaces (like the quick-create modal) that don't have a server-supplied
@@ -596,6 +626,7 @@ const ContentEditor = forwardRef<ContentEditorRef, ContentEditorProps>(
           focusOnReadyRef.current = false;
           ed.commands.focus("end");
         }
+        emitOutline(ed);
       },
       content: mountChunked ? "" : initialContent,
       contentType: mountChunked
@@ -630,6 +661,10 @@ const ContentEditor = forwardRef<ContentEditorRef, ContentEditorProps>(
         resolveIssueIdentifierRef,
       }),
       onUpdate: ({ editor: ed }) => {
+        // Ahead of the save debounce on purpose: the outline tracks what is on
+        // screen, not what has been persisted, so a new heading appears as it
+        // is typed rather than a second later.
+        emitOutline(ed);
         if (!onUpdateRef.current) return;
         if (flushPendingOnUnmountRef.current) {
           pendingFlushRef.current = normalizeEditorMarkdown(ed);
@@ -932,6 +967,13 @@ const ContentEditor = forwardRef<ContentEditorRef, ContentEditorProps>(
           return;
         }
         editor.commands.focus(posFromAnchor(editor.state.doc, anchor));
+      },
+      scrollToPosition: (pos: number) => {
+        if (!editor || editor.isDestroyed) return;
+        const node = editor.view.nodeDOM(pos) ?? editor.view.domAtPos(pos).node;
+        const element =
+          node instanceof HTMLElement ? node : (node as Node)?.parentElement;
+        element?.scrollIntoView({ behavior: "smooth", block: "start" });
       },
       blur: () => {
         editor?.commands.blur();

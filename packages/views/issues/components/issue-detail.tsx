@@ -69,6 +69,8 @@ import { ProjectPicker } from "../../projects/components/project-picker";
 import { LocalDirectoryHint } from "../../projects/components/local-directory-hint";
 import { CommentCard } from "./comment-card";
 import { IssueRetrosSection } from "../../retros";
+import { DescriptionOutline } from "./description-outline";
+import type { OutlineHeading } from "../../editor/outline";
 import { CommentInput } from "./comment-input";
 import { ResolvedThreadBar } from "./resolved-thread-bar";
 import { ThreadMinimap, type ThreadMinimapThread } from "./thread-minimap";
@@ -1766,6 +1768,11 @@ export function IssueDetail({ issueId, onDelete, onDone, defaultSidebarOpen = tr
   }, [highlightCommentId, items, targetIdx, scrollContainerEl, replyToRoot, expandedResolved, timelineView, toggleResolvedExpand]);
 
   const descEditorRef = useRef<ContentEditorRef>(null);
+  // Headings of the description, refreshed by the editor as they are typed.
+  const [descOutline, setDescOutline] = useState<OutlineHeading[]>([]);
+  const jumpToHeading = useCallback((heading: OutlineHeading) => {
+    descEditorRef.current?.scrollToPosition(heading.pos);
+  }, []);
   // Keep the description editor mounted from the start. Unlike the empty
   // composer shells, a long rendered description cannot swap between
   // react-markdown and ProseMirror without small per-block height differences
@@ -2581,6 +2588,16 @@ export function IssueDetail({ issueId, onDelete, onDone, defaultSidebarOpen = tr
           )}
 
           <div {...descDropZoneProps} className="relative mt-5 rounded-lg">
+            {/* The gutter left of the description is empty at this width, so
+                the outline costs no reading space. Absolute + hidden below xl
+                because on a narrow window that gutter does not exist and the
+                rail would push the prose sideways. */}
+            <DescriptionOutline
+              headings={descOutline}
+              scrollContainer={scrollContainerEl}
+              onJump={jumpToHeading}
+              className="absolute right-full top-0 mr-6 hidden w-40 xl:flex"
+            />
             <ContentEditor
               ref={descEditorRef}
               key={id}
@@ -2616,6 +2633,7 @@ export function IssueDetail({ issueId, onDelete, onDone, defaultSidebarOpen = tr
               // the image markdown and its attachment_ids bind (MUL-3254).
               flushPendingOnUnmount
               currentIssueId={id}
+              onOutlineChange={setDescOutline}
               commentAnchors={descriptionCommentAnchors}
               onCommentAnchorClick={handleCommentAnchorClick}
               attachments={descEditorAttachments}
