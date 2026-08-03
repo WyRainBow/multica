@@ -6,6 +6,23 @@ after the latest `main` merge; the prior skill cited pre-merge lines that have
 since moved (see the "drifted" column). Re-confirm with the verification command
 at the bottom before relying on an exact line.
 
+## `multica issue comment add --anchor` — comment on one passage
+
+| Behavior | File:line |
+|---|---|
+| `--anchor` flag | `server/cmd/multica/cmd_issue.go:597` |
+| `--anchor-occurrence` flag | `server/cmd/multica/cmd_issue.go:602` |
+| Fetches the description and resolves the offset | `server/cmd/multica/cmd_issue.go:2088` (`locateAnchorInDescription`) |
+| Character-based search + occurrence selection | `server/cmd/multica/cmd_issue.go:2121` (`anchorOffsetInText`) |
+| Server-side validation of the anchor | `server/internal/handler/comment.go:1473` (`parseCommentAnchor`) |
+| Columns | `server/migrations/254_comment_anchor.up.sql` |
+
+The offset is in CHARACTERS, not bytes — the editor re-locates anchors in the
+same coordinate system, and a byte offset lands mid-character on any CJK
+description. The CLI resolves it from the live description rather than trusting
+a caller-supplied number, which is also what turns a mistyped passage into an
+immediate error instead of a comment that never highlights.
+
 ## `multica issue delete` — permanent, and does not take the subtree
 
 | Behavior | File:line |

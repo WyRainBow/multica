@@ -209,6 +209,38 @@ on it. These are the contracts, not advice:
   `todo` when no active task / retry remains — that is the main server-owned
   status write on the agent-run path.
 
+## Commenting on one passage of the description
+
+An ordinary comment is about the issue. An INLINE comment is about a specific
+passage of its description — use it when the thing you are saying only makes
+sense next to particular words: explaining a paragraph, questioning one
+sentence, flagging a term.
+
+```bash
+multica issue comment add <id> --anchor "V1 结论" --content "..."
+multica issue comment add <id> --anchor "V1 结论" --anchor-occurrence 2 --content "..."
+```
+
+`--anchor` takes the passage VERBATIM out of the current description. The CLI
+locates it and computes the offset for you; do not try to supply one. Two rules
+follow from that:
+
+- **Copy, do not paraphrase.** A passage that does not appear exactly is a hard
+  error, not a warning. That is deliberate: without it you would file a comment
+  that silently highlights nothing, and the mistake would only surface later as
+  "the feature is broken".
+- **Disambiguate repeats with `--anchor-occurrence`.** When the passage occurs
+  more than once, the error tells you how many times it occurs; pick the one
+  you meant rather than widening the passage until it is unique.
+
+The comment then behaves like any other: @mentions trigger, replies thread
+under it, it can be resolved. The anchor only adds *where in the description*
+it is about.
+
+If the description is later edited so the passage no longer appears, the
+comment survives and simply stops highlighting. Nothing is lost, so prefer an
+anchored comment whenever the passage is what you are talking about.
+
 ## Archiving is not a status
 
 `archived` is a separate dimension from `status`, and the two answer different
