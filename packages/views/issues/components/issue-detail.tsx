@@ -225,6 +225,90 @@ function priorityLabel(priority: string, t: ActivityT): string {
   return priority;
 }
 
+/**
+ * Combine the details of two activities being collapsed into one row.
+ *
+ * Only description_updated has anything to merge: keeping the newest entry's
+ * details would show one edit's numbers next to an "x3" badge, which reads as
+ * if three edits changed that little. Summing overstates a line that was added
+ * and then deleted within the window — a summary, not an audit, and it never
+ * understates the work.
+ *
+ * Every other action keeps the newest entry's details, which is what the badge
+ * has always meant for them.
+ */
+export function mergeCoalescedDetails(
+  previous: TimelineEntry,
+  next: TimelineEntry,
+): Record<string, unknown> | undefined {
+  if (next.action !== "description_updated") return next.details;
+
+  const a = (previous.details ?? {}) as Record<string, unknown>;
+  const b = (next.details ?? {}) as Record<string, unknown>;
+  const sections = [
+    ...new Set([
+      ...((a.sections as string[] | undefined) ?? []),
+      ...((b.sections as string[] | undefined) ?? []),
+    ]),
+  ];
+  return {
+    added_lines: ((a.added_lines as number) ?? 0) + ((b.added_lines as number) ?? 0),
+    removed_lines: ((a.removed_lines as number) ?? 0) + ((b.removed_lines as number) ?? 0),
+    ...(sections.length > 0 ? { sections } : {}),
+    // "Written for the first time" belongs to the oldest edit in the window;
+    // "cleared" to the newest. Both describe the window as a whole.
+    ...(a.created ? { created: true } : {}),
+    ...(b.cleared ? { cleared: true } : {}),
+  };
+}
+
+/** Headings named inline before the rest collapse into "and N more". */
+const DESCRIPTION_SECTION_LIMIT = 2;
+
+/**
+ * "updated the description" on its own says only that something happened. The
+ * server records what changed alongside the activity, so the timeline can say
+ * how much and where.
+ *
+ * Older activities carry an empty `details` — those still render the plain
+ * sentence rather than "+0 −0", which would claim an edit changed nothing.
+ */
+export function formatDescriptionUpdate(entry: TimelineEntry, t: ActivityT): string {
+  const details = (entry.details ?? {}) as {
+    added_lines?: number;
+    removed_lines?: number;
+    sections?: string[];
+    created?: boolean;
+    cleared?: boolean;
+  };
+  // Coalesced entries carry the summed counts and the union of sections; see
+  // where the timeline collapses consecutive activities.
+  const added = details.added_lines ?? 0;
+  const removed = details.removed_lines ?? 0;
+  const sections = details.sections ?? [];
+
+  if (details.cleared) return t(($) => $.activity.description_cleared);
+  if (details.created) return t(($) => $.activity.description_written, { added });
+  if (added === 0 && removed === 0) return t(($) => $.activity.description_updated);
+
+  if (sections.length === 0) {
+    return t(($) => $.activity.description_updated_counts, { added, removed });
+  }
+  const named = sections.slice(0, DESCRIPTION_SECTION_LIMIT).join("、");
+  const label =
+    sections.length > DESCRIPTION_SECTION_LIMIT
+      ? t(($) => $.activity.description_sections_more, {
+          names: named,
+          count: sections.length - DESCRIPTION_SECTION_LIMIT,
+        })
+      : named;
+  return t(($) => $.activity.description_updated_sections, {
+    added,
+    removed,
+    sections: label,
+  });
+}
+
 function formatActivity(
   entry: TimelineEntry,
   t: ActivityT,
@@ -270,7 +354,7 @@ function formatActivity(
         to: details.to ?? "?",
       });
     case "description_updated":
-      return t(($) => $.activity.description_updated);
+      return formatDescriptionUpdate(entry, t);
     case "task_completed":
       return t(($) => $.activity.task_completed, { count: entry.coalesced_count ?? 1 });
     case "task_failed":
@@ -1354,7 +1438,11 @@ export function IssueDetail({ issueId, onDelete, onDone, defaultSidebarOpen = tr
           (NO_TIME_LIMIT_ACTIONS.has(entry.action!) ||
             Math.abs(new Date(entry.created_at).getTime() - new Date(prev.created_at).getTime()) <= COALESCE_MS)
         ) {
-          coalesced[coalesced.length - 1] = { ...entry, coalesced_count: (prev.coalesced_count ?? 1) + 1 };
+          coalesced[coalesced.length - 1] = {
+            ...entry,
+            coalesced_count: (prev.coalesced_count ?? 1) + 1,
+            details: mergeCoalescedDetails(prev, entry),
+          };
           continue;
         }
       }
