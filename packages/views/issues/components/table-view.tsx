@@ -10,6 +10,7 @@ import {
 } from "react";
 import {
   DndContext,
+  type DragStartEvent,
   KeyboardSensor,
   PointerSensor,
   closestCenter,
@@ -18,7 +19,7 @@ import {
   useSensors,
   type DragEndEvent,
 } from "@dnd-kit/core";
-import { restrictToHorizontalAxis } from "@dnd-kit/modifiers";
+import { restrictToHorizontalAxis, restrictToVerticalAxis } from "@dnd-kit/modifiers";
 import {
   SortableContext,
   horizontalListSortingStrategy,
@@ -155,6 +156,14 @@ type TableViewProps = {
   onSearchChange: (query: string) => void;
   onLoadedIssuesChange: (issues: Issue[]) => void;
   onCreateIssue: (defaults: IssueCreateDefaults) => void;
+  /**
+   * Reorder a row among its siblings. Omitted (the project Gantt, exports)
+   * renders the table read-only for ordering.
+   */
+  onMoveIssue?: (
+    issueId: string,
+    updates: { before_id: string | null; after_id: string | null },
+  ) => void;
   exportIssues: () => Promise<Issue[]>;
   resolveExportLookups: (needs: {
     projects: boolean;
@@ -164,6 +173,83 @@ type TableViewProps = {
     childProgressMap: Map<string, ChildProgress>;
   }>;
 };
+
+/**
+ * Row drag ids are namespaced because columns and rows share one DndContext:
+ * a column key is a bare string like "status", and an issue id is a bare uuid.
+ * Without the prefix the two id spaces are only accidentally disjoint.
+ */
+const ROW_DRAG_PREFIX = "row:";
+
+export function rowDragId(issueId: string): string {
+  return ROW_DRAG_PREFIX + issueId;
+}
+
+function isRowDragId(id: string | number): boolean {
+  return typeof id === "string" && id.startsWith(ROW_DRAG_PREFIX);
+}
+
+function rowDragIdToIssueId(id: string | number): string {
+  return String(id).slice(ROW_DRAG_PREFIX.length);
+}
+
+/**
+ * Translate "row A was dropped on row B" into the neighbour pair the move
+ * endpoint expects, or null when the drop is not a reorder this table can
+ * express.
+ *
+ * Only siblings are reorderable. A drop onto a row with a different parent
+ * would have to mean "re-parent AND reposition", and the two have different
+ * consequences — re-parenting an issue can wake its new parent's assignee.
+ * Refusing is honest; silently doing one of the two is not.
+ *
+ * Anchors are the dragged row's NEW neighbours in the sibling list, computed
+ * after removing it, so the server's midpoint lands where the row was dropped.
+ */
+export function resolveRowMove(
+  rows: readonly IssueTableDisplayRow[],
+  activeIssueId: string,
+  overIssueId: string,
+): { issueId: string; anchors: { before_id: string | null; after_id: string | null } } | null {
+  const issueRows = rows.filter(
+    (row): row is Extract<IssueTableDisplayRow, { kind: "issue" }> => row.kind === "issue",
+  );
+  const active = issueRows.find((row) => row.issue.id === activeIssueId);
+  const over = issueRows.find((row) => row.issue.id === overIssueId);
+  if (!active || !over || active === over) return null;
+
+  const activeParent = active.issue.parent_issue_id ?? null;
+  if (activeParent !== (over.issue.parent_issue_id ?? null)) return null;
+
+  const siblings = issueRows.filter(
+    (row) => (row.issue.parent_issue_id ?? null) === activeParent,
+  );
+  const from = siblings.findIndex((row) => row.issue.id === activeIssueId);
+  const to = siblings.findIndex((row) => row.issue.id === overIssueId);
+  if (from === -1 || to === -1) return null;
+  void from;
+
+  const without = siblings.filter((row) => row.issue.id !== activeIssueId);
+  // Removing the dragged row shifts everything below it up by one, which is
+  // exactly what turns "dropped on index `to`" into the same insertion index
+  // for both directions: dragging down lands after the target, dragging up
+  // lands before it.
+  //
+  // `before` is the neighbour ABOVE and `after` the one BELOW — the server
+  // reads them as the lower and upper bound of the new position, not as
+  // "happens earlier / later" in time.
+  const before = without[to - 1] ?? null;
+  const after = without[to] ?? null;
+  if (!before && !after) return null;
+
+  return {
+    issueId: activeIssueId,
+    anchors: {
+      before_id: before?.issue.id ?? null,
+      after_id: after?.issue.id ?? null,
+    },
+  };
+}
 
 type ServerBranch = {
   key: string;
@@ -1269,6 +1355,7 @@ export function TableView({
   onSearchChange,
   onLoadedIssuesChange,
   onCreateIssue,
+  onMoveIssue,
   exportIssues,
   resolveExportLookups,
 }: TableViewProps) {
@@ -2224,12 +2311,37 @@ export function TableView({
     useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
   );
+  // One DndContext serves two gestures with opposite constraints: columns swap
+  // sideways, rows swap vertically. The active id tells them apart — row ids
+  // are prefixed, because a column key and an issue id share a namespace
+  // otherwise and a stray collision would move the wrong thing.
+  const [draggingKind, setDraggingKind] = useState<"column" | "row" | null>(null);
+
+  const handleDragStart = useCallback(({ active }: DragStartEvent) => {
+    setDraggingKind(isRowDragId(active.id) ? "row" : "column");
+  }, []);
+
+  const handleDragCancel = useCallback(() => setDraggingKind(null), []);
+
   const handleDragEnd = useCallback(
     ({ active, over }: DragEndEvent) => {
+      setDraggingKind(null);
       if (!over || active.id === over.id) return;
-      reorderTableColumn(active.id as TableColumnKey, over.id as TableColumnKey);
+
+      if (!isRowDragId(active.id)) {
+        reorderTableColumn(active.id as TableColumnKey, over.id as TableColumnKey);
+        return;
+      }
+      if (!onMoveIssue || !isRowDragId(over.id)) return;
+
+      const move = resolveRowMove(
+        displayRows,
+        rowDragIdToIssueId(active.id),
+        rowDragIdToIssueId(over.id),
+      );
+      if (move) onMoveIssue(move.issueId, move.anchors);
     },
-    [reorderTableColumn],
+    [reorderTableColumn, onMoveIssue, displayRows],
   );
 
   const handleExport = async (mode: "all" | "selected") => {
@@ -2402,7 +2514,9 @@ export function TableView({
         // Columns only ever swap sideways, so the header should not follow the
         // pointer up out of its own strip — same constraint the desktop tab bar
         // puts on tab reordering.
-        modifiers={[restrictToHorizontalAxis]}
+        // Columns only ever swap sideways and rows only ever swap vertically,
+        // so the axis lock follows whichever gesture is in flight.
+        modifiers={draggingKind === "row" ? [restrictToVerticalAxis] : [restrictToHorizontalAxis]}
         // Modifiers constrain the drag's movement but not its auto-scrolling,
         // which reads raw pointer coordinates: drifting a few pixels vertically
         // while dragging a header sent the rows scrolling underneath it. Zero
@@ -2410,7 +2524,15 @@ export function TableView({
         // a table wider than its viewport needs it to reach a distant slot, but
         // the default 0.2 arms it a fifth of the way in from either edge, which
         // is most of a wide header.
-        autoScroll={{ threshold: { x: 0.05, y: 0 } }}
+        // Same reasoning per axis: a column drag must not scroll the rows, and
+        // a row drag needs vertical reach to cross a long list.
+        autoScroll={
+          draggingKind === "row"
+            ? { threshold: { x: 0, y: 0.1 } }
+            : { threshold: { x: 0.05, y: 0 } }
+        }
+        onDragStart={handleDragStart}
+        onDragCancel={handleDragCancel}
         onDragEnd={handleDragEnd}
       >
         <SortableContext
