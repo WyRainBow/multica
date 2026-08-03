@@ -20,9 +20,12 @@ import {
   type DragEndEvent,
 } from "@dnd-kit/core";
 import { restrictToHorizontalAxis, restrictToVerticalAxis } from "@dnd-kit/modifiers";
+import { CSS } from "@dnd-kit/utilities";
+import type { DataTableRowProps } from "@multica/ui/components/ui/data-table";
 import {
   SortableContext,
   horizontalListSortingStrategy,
+  verticalListSortingStrategy,
   sortableKeyboardCoordinates,
   useSortable,
 } from "@dnd-kit/sortable";
@@ -173,6 +176,56 @@ type TableViewProps = {
     childProgressMap: Map<string, ChildProgress>;
   }>;
 };
+
+/**
+ * A table row that can be dragged to reorder its siblings.
+ *
+ * Only issue rows are draggable — group headers and load-more rows have no
+ * position to write. The whole row is the handle rather than a grip icon,
+ * because the table has no spare gutter and a drag only starts after the
+ * pointer travels a few pixels, which leaves click-to-open intact.
+ */
+function SortableIssueRow<TData>({
+  row,
+  children,
+  ...props
+}: DataTableRowProps<TData>) {
+  const original = row.original as IssueTableDisplayRow;
+  const draggable = original.kind === "issue";
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
+    useSortable({
+      id: draggable ? rowDragId(original.issue.id) : `static:${row.id}`,
+      disabled: !draggable,
+    });
+
+  return (
+    <TableRow
+      {...props}
+      ref={(element: HTMLTableRowElement | null) => {
+        setNodeRef(element);
+        // DataTable also hands the virtualizer's measuring ref down as
+        // `props.ref`; both have to see the node or rows collapse to zero
+        // height while dragging.
+        const forwarded = (props as { ref?: React.Ref<HTMLTableRowElement> }).ref;
+        if (typeof forwarded === "function") forwarded(element);
+        else if (forwarded) (forwarded as { current: HTMLElement | null }).current = element;
+      }}
+      {...(draggable ? attributes : {})}
+      {...(draggable ? listeners : {})}
+      style={{
+        transform: CSS.Transform.toString(transform),
+        transition,
+        // The dragged row keeps its place in the flow and fades, rather than
+        // being lifted out: a <tr> removed from its table loses every column
+        // width it inherited from the header.
+        opacity: isDragging ? 0.4 : undefined,
+        ...props.style,
+      }}
+    >
+      {children}
+    </TableRow>
+  );
+}
 
 /**
  * Row drag ids are namespaced because columns and rows share one DndContext:
@@ -2344,6 +2397,19 @@ export function TableView({
     [reorderTableColumn, onMoveIssue, displayRows],
   );
 
+  // Only issue rows take part; a group header has no position to write. Ids
+  // come from every loaded row, not just the virtualized window, so a drag
+  // that auto-scrolls past the window still finds its target.
+  const sortableRowIds = useMemo(
+    () =>
+      onMoveIssue
+        ? displayRows
+            .filter((row) => row.kind === "issue")
+            .map((row) => rowDragId((row as Extract<IssueTableDisplayRow, { kind: "issue" }>).issue.id))
+        : [],
+    [displayRows, onMoveIssue],
+  );
+
   const handleExport = async (mode: "all" | "selected") => {
     setExporting(mode);
     try {
@@ -2539,6 +2605,10 @@ export function TableView({
           items={visibleColumnConfigs.map((column) => column.key)}
           strategy={horizontalListSortingStrategy}
         >
+          <SortableContext
+            items={sortableRowIds}
+            strategy={verticalListSortingStrategy}
+          >
           <DataTable
             table={table}
             virtualizeRows
@@ -2548,6 +2618,7 @@ export function TableView({
                 openIssue(row.original.issue);
               }
             }}
+            rowComponent={onMoveIssue ? SortableIssueRow : undefined}
             renderRow={(row) => {
               if (row.original.kind === "group") {
                 return (
@@ -2593,6 +2664,7 @@ export function TableView({
             }}
             className="min-h-0 flex-1"
           />
+          </SortableContext>
         </SortableContext>
       </DndContext>
     </div>

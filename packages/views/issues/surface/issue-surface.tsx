@@ -282,6 +282,9 @@ function IssueSurfaceContent({
                 onSearchChange={controller.setTableSearch}
                 onLoadedIssuesChange={handleTableLoadedIssuesChange}
                 onCreateIssue={openCreateIssue}
+                onMoveIssue={(issueId, anchors) =>
+                  controller.moveIssue(issueId, anchors)
+                }
                 exportIssues={controller.exportTableIssues}
                 resolveExportLookups={controller.resolveTableExportLookups}
               />
