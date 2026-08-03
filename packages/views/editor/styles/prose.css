@@ -447,17 +447,17 @@
   background-color: var(--comment-highlight);
   border-radius: 2px;
   cursor: pointer;
-  /* Padding without affecting line box height, so a highlighted line never
-   * shifts the paragraph around it. */
-  box-shadow: 0 0 0 1px var(--comment-highlight);
+  /* Deliberately no ring. An outline in the fill colour visually grows the
+   * block by 2px on every side, which is what made the tint read as heavy
+   * even after it was lightened. */
 }
 
 /* Flash played when the reader jumps here from a comment's quote. Animates the
  * ring rather than the fill so the prose underneath stays readable throughout —
  * the point is to say "here", not to obscure the sentence being pointed at. */
 @keyframes comment-highlight-flash {
-  0%, 100% { box-shadow: 0 0 0 1px var(--comment-highlight); }
-  30% { box-shadow: 0 0 0 4px var(--find-match-active); }
+  0%, 100% { box-shadow: 0 0 0 0 transparent; }
+  30% { box-shadow: 0 0 0 3px var(--find-match-active); }
 }
 
 .comment-highlight-flash {

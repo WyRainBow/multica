@@ -222,7 +222,7 @@
     /* Inline-comment anchor tint. Deliberately weaker than a find match: a
        highlight here is persistent decoration, not a transient search result,
        so it must sit under the prose rather than compete with it. */
-    --comment-highlight: oklch(0.94 0.09 92);
+    --comment-highlight: oklch(0.97 0.042 92);
 }
 
 .dark {
@@ -290,5 +290,5 @@
     --find-match: oklch(0.82 0.16 100);
     --find-match-active: oklch(0.76 0.18 60);
     --find-match-foreground: oklch(0.18 0.02 92);
-    --comment-highlight: oklch(0.52 0.09 92);
+    --comment-highlight: oklch(0.80 0.10 92 / 18%);
 }
