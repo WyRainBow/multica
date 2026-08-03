@@ -15,6 +15,9 @@ export interface IssueFilters {
   projectFilters: string[];
   includeNoProject: boolean;
   labelFilters: string[];
+  /** Parent issues whose subtree the view is narrowed to. See
+   *  IssueFilterState.parentFilters for the matching rule. */
+  parentFilters?: string[];
   /** Custom-property filters: definition id → selected option ids (OR within
    *  a definition, AND across definitions; checkbox uses "true"/"false"). */
   propertyFilters?: Record<string, string[]>;
@@ -41,6 +44,12 @@ export interface IssueFilterState {
   projectFilters: string[];
   includeNoProject: boolean;
   labelFilters: string[];
+  /**
+   * Parent issues whose subtree the view is narrowed to. An issue matches when
+   * it IS a selected parent or descends from one, so a requirement-style
+   * parent acts as a lens over its own work. OR across entries.
+   */
+  parentFilters?: string[];
   propertyFilters?: Record<string, string[]>;
   workingOnly: boolean;
   /** See IssueFilters.showSubIssues — only an explicit `false` hides. */
@@ -107,6 +116,24 @@ export function applyIssueFilters(
     assigneeFilters.length > 0 ||
     includeNoAssignee;
   const hasProjectFilter = projectFilters.length > 0 || includeNoProject;
+  const parentSelection = new Set(filters.parentFilters ?? []);
+  // Ancestry is resolved against the issues we were handed. The server applies
+  // the authoritative subtree predicate; this keeps the client-only paths
+  // (cached board / list) consistent with it for everything they loaded.
+  const parentById =
+    parentSelection.size > 0
+      ? new Map(issues.map((issue) => [issue.id, issue.parent_issue_id ?? null]))
+      : null;
+  const inSelectedSubtree = (issue: Issue): boolean => {
+    let current: string | null = issue.id;
+    const visited = new Set<string>();
+    while (current && !visited.has(current)) {
+      if (parentSelection.has(current)) return true;
+      visited.add(current);
+      current = parentById?.get(current) ?? null;
+    }
+    return false;
+  };
   // Empty set passed without `agentRunningFilter` is a no-op. When the
   // filter is on but the set is missing/empty, hide everything — the
   // user opted into "only running" and there is nothing running.
@@ -160,6 +187,8 @@ export function applyIssueFilters(
       }
     }
 
+    if (parentSelection.size > 0 && !inSelectedSubtree(issue)) return false;
+
     if (labelFilters.length > 0) {
       // OR semantics within the filter: keep issues that carry any of the
       // selected labels. Matches existing priority / project multi-select.
@@ -187,6 +216,7 @@ export function filterIssues(issues: Issue[], filters: IssueFilters): Issue[] {
       projectFilters: filters.projectFilters,
       includeNoProject: filters.includeNoProject,
       labelFilters: filters.labelFilters,
+      parentFilters: filters.parentFilters,
       propertyFilters: filters.propertyFilters,
       workingOnly: filters.agentRunningFilter === true,
       showSubIssues: filters.showSubIssues,

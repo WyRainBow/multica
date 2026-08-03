@@ -138,6 +138,7 @@ const mockViewState: Record<string, unknown> = {
   projectFilters: [],
   includeNoProject: false,
   labelFilters: [],
+  parentFilters: [],
   propertyFilters: {},
   cardPropertyIds: [],
   agentRunningFilter: false,

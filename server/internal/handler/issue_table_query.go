@@ -89,7 +89,11 @@ type issueTableFiltersRequest struct {
 	ProjectIDs        []string                     `json:"project_ids,omitempty"`
 	IncludeNoProject  bool                         `json:"include_no_project,omitempty"`
 	LabelIDs          []string                     `json:"label_ids,omitempty"`
-	Properties        map[string][]string          `json:"properties,omitempty"`
+	// Narrow the window to the given issues and everything below them in the
+	// parent/child tree. Selecting a requirement-style parent issue therefore
+	// keeps the parent itself plus its whole subtree, not just direct children.
+	ParentIDs        []string                     `json:"parent_ids,omitempty"`
+	Properties       map[string][]string          `json:"properties,omitempty"`
 	Date              *issueTableDateFilterRequest `json:"date,omitempty"`
 	WorkingOnly       bool                         `json:"working_only,omitempty"`
 	WorkingIssueIDs   []string                     `json:"working_issue_ids,omitempty"`
@@ -255,6 +259,7 @@ func canonicalIssueTableFingerprint(workspaceID string, spec issueTableQuerySpec
 	normalized.Filters.Priorities = sortedUniqueStrings(normalized.Filters.Priorities)
 	normalized.Filters.ProjectIDs = sortedUniqueStrings(normalized.Filters.ProjectIDs)
 	normalized.Filters.LabelIDs = sortedUniqueStrings(normalized.Filters.LabelIDs)
+	normalized.Filters.ParentIDs = sortedUniqueStrings(normalized.Filters.ParentIDs)
 	normalized.Filters.Assignees = sortedUniqueActors(normalized.Filters.Assignees)
 	normalized.Filters.WorkingIssueIDs = sortedUniqueStrings(normalized.Filters.WorkingIssueIDs)
 	normalized.Filters.Creators = sortedUniqueActors(normalized.Filters.Creators)
@@ -560,6 +565,30 @@ func (h *Handler) compileIssueTableQuery(w http.ResponseWriter, r *http.Request,
 	}
 	if len(labelIDs) > 0 {
 		where = append(where, fmt.Sprintf("EXISTS (SELECT 1 FROM issue_to_label itl WHERE itl.issue_id = i.id AND itl.label_id = ANY(%s::uuid[]))", addArg(labelIDs)))
+	}
+
+	parentIDs, ok := parseIssueTableUUIDList(w, spec.Filters.ParentIDs, "filters.parent_ids")
+	if !ok {
+		return issueTableSQL{}, false
+	}
+	if len(parentIDs) > 0 {
+		// Walk down from the selected issues so the window keeps the whole
+		// subtree, not just direct children. The recursion is workspace-scoped
+		// on both legs and `UNION` (not `UNION ALL`) so a cycle introduced by
+		// bad data terminates instead of spinning.
+		where = append(where, fmt.Sprintf(`i.id IN (
+			WITH RECURSIVE issue_subtree AS (
+				SELECT root.id
+				FROM issue root
+				WHERE root.workspace_id = $1 AND root.id = ANY(%s::uuid[])
+				UNION
+				SELECT child.id
+				FROM issue child
+				JOIN issue_subtree ON child.parent_issue_id = issue_subtree.id
+				WHERE child.workspace_id = $1
+			)
+			SELECT id FROM issue_subtree
+		)`, addArg(parentIDs)))
 	}
 
 	if len(spec.Filters.Properties) > 0 {

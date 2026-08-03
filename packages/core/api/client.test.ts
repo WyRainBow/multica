@@ -1509,3 +1509,55 @@ describe("ApiClient", () => {
     });
   });
 });
+
+describe("ApiClient parent-issue response schema", () => {
+  const validParent = {
+    id: "issue-1",
+    number: 6,
+    identifier: "COC-6",
+    title: "[需求] Workflow recovery",
+    status: "in_progress",
+    subtree_size: 9,
+  };
+
+  const respondWith = (body: unknown) =>
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        new Response(JSON.stringify(body), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        }),
+      ),
+    );
+
+  it("parses the parent-issue picker payload", async () => {
+    respondWith({ issues: [validParent] });
+
+    const result = await new ApiClient("https://api.example.test").listParentIssues();
+    expect(result.issues[0]).toMatchObject({
+      id: "issue-1",
+      identifier: "COC-6",
+      subtree_size: 9,
+    });
+  });
+
+  it("falls back safely when the parent list is malformed", async () => {
+    respondWith({ issues: "not-an-array" });
+
+    await expect(
+      new ApiClient("https://api.example.test").listParentIssues(),
+    ).resolves.toEqual({ issues: [] });
+  });
+
+  it("defaults missing optional parent fields instead of dropping the row", async () => {
+    respondWith({ issues: [{ id: "issue-2" }] });
+
+    const result = await new ApiClient("https://api.example.test").listParentIssues();
+    expect(result.issues[0]).toMatchObject({
+      id: "issue-2",
+      identifier: "",
+      subtree_size: 0,
+    });
+  });
+});

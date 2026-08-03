@@ -461,3 +461,61 @@ describe("property filters", () => {
     expect(result?.[0]?.total).toBe(1);
   });
 });
+
+describe("parent filter", () => {
+  // root ── mid ── leaf
+  //   └──── sibling
+  // other (unrelated top-level issue)
+  const root = makeIssue({ id: "root" });
+  const mid = makeIssue({ id: "mid", parent_issue_id: "root" });
+  const leaf = makeIssue({ id: "leaf", parent_issue_id: "mid" });
+  const sibling = makeIssue({ id: "sibling", parent_issue_id: "root" });
+  const other = makeIssue({ id: "other" });
+  const all = [root, mid, leaf, sibling, other];
+
+  const ids = (filters: string[]) =>
+    filterIssues(all, { ...NO_FILTER, parentFilters: filters }).map((i) => i.id);
+
+  it("keeps the parent itself plus its whole subtree", () => {
+    expect(ids(["root"])).toEqual(["root", "mid", "leaf", "sibling"]);
+  });
+
+  it("reaches grandchildren, not just direct children", () => {
+    expect(ids(["mid"])).toEqual(["mid", "leaf"]);
+  });
+
+  it("a childless issue matches only itself", () => {
+    expect(ids(["leaf"])).toEqual(["leaf"]);
+  });
+
+  it("ORs across selected parents without duplicating overlaps", () => {
+    expect(ids(["mid", "other"])).toEqual(["mid", "leaf", "other"]);
+    expect(ids(["root", "mid"])).toEqual(["root", "mid", "leaf", "sibling"]);
+  });
+
+  it("an empty selection is inert", () => {
+    expect(ids([])).toEqual(["root", "mid", "leaf", "sibling", "other"]);
+  });
+
+  it("an unknown parent id matches nothing", () => {
+    expect(ids(["missing"])).toEqual([]);
+  });
+
+  it("terminates on a cyclic parent chain instead of hanging", () => {
+    const a = makeIssue({ id: "a", parent_issue_id: "b" });
+    const b = makeIssue({ id: "b", parent_issue_id: "a" });
+    expect(
+      filterIssues([a, b], { ...NO_FILTER, parentFilters: ["missing"] }),
+    ).toEqual([]);
+  });
+
+  it("composes with other filters", () => {
+    const done = makeIssue({ id: "mid", parent_issue_id: "root", status: "done" });
+    const result = filterIssues([root, done, leaf, other], {
+      ...NO_FILTER,
+      parentFilters: ["root"],
+      statusFilters: ["done"],
+    });
+    expect(result.map((i) => i.id)).toEqual(["mid"]);
+  });
+});

@@ -256,6 +256,12 @@ export interface IssueTableFilters {
   project_ids?: string[];
   include_no_project?: boolean;
   label_ids?: string[];
+  /**
+   * Narrow to the given issues plus everything below them in the parent/child
+   * tree. Picking a requirement-style parent keeps the parent itself and its
+   * whole subtree, not just its direct children.
+   */
+  parent_ids?: string[];
   properties?: Record<string, string[]>;
   date?: {
     field: "created_at" | "updated_at";
@@ -390,6 +396,21 @@ export interface IssueTableRowsResponse {
   next_cursor: string | null;
 }
 
+/** One candidate value of the "parent issue" filter. */
+export interface ParentIssue {
+  id: string;
+  number: number;
+  identifier: string;
+  title: string;
+  status: string;
+  /** Subtree size including the parent itself. */
+  subtree_size: number;
+}
+
+export interface ParentIssuesResponse {
+  issues: ParentIssue[];
+}
+
 export type IssueTableFacetSpec =
   | { kind: "status" }
   | { kind: "priority" }
@@ -397,6 +418,8 @@ export type IssueTableFacetSpec =
   | { kind: "creator" }
   | { kind: "project" }
   | { kind: "label" }
+  /** Values are candidate parent issue ids; counts are subtree sizes. */
+  | { kind: "parent" }
   | { kind: "property"; property_id: string };
 
 export interface IssueTableFacetsRequest {

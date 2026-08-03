@@ -12,6 +12,7 @@ import {
   Filter,
   FolderKanban,
   FolderMinus,
+  GitBranch,
   List,
   Rows3,
   SignalHigh,
@@ -57,6 +58,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useWorkspaceId } from "@multica/core/hooks";
 import { memberListOptions, agentListOptions, squadListOptions } from "@multica/core/workspace/queries";
 import { projectListOptions } from "@multica/core/projects/queries";
+import { parentIssuesOptions } from "@multica/core/issues/queries";
 import { labelListOptions } from "@multica/core/labels/queries";
 import { propertyListOptions } from "@multica/core/properties";
 import { propertyIdFromViewKey } from "@multica/core/issues/stores/view-store";
@@ -115,6 +117,7 @@ function getActiveFilterCount(state: {
   projectFilters: string[];
   includeNoProject: boolean;
   labelFilters: string[];
+  parentFilters: string[];
   propertyFilters?: Record<string, string[]>;
   dateFilter?: IssueDateFilter | null;
 }) {
@@ -125,6 +128,7 @@ function getActiveFilterCount(state: {
   if (state.creatorFilters.length > 0) count++;
   if (state.projectFilters.length > 0 || state.includeNoProject) count++;
   if (state.labelFilters.length > 0) count++;
+  if (state.parentFilters.length > 0) count++;
   for (const selected of Object.values(state.propertyFilters ?? {})) {
     if (selected.length > 0) count++;
   }
@@ -160,6 +164,9 @@ function useIssueCounts(
     const creator = new Map<string, number>();
     const project = new Map<string, number>();
     const label = new Map<string, number>();
+    // Parent issue id → subtree size (the parent itself included), matching
+    // what selecting it as a filter leaves behind.
+    const parent = new Map<string, number>();
     // property definition id → option key → count. Checkbox values count
     // under the "true"/"false" pseudo-option keys the filter store uses.
     const property = new Map<string, Map<string, number>>();
@@ -181,7 +188,9 @@ function useIssueCounts(
                     ? project
                     : facet.kind === "label"
                       ? label
-                      : null;
+                      : facet.kind === "parent"
+                        ? parent
+                        : null;
         if (facet.kind === "property" && facet.property_id) {
           property.set(
             facet.property_id,
@@ -199,7 +208,26 @@ function useIssueCounts(
           }
         }
       }
-      return { status, priority, assignee, creator, noAssignee, project, noProject, label, property };
+      return { status, priority, assignee, creator, noAssignee, project, noProject, label, parent, property };
+    }
+
+    // Client-side fallback: walk each issue up to its ancestors so a parent's
+    // count is its subtree size, mirroring the server facet.
+    const parentById = new Map(
+      allIssues.map((issue) => [issue.id, issue.parent_issue_id ?? null]),
+    );
+    for (const issue of allIssues) {
+      let current: string | null = issue.parent_issue_id ?? null;
+      const visited = new Set<string>();
+      while (current && !visited.has(current)) {
+        visited.add(current);
+        parent.set(current, (parent.get(current) ?? 0) + 1);
+        current = parentById.get(current) ?? null;
+      }
+    }
+    // Every candidate parent counts itself too.
+    for (const parentId of [...parent.keys()]) {
+      parent.set(parentId, (parent.get(parentId) ?? 0) + 1);
     }
 
     for (const issue of allIssues) {
@@ -249,7 +277,7 @@ function useIssueCounts(
       }
     }
 
-    return { status, priority, assignee, creator, noAssignee, project, noProject, label, property };
+    return { status, priority, assignee, creator, noAssignee, project, noProject, label, parent, property };
   }, [allIssues, serverFacets]);
 }
 
@@ -580,6 +608,84 @@ function LabelSubContent({
         {filtered.length === 0 && (
           <div className="px-2 py-3 text-center text-sm text-muted-foreground">
             {search ? t(($) => $.filters.no_results) : t(($) => $.filters.no_labels)}
+          </div>
+        )}
+      </div>
+    </>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Parent issue sub-menu content
+// ---------------------------------------------------------------------------
+
+/**
+ * Candidate parents come from the workspace-wide `parents` query rather than
+ * the loaded window, so a parent stays selectable even when the active filters
+ * have emptied its subtree. Counts still come from the facet, which reflects
+ * the current window.
+ */
+function ParentSubContent({
+  counts,
+  selected,
+  onToggle,
+}: {
+  counts: Map<string, number>;
+  selected: string[];
+  onToggle: (parentId: string) => void;
+}) {
+  const { t } = useT("issues");
+  const [search, setSearch] = useState("");
+  const wsId = useWorkspaceId();
+  const { data: parents = [] } = useQuery(parentIssuesOptions(wsId));
+  const query = search.trim().toLowerCase();
+  const filtered = parents.filter(
+    (p) =>
+      p.title.toLowerCase().includes(query) ||
+      p.identifier.toLowerCase().includes(query),
+  );
+
+  return (
+    <>
+      <div className="px-2 py-1.5 border-b border-foreground/5">
+        <input
+          type="text"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder={t(($) => $.filters.placeholder)}
+          className="w-full bg-transparent text-sm placeholder:text-muted-foreground outline-none"
+          autoFocus
+        />
+      </div>
+
+      <div className="max-h-64 overflow-y-auto p-1">
+        {filtered.map((p) => {
+          const checked = selected.includes(p.id);
+          const count = counts.get(p.id) ?? p.subtree_size;
+          return (
+            <DropdownMenuCheckboxItem
+              key={p.id}
+              checked={checked}
+              onCheckedChange={() => onToggle(p.id)}
+              className={FILTER_ITEM_CLASS}
+            >
+              <HoverCheck checked={checked} />
+              <span className="shrink-0 text-xs text-muted-foreground tabular-nums">
+                {p.identifier}
+              </span>
+              <span className="truncate">{p.title}</span>
+              {count > 0 && (
+                <span className="ml-auto shrink-0 text-xs text-muted-foreground">
+                  {count}
+                </span>
+              )}
+            </DropdownMenuCheckboxItem>
+          );
+        })}
+
+        {filtered.length === 0 && (
+          <div className="px-2 py-3 text-center text-sm text-muted-foreground">
+            {search ? t(($) => $.filters.no_results) : t(($) => $.filters.no_parents)}
           </div>
         )}
       </div>
@@ -954,6 +1060,7 @@ export function IssueDisplayControls({
   const projectFilters = useViewStore((s) => s.projectFilters);
   const includeNoProject = useViewStore((s) => s.includeNoProject);
   const labelFilters = useViewStore((s) => s.labelFilters);
+  const parentFilters = useViewStore((s) => s.parentFilters);
   const propertyFilters = useViewStore((s) => s.propertyFilters);
   const cardPropertyIds = useViewStore((s) => s.cardPropertyIds);
   const sortBy = useViewStore((s) => s.sortBy);
@@ -1022,6 +1129,7 @@ export function IssueDisplayControls({
     projectFilters,
     includeNoProject,
     labelFilters,
+    parentFilters,
     dateFilter: showDateFilter ? dateFilter : null,
   });
   const hasActiveFilters = activeFilterCount > 0;
@@ -1328,6 +1436,30 @@ export function IssueDisplayControls({
                   counts={counts.label}
                   selected={labelFilters}
                   onToggle={act.toggleLabelFilter}
+                />
+              </DropdownMenuSubContent>
+            </DropdownMenuSub>
+
+            {/* Parent issue — narrows to a parent and its whole subtree */}
+            <DropdownMenuSub
+              onOpenChange={(open) =>
+                onTableFacetChange?.(open ? { kind: "parent" } : null)
+              }
+            >
+              <DropdownMenuSubTrigger>
+                <GitBranch className="size-3.5" />
+                <span className="flex-1">{t(($) => $.filters.section_parent)}</span>
+                {parentFilters.length > 0 && (
+                  <span className="text-xs text-primary font-medium">
+                    {parentFilters.length}
+                  </span>
+                )}
+              </DropdownMenuSubTrigger>
+              <DropdownMenuSubContent className="w-auto min-w-64 p-0">
+                <ParentSubContent
+                  counts={counts.parent}
+                  selected={parentFilters}
+                  onToggle={act.toggleParentFilter}
                 />
               </DropdownMenuSubContent>
             </DropdownMenuSub>
