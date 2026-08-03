@@ -21,6 +21,9 @@ export interface TimelineEntry {
   parent_id?: string | null;
   updated_at?: string;
   comment_type?: string;
+  /** Inline-comment anchor — see Comment.anchor_text. */
+  anchor_text?: string | null;
+  anchor_offset?: number | null;
   /** Set only on comments a quick action produced (MUL-5465). Unforgeable. */
   quick_action_id?: string | null;
   reactions?: Reaction[];

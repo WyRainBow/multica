@@ -1228,6 +1228,21 @@ export function IssueDetail({ issueId, onDelete, onDone, defaultSidebarOpen = tr
     editComment, deleteComment, toggleResolveComment, toggleReaction: handleToggleReaction,
   } = useIssueTimeline(id, user?.id);
 
+  // Inline-comment anchors for the description editor. Derived from the
+  // timeline rather than fetched separately so a comment arriving over the
+  // websocket highlights on the same render that adds it to the thread.
+  const descriptionCommentAnchors = useMemo(
+    () =>
+      timeline
+        .filter((entry) => entry.type === "comment" && entry.anchor_text)
+        .map((entry) => ({
+          commentId: entry.id,
+          text: entry.anchor_text ?? "",
+          offset: entry.anchor_offset,
+        })),
+    [timeline],
+  );
+
   // Resolve / unresolve must always clear the per-session expand entry so
   // re-resolving an already-expanded thread folds it back to the bar (the
   // expand Set is keyed only on commentId, not on resolution state). Without
@@ -2483,6 +2498,7 @@ export function IssueDetail({ issueId, onDelete, onDone, defaultSidebarOpen = tr
               // the image markdown and its attachment_ids bind (MUL-3254).
               flushPendingOnUnmount
               currentIssueId={id}
+              commentAnchors={descriptionCommentAnchors}
               attachments={descEditorAttachments}
             />
 

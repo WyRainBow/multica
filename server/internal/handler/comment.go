@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"sort"
@@ -42,6 +43,14 @@ type CommentResponse struct {
 	// request field for it — which is exactly why the card keys off this id
 	// rather than a `type` value the client controls.
 	QuickActionID *string              `json:"quick_action_id,omitempty"`
+	// AnchorText is the description span this comment was written against
+	// (inline comments). The description is Markdown, which cannot carry a
+	// highlight, so the quoted text travels on the comment and the client
+	// re-locates it at render time. AnchorOffset is a character-offset hint
+	// used to disambiguate when the same text occurs more than once; a
+	// comment whose text no longer appears simply stops highlighting.
+	AnchorText    *string              `json:"anchor_text"`
+	AnchorOffset  *int32               `json:"anchor_offset"`
 	Reactions     []ReactionResponse   `json:"reactions"`
 	Attachments   []AttachmentResponse `json:"attachments"`
 	// Orientation stats — populated only on the roots_only path and omitted in
@@ -109,6 +118,8 @@ func commentToResponse(c db.Comment, reactions []ReactionResponse, attachments [
 		ResolvedByID:   uuidToPtr(c.ResolvedByID),
 		SourceTaskID:   uuidToPtr(c.SourceTaskID),
 		QuickActionID:  uuidToPtr(c.QuickActionID),
+		AnchorText:     textToPtr(c.AnchorText),
+		AnchorOffset:   int4ToPtr(c.AnchorOffset),
 		Reactions:      reactions,
 		Attachments:    attachments,
 	}
@@ -1449,12 +1460,60 @@ func keepRootConnected(byID map[string]db.Comment) []db.Comment {
 	return out
 }
 
+// maxCommentAnchorLength caps the quoted description span. The anchor exists
+// to re-find a highlight, not to duplicate the document — a selection past this
+// is almost certainly a whole-section drag, where the quote is useless to read
+// and the re-locate scan is pure cost.
+const maxCommentAnchorLength = 2000
+
+// parseCommentAnchor validates the inline-comment anchor on a create request.
+// An anchor is all-or-nothing: text without an offset is accepted (the client
+// simply has no hint), but whitespace-only or oversized text is rejected rather
+// than stored as an anchor that can never match anything.
+func parseCommentAnchor(w http.ResponseWriter, req CreateCommentRequest) (pgtype.Text, pgtype.Int4, bool) {
+	var text pgtype.Text
+	var offset pgtype.Int4
+
+	if req.AnchorText == nil {
+		if req.AnchorOffset != nil {
+			writeError(w, http.StatusBadRequest, "anchor_offset requires anchor_text")
+			return text, offset, false
+		}
+		return text, offset, true
+	}
+
+	trimmed := strings.TrimSpace(*req.AnchorText)
+	if trimmed == "" {
+		writeError(w, http.StatusBadRequest, "anchor_text must not be blank")
+		return text, offset, false
+	}
+	if len([]rune(trimmed)) > maxCommentAnchorLength {
+		writeError(w, http.StatusBadRequest,
+			fmt.Sprintf("anchor_text must be at most %d characters", maxCommentAnchorLength))
+		return text, offset, false
+	}
+	text = pgtype.Text{String: trimmed, Valid: true}
+
+	if req.AnchorOffset != nil {
+		if *req.AnchorOffset < 0 {
+			writeError(w, http.StatusBadRequest, "anchor_offset must not be negative")
+			return text, offset, false
+		}
+		offset = pgtype.Int4{Int32: *req.AnchorOffset, Valid: true}
+	}
+	return text, offset, true
+}
+
 type CreateCommentRequest struct {
 	Content          string   `json:"content"`
 	Type             string   `json:"type"`
 	ParentID         *string  `json:"parent_id"`
 	AttachmentIDs    []string `json:"attachment_ids"`
 	SuppressAgentIDs []string `json:"suppress_agent_ids"`
+	// AnchorText / AnchorOffset make this an inline comment on a span of the
+	// issue description. Omitted for an ordinary comment.
+	AnchorText   *string `json:"anchor_text"`
+	AnchorOffset *int32  `json:"anchor_offset"`
 }
 
 type CommentTriggerPreviewRequest struct {
@@ -1861,6 +1920,11 @@ func (h *Handler) CreateComment(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	anchorText, anchorOffset, ok := parseCommentAnchor(w, req)
+	if !ok {
+		return
+	}
+
 	comment, err := h.Queries.CreateComment(r.Context(), db.CreateCommentParams{
 		IssueID:      issue.ID,
 		WorkspaceID:  issue.WorkspaceID,
@@ -1870,6 +1934,8 @@ func (h *Handler) CreateComment(w http.ResponseWriter, r *http.Request) {
 		Type:         req.Type,
 		ParentID:     parentID,
 		SourceTaskID: sourceTaskID,
+		AnchorText:   anchorText,
+		AnchorOffset: anchorOffset,
 	})
 	if err != nil {
 		slog.Warn("create comment failed", append(logger.RequestAttrs(r), "error", err, "issue_id", issueID)...)

@@ -971,6 +971,8 @@ export class ApiClient {
     parentId?: string,
     attachmentIds?: string[],
     suppressAgentIds?: string[],
+    /** Makes this an inline comment on a span of the issue description. */
+    anchor?: { text: string; offset?: number },
   ): Promise<Comment> {
     return this.fetch(`/api/issues/${issueId}/comments`, {
       method: "POST",
@@ -980,6 +982,8 @@ export class ApiClient {
         ...(parentId ? { parent_id: parentId } : {}),
         ...(attachmentIds?.length ? { attachment_ids: attachmentIds } : {}),
         ...(suppressAgentIds?.length ? { suppress_agent_ids: suppressAgentIds } : {}),
+        ...(anchor ? { anchor_text: anchor.text } : {}),
+        ...(anchor?.offset !== undefined ? { anchor_offset: anchor.offset } : {}),
       }),
     });
   }

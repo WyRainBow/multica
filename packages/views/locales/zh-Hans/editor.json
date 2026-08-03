@@ -26,6 +26,11 @@
       "tooltip": "用选中内容创建子 issue",
       "created": "已创建 {{identifier}}",
       "create_failed": "创建子 issue 失败"
+    },
+    "comment": {
+      "tooltip": "对选中内容评论",
+      "placeholder": "写下评论…",
+      "create_failed": "评论失败"
     }
   },
   "image": {

@@ -435,3 +435,19 @@
   box-decoration-break: clone;
   -webkit-box-decoration-break: clone;
 }
+
+/* --- Inline comment anchors --- */
+
+/* Painted as ProseMirror decorations, not marks: the description round-trips
+ * through Markdown, which has no syntax for "this span has a comment", so a
+ * mark would be erased on the next save. The span keeps its own text colour —
+ * only the background changes — because a comment is an annotation on the
+ * prose, not a change to it. */
+.comment-highlight {
+  background-color: var(--comment-highlight);
+  border-radius: 2px;
+  cursor: pointer;
+  /* Padding without affecting line box height, so a highlighted line never
+   * shifts the paragraph around it. */
+  box-shadow: 0 0 0 1px var(--comment-highlight);
+}

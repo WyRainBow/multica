@@ -26,6 +26,11 @@
       "tooltip": "Create sub-issue from selection",
       "created": "Created {{identifier}}",
       "create_failed": "Failed to create sub-issue"
+    },
+    "comment": {
+      "tooltip": "Comment on selection",
+      "placeholder": "Add a comment...",
+      "create_failed": "Failed to add comment"
     }
   },
   "image": {

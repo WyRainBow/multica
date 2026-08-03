@@ -497,6 +497,8 @@ const TimelineEntrySchema = z.object({
   parent_id: z.string().nullable().optional(),
   updated_at: z.string().optional(),
   comment_type: z.string().optional(),
+  anchor_text: z.string().nullable().optional(),
+  anchor_offset: z.number().nullable().optional(),
   reactions: z.array(ReactionSchema).optional(),
   attachments: z.array(AttachmentSchema).optional(),
   source_task_id: z.string().nullable().optional(),
@@ -594,6 +596,10 @@ export const CommentSchema = z.object({
   source_task_id: z.string().nullable().optional(),
   // Set only on comments a quick action produced (MUL-5465). Server-only.
   quick_action_id: z.string().nullable().optional(),
+  // Inline-comment anchor. Optional: older servers omit both, and an ordinary
+  // comment has neither.
+  anchor_text: z.string().nullable().optional(),
+  anchor_offset: z.number().nullable().optional(),
 }).loose();
 
 export const CommentsListSchema = z.array(CommentSchema);
