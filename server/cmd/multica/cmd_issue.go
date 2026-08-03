@@ -225,6 +225,19 @@ var issueStatusCmd = &cobra.Command{
 	RunE: runIssueStatus,
 }
 
+var issueDeleteCmd = &cobra.Command{
+	Use:   "delete <id>",
+	Short: "Permanently delete an issue",
+	Long: "Permanently delete an issue, along with its comments, reactions and " +
+		"attachments. This cannot be undone.\n\n" +
+		"Sub-issues are NOT deleted — they lose their parent and become " +
+		"top-level issues. Delete them first if that is not what you want, or " +
+		"use `issue archive` to take a whole subtree out of view without " +
+		"destroying anything.",
+	Args: exactArgs(1),
+	RunE: runIssueDelete,
+}
+
 var issueArchiveCmd = &cobra.Command{
 	Use:   "archive <id>",
 	Short: "Archive an issue and its sub-issues",
@@ -441,6 +454,7 @@ func init() {
 	issueCmd.AddCommand(issueUpdateCmd)
 	issueCmd.AddCommand(issueAssignCmd)
 	issueCmd.AddCommand(issueStatusCmd)
+	issueCmd.AddCommand(issueDeleteCmd)
 	issueCmd.AddCommand(issueArchiveCmd)
 	issueCmd.AddCommand(issueUnarchiveCmd)
 	issueCmd.AddCommand(issueReorderCmd)
@@ -462,6 +476,10 @@ func init() {
 	issueSubscriberCmd.AddCommand(issueSubscriberListCmd)
 	issueSubscriberCmd.AddCommand(issueSubscriberAddCmd)
 	issueSubscriberCmd.AddCommand(issueSubscriberRemoveCmd)
+
+	// issue delete
+	issueDeleteCmd.Flags().Bool("force", false,
+		"Delete even when the issue still has sub-issues")
 
 	// issue archive / unarchive
 	issueArchiveCmd.Flags().String("output", "json", "Output format: table or json")
@@ -1456,6 +1474,52 @@ func runIssueAssign(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 	return cli.PrintJSON(os.Stdout, result)
+}
+
+// runIssueDelete removes an issue for good.
+//
+// The guard is about the ONE consequence a caller cannot see coming: the
+// parent link is ON DELETE SET NULL, so deleting a parent silently promotes
+// its children to top-level issues rather than removing them. Refusing by
+// default turns that into a decision instead of a discovery; --force is the
+// way to say "yes, orphan them".
+func runIssueDelete(cmd *cobra.Command, args []string) error {
+	client, err := newAPIClient(cmd)
+	if err != nil {
+		return err
+	}
+
+	ctx, cancel := cli.APIContext(context.Background())
+	defer cancel()
+
+	issueRef, err := resolveIssueRef(ctx, client, args[0])
+	if err != nil {
+		return fmt.Errorf("resolve issue: %w", err)
+	}
+
+	force, _ := cmd.Flags().GetBool("force")
+	if !force {
+		var children struct {
+			Issues []map[string]any `json:"issues"`
+		}
+		if err := client.GetJSON(ctx, "/api/issues/"+issueRef.ID+"/children", &children); err != nil {
+			return fmt.Errorf("check sub-issues: %w", err)
+		}
+		if len(children.Issues) > 0 {
+			return fmt.Errorf(
+				"%s has %d sub-issue(s), which would be orphaned rather than deleted; "+
+					"re-run with --force to delete it anyway, or use `issue archive %s` "+
+					"to take the whole subtree out of view",
+				issueRef.Display, len(children.Issues), issueRef.Display)
+		}
+	}
+
+	if err := client.DeleteJSON(ctx, "/api/issues/"+issueRef.ID); err != nil {
+		return fmt.Errorf("delete issue: %w", err)
+	}
+
+	fmt.Fprintf(os.Stderr, "Issue %s deleted.\n", issueRef.Display)
+	return nil
 }
 
 func runIssueArchive(cmd *cobra.Command, args []string) error {

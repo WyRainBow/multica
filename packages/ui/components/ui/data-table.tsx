@@ -49,6 +49,12 @@ interface DataTableProps<TData> extends React.ComponentProps<"div"> {
   // Optional escape hatch for semantic rows such as collapsible group
   // headers. Return null/undefined to use the standard data row renderer.
   renderRow?: (row: Row<TData>) => React.ReactNode;
+  // Replaces the element the default row renderer wraps its cells in. A
+  // COMPONENT rather than a props callback because the intended callers need
+  // hooks per row (dnd-kit's useSortable), which a callback cannot host.
+  // Receives the row so the caller can key its hook; everything else is
+  // forwarded to the underlying <tr>.
+  rowComponent?: React.ComponentType<DataTableRowProps<TData>>;
   // A caller-supplied <tfoot> (summary / quick-create rows, for example).
   footer?: React.ReactNode;
   // Render only the visible row window for large tables. Callers should use
@@ -82,6 +88,7 @@ export function DataTable<TData>({
   emptyMessage = "No results.",
   onRowClick,
   renderRow,
+  rowComponent,
   footer,
   virtualizeRows = false,
   virtualRowHeight = 41,
@@ -371,6 +378,7 @@ export function DataTable<TData>({
     emptyMessage,
     onRowClick,
     renderRow,
+    rowComponent,
     hasExplicitSize,
     measureRow: rowVirtualizer.measureElement,
     virtualizeRows,
@@ -568,12 +576,22 @@ export function DataTable<TData>({
   );
 }
 
+/**
+ * Props a `rowComponent` receives. Everything except `row` is meant to be
+ * spread straight onto a <tr>; `row` is there so the component can key a hook
+ * (a sortable id, a per-row subscription) off the data it is rendering.
+ */
+export type DataTableRowProps<TData> = React.ComponentProps<typeof TableRow> & {
+  row: Row<TData>;
+};
+
 interface DataTableBodyProps<TData> {
   table: TanstackTable<TData>;
   rows: Row<TData>[];
   emptyMessage: React.ReactNode;
   onRowClick?: (row: Row<TData>) => void;
   renderRow?: (row: Row<TData>) => React.ReactNode;
+  rowComponent?: React.ComponentType<DataTableRowProps<TData>>;
   hasExplicitSize: (columnId: string) => boolean;
   // The virtualizer's own measuring ref; rows report their height through it.
   measureRow: (element: HTMLElement | null) => void;
@@ -589,6 +607,7 @@ function DataTableBody<TData>({
   emptyMessage,
   onRowClick,
   renderRow,
+  rowComponent: RowComponent = TableRow as React.ComponentType<DataTableRowProps<TData>>,
   hasExplicitSize,
   measureRow,
   virtualizeRows,
@@ -616,8 +635,9 @@ function DataTableBody<TData>({
         : <React.Fragment key={row.id}>{customRow}</React.Fragment>;
     }
     return (
-      <TableRow
+      <RowComponent
         key={row.id}
+        row={row}
         {...measured}
         data-state={row.getIsSelected() && "selected"}
         onClick={onRowClick ? () => onRowClick(row) : undefined}
@@ -651,7 +671,7 @@ function DataTableBody<TData>({
             </TableCell>
           );
         })}
-      </TableRow>
+      </RowComponent>
     );
   };
 

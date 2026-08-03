@@ -6,6 +6,20 @@ after the latest `main` merge; the prior skill cited pre-merge lines that have
 since moved (see the "drifted" column). Re-confirm with the verification command
 at the bottom before relying on an exact line.
 
+## `multica issue delete` — permanent, and does not take the subtree
+
+| Behavior | File:line |
+|---|---|
+| CLI command `delete <id>` | `server/cmd/multica/cmd_issue.go:229` |
+| `--force` (delete despite sub-issues) | `server/cmd/multica/cmd_issue.go:481` |
+| `runIssueDelete`, incl. the sub-issue guard | `server/cmd/multica/cmd_issue.go:1486` |
+| Route `DELETE /api/issues/{id}` | `server/cmd/server/router.go:1145` |
+| Children survive as orphans | `issue_parent_issue_id_fkey` is `ON DELETE SET NULL` (`confdeltype = 'n'`) |
+
+The guard is client-side: the API deletes unconditionally. It exists because
+the orphaning is invisible at the call site — the request succeeds, the parent
+is gone, and the children are silently promoted to top level.
+
 ## `multica issue archive` / `unarchive` — visibility, not status
 
 | Behavior | File:line |
