@@ -2,6 +2,10 @@ import type {
   Issue,
   IssuePriority,
   ParentIssuesResponse,
+  Retro,
+  RetroListResponse,
+  CreateRetroRequest,
+  UpdateRetroRequest,
   CreateIssueRequest,
   MoveIssueRequest,
   UpdateIssueRequest,
@@ -192,6 +196,8 @@ import {
   ChatMessagesPageSchema,
   ChildIssuesResponseSchema,
   ParentIssuesResponseSchema,
+  RetroSchema,
+  RetroListResponseSchema,
   CommentsListSchema,
   CommentTriggerPreviewSchema,
   IssueTriggerPreviewSchema,
@@ -962,6 +968,59 @@ export class ApiClient {
     return parseWithFallback(raw, CommentsListSchema, [], {
       endpoint: "GET /api/issues/:id/comments",
     });
+  }
+
+  // -------------------------------------------------------------------------
+  // Retros
+  // -------------------------------------------------------------------------
+
+  async listRetros(params?: { limit?: number; offset?: number }): Promise<RetroListResponse> {
+    const search = new URLSearchParams();
+    if (params?.limit) search.set("limit", String(params.limit));
+    if (params?.offset) search.set("offset", String(params.offset));
+    const query = search.toString();
+    const raw = await this.fetch<unknown>(`/api/retros${query ? `?${query}` : ""}`);
+    return parseWithFallback(raw, RetroListResponseSchema, { retros: [], total: 0 }, {
+      endpoint: "GET /api/retros",
+    });
+  }
+
+  async listRetrosForIssue(issueId: string): Promise<{ retros: Retro[] }> {
+    const raw = await this.fetch<unknown>(`/api/issues/${issueId}/retros`);
+    return parseWithFallback(raw, RetroListResponseSchema, { retros: [], total: 0 }, {
+      endpoint: "GET /api/issues/:id/retros",
+    });
+  }
+
+  async getRetro(id: string): Promise<Retro | null> {
+    const raw = await this.fetch<unknown>(`/api/retros/${id}`);
+    return parseWithFallback(raw, RetroSchema, null, {
+      endpoint: "GET /api/retros/:id",
+    });
+  }
+
+  async createRetro(body: CreateRetroRequest): Promise<Retro | null> {
+    const raw = await this.fetch<unknown>("/api/retros", {
+      method: "POST",
+      body: JSON.stringify(body),
+    });
+    return parseWithFallback(raw, RetroSchema, null, {
+      endpoint: "POST /api/retros",
+    });
+  }
+
+  async updateRetro(id: string, body: UpdateRetroRequest): Promise<Retro | null> {
+    const raw = await this.fetch<unknown>(`/api/retros/${id}`, {
+      method: "PUT",
+      body: JSON.stringify(body),
+    });
+    return parseWithFallback(raw, RetroSchema, null, {
+      endpoint: "PUT /api/retros/:id",
+    });
+  }
+
+  async deleteRetro(id: string): Promise<void> {
+    await this.fetch(`/api/retros/${id}`, { method: "DELETE" });
   }
 
   async createComment(
