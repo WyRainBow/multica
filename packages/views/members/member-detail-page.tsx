@@ -2,6 +2,7 @@
 
 import { ChevronRight, UserRound } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
+import { useDocumentTitle } from "../platform";
 import type { MemberRole } from "@multica/core/types";
 import { useWorkspaceId } from "@multica/core/hooks";
 import { useCurrentWorkspace } from "@multica/core/paths";
@@ -20,6 +21,7 @@ export function MemberDetailPage({ userId }: { userId: string }) {
   const workspace = useCurrentWorkspace();
   const { data: members = [], isLoading } = useQuery(memberListOptions(wsId));
   const member = members.find((m) => m.user_id === userId) ?? null;
+  useDocumentTitle(member?.name);
 
   if (isLoading && !member) {
     return <MemberDetailSkeleton />;

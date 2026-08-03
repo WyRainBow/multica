@@ -12,6 +12,7 @@ import {
   clearLoggedInCookie,
 } from "@/features/auth/auth-cookie";
 import { detectWebOS } from "@/platform/client-os";
+import { configureDocumentTitle } from "@multica/views/platform";
 
 // Legacy token in localStorage → keep this session in token mode so users who
 // logged in before the cookie-auth migration stay authed. They migrate to
@@ -19,6 +20,11 @@ import { detectWebOS } from "@/platform/client-os";
 // Sunset: once telemetry shows <1% of sessions still carry multica_token,
 // delete this branch and hard-code `cookieAuth` — the localStorage token is
 // XSS-exposed and is the exact thing the cookie migration exists to remove.
+// Client-rendered titles (issue, project, agent detail) must read like the
+// ones Next.js builds from the root layout's `%s | Multica` template, which
+// only applies to static `metadata` exports.
+configureDocumentTitle({ suffix: " | Multica" });
+
 function hasLegacyToken(): boolean {
   if (typeof window === "undefined") return false;
   try {

@@ -7,6 +7,7 @@ import {
   Webhook, RotateCw,
 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
+import { useDocumentTitle } from "../../platform";
 import { autopilotDetailOptions, autopilotRunsOptions, autopilotRunOptions } from "@multica/core/autopilots/queries";
 import { projectDetailOptions } from "@multica/core/projects/queries";
 import {
@@ -646,6 +647,7 @@ export function AutopilotDetailPage({ autopilotId }: { autopilotId: string }) {
   const { getActorName } = useActorName();
 
   const { data, isLoading } = useQuery(autopilotDetailOptions(wsId, autopilotId));
+  useDocumentTitle(data?.autopilot.title);
   const { data: runs = [], isLoading: runsLoading } = useQuery(autopilotRunsOptions(wsId, autopilotId));
   const updateAutopilot = useUpdateAutopilot();
   const deleteAutopilot = useDeleteAutopilot();

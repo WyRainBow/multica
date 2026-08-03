@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useDocumentTitle } from "../../platform";
 import { api } from "@multica/core/api";
 import { useAuthStore } from "@multica/core/auth";
 import { useCurrentWorkspace, useWorkspacePaths } from "@multica/core/paths";
@@ -77,6 +78,8 @@ export function SquadDetailPage() {
     queryFn: () => api.getSquad(squadId),
     enabled: !!workspace?.id && !!squadId,
   });
+
+  useDocumentTitle(squad?.name);
 
   const { data: members = [], refetch: refetchMembers } = useQuery<SquadMember[]>({
     queryKey: [...workspaceKeys.squads(wsId), squadId, "members"],

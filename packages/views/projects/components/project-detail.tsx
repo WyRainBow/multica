@@ -4,6 +4,7 @@ import { useMemo, useState, useCallback, useRef, useEffect } from "react";
 import { useDefaultLayout, usePanelRef } from "react-resizable-panels";
 import { Check, ChevronRight, Link2, MoreHorizontal, PanelRight, Pin, PinOff, Trash2, UserMinus } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
+import { useDocumentTitle } from "../../platform";
 import { cn } from "@multica/ui/lib/utils";
 import { copyText } from "@multica/ui/lib/clipboard";
 import { toast } from "sonner";
@@ -106,6 +107,9 @@ export function ProjectDetail({ projectId }: { projectId: string }) {
   const router = useNavigation();
   const userId = useAuthStore((s) => s.user?.id);
   const { data: project, isLoading } = useQuery(projectDetailOptions(wsId, projectId));
+  // Plain text only — the project icon is the tab's leading visual, not
+  // something to concatenate into the title (MUL-4370).
+  useDocumentTitle(project?.title);
   const recordRecentContext = useRecentContextStore((s) => s.recordVisit);
   useEffect(() => {
     if (project) {
