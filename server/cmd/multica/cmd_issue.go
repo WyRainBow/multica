@@ -594,6 +594,13 @@ func init() {
 	issueCommentAddCmd.Flags().String("content-file", "", "Read comment content from a UTF-8 file (preserves multi-line content verbatim; use this on Windows when stdin piping mangles non-ASCII bytes). The path must be inside the current working directory unless --allow-external-file is set.")
 	issueCommentAddCmd.Flags().Bool("allow-external-file", false, "Allow --content-file / --attachment to read a path outside the current working directory. Off by default so a stale file from another run/environment can't be picked up (MUL-4252).")
 	issueCommentAddCmd.Flags().String("parent", "", "Parent comment ID to reply under. A comment-triggered agent task must reply under its trigger comment; omitting --parent to post a top-level comment is rejected")
+	issueCommentAddCmd.Flags().String("anchor", "",
+		"Anchor the comment to this exact passage of the issue description (inline comment). "+
+			"The text must appear verbatim in the current description; the CLI locates it and "+
+			"fails if it does not match, so a comment can never be filed against a passage that "+
+			"is not there.")
+	issueCommentAddCmd.Flags().Int("anchor-occurrence", 1,
+		"Which occurrence of --anchor to attach to when the passage appears more than once (1-based)")
 	issueCommentAddCmd.Flags().StringSlice("attachment", nil, "File path(s) to attach (can be specified multiple times)")
 	issueCommentAddCmd.Flags().String("output", "json", "Output format: table or json")
 
@@ -2070,6 +2077,72 @@ func runIssueCommentList(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
+// locateAnchorInDescription finds the character offset of an anchor passage in
+// the issue's current description.
+//
+// The offset is resolved here rather than asked of the caller because it is a
+// property of the document, not of the comment: an agent choosing a passage
+// knows the words, not where they sit in a flattened string. Resolving it also
+// makes a mistyped passage fail HERE, loudly, instead of silently becoming a
+// comment that never highlights anything.
+func locateAnchorInDescription(
+	ctx context.Context,
+	client *cli.APIClient,
+	issueID, anchor string,
+	occurrence int,
+) (int, error) {
+	if occurrence < 1 {
+		return 0, fmt.Errorf("--anchor-occurrence must be 1 or greater")
+	}
+	var issue struct {
+		Description *string `json:"description"`
+	}
+	if err := client.GetJSON(ctx, "/api/issues/"+issueID, &issue); err != nil {
+		return 0, fmt.Errorf("read issue description: %w", err)
+	}
+	description := ""
+	if issue.Description != nil {
+		description = *issue.Description
+	}
+
+	offset, err := anchorOffsetInText(description, anchor, occurrence)
+	if err != nil {
+		return 0, fmt.Errorf("%w (issue %s)", err, issueID)
+	}
+	return offset, nil
+}
+
+// anchorOffsetInText locates the nth occurrence of `anchor` in `text`, in
+// CHARACTER offsets.
+//
+// Characters, not bytes, because that is the coordinate system the editor
+// resolves anchors in; a byte offset would land mid-character on any CJK
+// description and the highlight would never match.
+func anchorOffsetInText(text, anchor string, occurrence int) (int, error) {
+	needle := strings.TrimSpace(anchor)
+	if needle == "" {
+		return 0, fmt.Errorf("--anchor must not be blank")
+	}
+	haystack := []rune(text)
+	target := []rune(needle)
+	found := 0
+	for i := 0; i+len(target) <= len(haystack); i++ {
+		if string(haystack[i:i+len(target)]) != needle {
+			continue
+		}
+		found++
+		if found == occurrence {
+			return i, nil
+		}
+	}
+	if found == 0 {
+		return 0, fmt.Errorf("--anchor text does not appear in the description; copy the passage verbatim")
+	}
+	return 0, fmt.Errorf(
+		"--anchor text appears %d time(s) in the description, but occurrence %d was requested",
+		found, occurrence)
+}
+
 func runIssueCommentAdd(cmd *cobra.Command, args []string) error {
 	content, hasContent, err := resolveTextFlag(cmd, "content")
 	if err != nil {
@@ -2126,6 +2199,15 @@ func runIssueCommentAdd(cmd *cobra.Command, args []string) error {
 	body := map[string]any{"content": content}
 	if parentID, _ := cmd.Flags().GetString("parent"); parentID != "" {
 		body["parent_id"] = parentID
+	}
+	if anchor, _ := cmd.Flags().GetString("anchor"); strings.TrimSpace(anchor) != "" {
+		occurrence, _ := cmd.Flags().GetInt("anchor-occurrence")
+		offset, locateErr := locateAnchorInDescription(ctx, client, issueID, anchor, occurrence)
+		if locateErr != nil {
+			return locateErr
+		}
+		body["anchor_text"] = strings.TrimSpace(anchor)
+		body["anchor_offset"] = offset
 	}
 	if len(attachmentIDs) > 0 {
 		body["attachment_ids"] = attachmentIDs
