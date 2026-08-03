@@ -31,6 +31,8 @@ function makeIssue(overrides: Partial<Issue> = {}): Issue {
   properties: {},
     created_at: "2025-01-01T00:00:00Z",
     updated_at: "2025-01-01T00:00:00Z",
+    archived_at: null,
+    archived_by: null,
     ...overrides,
   };
 }

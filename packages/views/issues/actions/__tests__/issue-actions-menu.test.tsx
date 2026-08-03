@@ -73,6 +73,7 @@ vi.mock("@multica/core/pins", () => ({
 
 vi.mock("@multica/core/issues/mutations", () => ({
   useUpdateIssue: () => ({ mutate: vi.fn() }),
+  useSetIssueArchived: () => ({ mutate: vi.fn() }),
 }));
 
 vi.mock("@multica/core/paths", async () => {

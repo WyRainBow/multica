@@ -66,4 +66,9 @@ export interface Issue {
   labels?: Label[];
   created_at: string;
   updated_at: string;
+  // Set when the issue has been taken out of view. Orthogonal to `status`:
+  // an archived issue keeps whatever answer status gave for how the work
+  // ended, which is exactly what folding archiving into status would destroy.
+  archived_at: string | null;
+  archived_by: string | null;
 }

@@ -98,6 +98,10 @@ type issueTableFiltersRequest struct {
 	WorkingOnly       bool                         `json:"working_only,omitempty"`
 	WorkingIssueIDs   []string                     `json:"working_issue_ids,omitempty"`
 	IncludeSubIssues  *bool                        `json:"include_sub_issues,omitempty"`
+	// Archived issues are hidden from every surface unless this is true.
+	// Archiving is a visibility dimension, independent of `status` — a card
+	// keeps its done/cancelled answer after it leaves the board.
+	IncludeArchived bool `json:"include_archived,omitempty"`
 }
 
 type issueTableSortRequest struct {
@@ -643,6 +647,9 @@ func (h *Handler) compileIssueTableQuery(w http.ResponseWriter, r *http.Request,
 	}
 	if spec.Filters.IncludeSubIssues != nil && !*spec.Filters.IncludeSubIssues {
 		where = append(where, "i.parent_issue_id IS NULL")
+	}
+	if !spec.Filters.IncludeArchived {
+		where = append(where, "i.archived_at IS NULL")
 	}
 	where = appendIssueTableSearchFilter(where, addArg, spec.Search)
 

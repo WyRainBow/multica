@@ -389,3 +389,43 @@ UPDATE issue
 SET first_executed_at = now()
 WHERE id = $1 AND first_executed_at IS NULL
 RETURNING id, workspace_id, creator_type, creator_id, first_executed_at;
+
+-- name: ArchiveIssueSubtree :many
+-- Archives an issue together with everything below it. A requirement and its
+-- sub-issues leave the board as one unit — archiving only the parent would
+-- leave its children stranded in the list with no visible context.
+--
+-- Already-archived rows are skipped so re-running never rewrites an earlier
+-- archived_at. `UNION` rather than `UNION ALL` so malformed cyclic data
+-- terminates.
+WITH RECURSIVE subtree AS (
+    SELECT root.id
+    FROM issue root
+    WHERE root.id = sqlc.arg('id') AND root.workspace_id = sqlc.arg('workspace_id')
+    UNION
+    SELECT child.id
+    FROM issue child
+    JOIN subtree ON child.parent_issue_id = subtree.id
+    WHERE child.workspace_id = sqlc.arg('workspace_id')
+)
+UPDATE issue
+SET archived_at = now(), archived_by = sqlc.arg('archived_by'), updated_at = now()
+WHERE id IN (SELECT id FROM subtree) AND archived_at IS NULL
+RETURNING *;
+
+-- name: UnarchiveIssueSubtree :many
+-- Mirror of ArchiveIssueSubtree. Restores the issue and its descendants.
+WITH RECURSIVE subtree AS (
+    SELECT root.id
+    FROM issue root
+    WHERE root.id = sqlc.arg('id') AND root.workspace_id = sqlc.arg('workspace_id')
+    UNION
+    SELECT child.id
+    FROM issue child
+    JOIN subtree ON child.parent_issue_id = subtree.id
+    WHERE child.workspace_id = sqlc.arg('workspace_id')
+)
+UPDATE issue
+SET archived_at = NULL, archived_by = NULL, updated_at = now()
+WHERE id IN (SELECT id FROM subtree) AND archived_at IS NOT NULL
+RETURNING *;

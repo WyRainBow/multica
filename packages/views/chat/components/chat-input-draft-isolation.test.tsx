@@ -314,7 +314,7 @@ describe("ChatInput draft isolation across a composer switch (real debounce)", (
     expect(store().inputDrafts["session-a"]).toBe("secret plan for agent A");
   });
 
-  it("loads the incoming session's own draft instead of leaving the old document on screen", () => {
+  it("loads the incoming session's own draft instead of leaving the old document on screen", async () => {
     store().activeSessionId = "session-a";
     store().inputDrafts["session-b"] = "B's own words";
     const { rerender } = render(element());
@@ -322,6 +322,11 @@ describe("ChatInput draft isolation across a composer switch (real debounce)", (
     type("A's unflushed words");
     store().activeSessionId = "session-b";
     rerender(element());
+
+    // The editor applies an external sync one microtask after the effect, so
+    // that Tiptap's flushSync-driven re-render lands outside React's render
+    // phase. Drain it before asserting.
+    await act(async () => {});
 
     // The dirty guard would have suppressed this sync; flushing clears the
     // dirt, so B's draft actually loads.

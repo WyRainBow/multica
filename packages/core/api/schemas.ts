@@ -697,6 +697,10 @@ export const IssueSchema = z.object({
   properties: IssuePropertyValuesSchema,
   reactions: z.array(z.unknown()).optional(),
   labels: z.array(z.unknown()).optional(),
+  // Older backends predate archiving; default null so consumers can treat a
+  // missing field as "not archived" without nil-guarding.
+  archived_at: z.string().nullable().default(null),
+  archived_by: z.string().nullable().default(null),
   created_at: z.string(),
   updated_at: z.string(),
 }).loose();

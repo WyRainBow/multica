@@ -6,6 +6,8 @@ const (
 	EventIssueCreated         = "issue:created"
 	EventIssueUpdated         = "issue:updated"
 	EventIssueDeleted         = "issue:deleted"
+	EventIssueArchived        = "issue:archived"
+	EventIssueRestored        = "issue:restored"
 	EventIssueMetadataChanged = "issue_metadata:changed"
 
 	// Comment events

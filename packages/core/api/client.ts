@@ -664,6 +664,7 @@ export class ApiClient {
     if (params?.include_no_project) search.set("include_no_project", "true");
     if (params?.label_ids?.length) search.set("label_ids", params.label_ids.join(","));
     if (params?.top_level_only) search.set("top_level_only", "true");
+    if (params?.include_archived) search.set("include_archived", "true");
     // No `.length` guard on purpose: an empty ids array must still send
     // `ids=` — the server treats a PRESENT-but-empty list as an empty window
     // (nothing running), while an absent param means no restriction.
@@ -924,6 +925,21 @@ export class ApiClient {
 
   async deleteIssue(id: string): Promise<void> {
     await this.fetch(`/api/issues/${id}`, { method: "DELETE" });
+  }
+
+  /**
+   * Archive or restore an issue together with its sub-issue subtree. The
+   * server moves the whole tree, so the response lists every affected issue —
+   * callers use it to patch the cache without a refetch.
+   */
+  async setIssueArchived(id: string, archived: boolean): Promise<{ issues: Issue[] }> {
+    const raw = await this.fetch<unknown>(
+      `/api/issues/${id}/${archived ? "archive" : "unarchive"}`,
+      { method: "POST" },
+    );
+    return parseWithFallback(raw, ChildIssuesResponseSchema, { issues: [] }, {
+      endpoint: "POST /api/issues/:id/archive",
+    });
   }
 
   async batchUpdateIssues(issueIds: string[], updates: UpdateIssueRequest): Promise<{ updated: number }> {

@@ -125,6 +125,8 @@ export interface ListIssuesParams {
   label_ids?: string[];
   /** Restrict the window to root issues instead of filtering loaded pages. */
   top_level_only?: boolean;
+  /** Bring archived issues back into the window. Off by default everywhere. */
+  include_archived?: boolean;
   /**
    * Hard restriction of the window to the given issue ids (the table's
    * agents-working facet sends the live running-issue set). An EMPTY array is
@@ -273,6 +275,8 @@ export interface IssueTableFilters {
    *  `/api/working-agents`. An explicit empty list matches nothing. */
   working_issue_ids?: string[];
   include_sub_issues?: boolean;
+  /** Bring archived issues back into the window. Off by default everywhere. */
+  include_archived?: boolean;
 }
 
 export type IssueTableSortField =

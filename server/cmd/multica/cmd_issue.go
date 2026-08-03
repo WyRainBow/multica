@@ -225,6 +225,23 @@ var issueStatusCmd = &cobra.Command{
 	RunE: runIssueStatus,
 }
 
+var issueArchiveCmd = &cobra.Command{
+	Use:   "archive <id>",
+	Short: "Archive an issue and its sub-issues",
+	Long: "Take an issue out of view along with everything below it in the " +
+		"sub-issue tree. Archiving is independent of status — the issue keeps " +
+		"whatever status it ended on. Use `issue unarchive` to bring it back.",
+	Args: exactArgs(1),
+	RunE: runIssueArchive,
+}
+
+var issueUnarchiveCmd = &cobra.Command{
+	Use:   "unarchive <id>",
+	Short: "Restore an archived issue and its sub-issues",
+	Args:  exactArgs(1),
+	RunE:  runIssueUnarchive,
+}
+
 var issueReorderCmd = &cobra.Command{
 	Use:   "reorder <id>",
 	Short: "Move an issue within its status column",
@@ -413,6 +430,8 @@ func init() {
 	issueCmd.AddCommand(issueUpdateCmd)
 	issueCmd.AddCommand(issueAssignCmd)
 	issueCmd.AddCommand(issueStatusCmd)
+	issueCmd.AddCommand(issueArchiveCmd)
+	issueCmd.AddCommand(issueUnarchiveCmd)
 	issueCmd.AddCommand(issueReorderCmd)
 	issueCmd.AddCommand(issueCommentCmd)
 	issueCmd.AddCommand(issueSubscriberCmd)
@@ -433,9 +452,14 @@ func init() {
 	issueSubscriberCmd.AddCommand(issueSubscriberAddCmd)
 	issueSubscriberCmd.AddCommand(issueSubscriberRemoveCmd)
 
+	// issue archive / unarchive
+	issueArchiveCmd.Flags().String("output", "json", "Output format: table or json")
+	issueUnarchiveCmd.Flags().String("output", "json", "Output format: table or json")
+
 	// issue list
 	issueListCmd.Flags().String("output", "table", "Output format: table or json")
 	issueListCmd.Flags().Bool("full-id", false, "Show full UUIDs in table output")
+	issueListCmd.Flags().Bool("include-archived", false, "Include archived issues")
 	issueListCmd.Flags().String("status", "", "Filter by status")
 	issueListCmd.Flags().String("priority", "", "Filter by priority")
 	issueListCmd.Flags().String("assignee", "", "Filter by assignee name (member, agent, or squad; fuzzy match)")
@@ -588,6 +612,9 @@ func runIssueList(cmd *cobra.Command, _ []string) error {
 
 	params := url.Values{}
 	params.Set("workspace_id", client.WorkspaceID)
+	if v, _ := cmd.Flags().GetBool("include-archived"); v {
+		params.Set("include_archived", "true")
+	}
 	if v, _ := cmd.Flags().GetString("status"); v != "" {
 		params.Set("status", v)
 	}
@@ -1418,6 +1445,57 @@ func runIssueAssign(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 	return cli.PrintJSON(os.Stdout, result)
+}
+
+func runIssueArchive(cmd *cobra.Command, args []string) error {
+	return runIssueArchiveState(cmd, args[0], true)
+}
+
+func runIssueUnarchive(cmd *cobra.Command, args []string) error {
+	return runIssueArchiveState(cmd, args[0], false)
+}
+
+// runIssueArchiveState drives both directions. The server moves the whole
+// sub-issue subtree, so the response is a list and the count is worth
+// reporting — archiving one requirement can take a dozen cards off the board.
+func runIssueArchiveState(cmd *cobra.Command, id string, archive bool) error {
+	client, err := newAPIClient(cmd)
+	if err != nil {
+		return err
+	}
+
+	ctx, cancel := cli.APIContext(context.Background())
+	defer cancel()
+
+	issueRef, err := resolveIssueRef(ctx, client, id)
+	if err != nil {
+		return fmt.Errorf("resolve issue: %w", err)
+	}
+
+	action := "unarchive"
+	if archive {
+		action = "archive"
+	}
+
+	var result struct {
+		Issues []map[string]any `json:"issues"`
+	}
+	if err := client.PostJSON(ctx, "/api/issues/"+issueRef.ID+"/"+action, nil, &result); err != nil {
+		return fmt.Errorf("%s issue: %w", action, err)
+	}
+
+	verb := "archived"
+	if !archive {
+		verb = "restored"
+	}
+	fmt.Fprintf(os.Stderr, "Issue %s %s (%d issue(s) affected).\n",
+		issueRef.Display, verb, len(result.Issues))
+
+	output, _ := cmd.Flags().GetString("output")
+	if output == "json" {
+		return cli.PrintJSON(os.Stdout, result.Issues)
+	}
+	return nil
 }
 
 func runIssueStatus(cmd *cobra.Command, args []string) error {

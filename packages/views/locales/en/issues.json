@@ -96,7 +96,8 @@
     "card_project": "Project",
     "card_labels": "Labels",
     "card_child_progress": "Sub-issue progress",
-    "show_sub_issues": "Show sub-issues"
+    "show_sub_issues": "Show sub-issues",
+    "show_archived": "Show archived"
   },
   "view": {
     "tooltip_board": "Board view",
@@ -579,6 +580,10 @@
     "remove_parent_issue": "Remove parent issue",
     "remove_parent_issue_success": "Removed parent issue",
     "add_sub_issue": "Add sub-issue...",
+    "archive_issue": "Archive",
+    "unarchive_issue": "Restore",
+    "archive_issue_success": "Archived {{count}} issue(s)",
+    "unarchive_issue_success": "Restored {{count}} issue(s)",
     "delete_issue": "Delete issue"
   },
   "pickers": {

@@ -16,6 +16,7 @@ import {
   PinOff,
   Plus,
   Trash2,
+  Archive,
   Unlink,
   UserMinus,
 } from "lucide-react";
@@ -113,6 +114,8 @@ export function IssueActionsMenuItems({
     removeParent,
     openAddChild,
     openDeleteConfirm,
+    toggleArchived,
+    isArchived,
   } = actions;
 
   // Subscribe to the issue's task list so the cache is warm by the time the
@@ -314,6 +317,13 @@ export function IssueActionsMenuItems({
       </P.Sub>
 
       <P.Separator />
+
+      <P.Item onClick={toggleArchived}>
+        <Archive className="h-3.5 w-3.5" />
+        {isArchived
+          ? t(($) => $.actions.unarchive_issue)
+          : t(($) => $.actions.archive_issue)}
+      </P.Item>
 
       <P.Item
         variant="destructive"

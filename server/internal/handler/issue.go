@@ -69,6 +69,11 @@ type IssueResponse struct {
 	// preserves whatever labels are already in cache. nil pointer = "field
 	// absent, do not touch"; non-nil (incl. empty slice) = authoritative list.
 	Labels *[]LabelResponse `json:"labels,omitempty"`
+	// ArchivedAt is set when the issue has been taken out of view. Orthogonal
+	// to Status: an archived issue keeps whatever answer Status gave for how
+	// the work ended. Null on every issue still on the board.
+	ArchivedAt *string `json:"archived_at"`
+	ArchivedBy *string `json:"archived_by"`
 }
 
 // validIssueStatuses / validIssuePriorities mirror the CHECK constraints on
@@ -113,6 +118,8 @@ func issueToResponse(i db.Issue, issuePrefix string) IssueResponse {
 		UpdatedAt:     timestampToString(i.UpdatedAt),
 		Metadata:      parseIssueMetadata(i.Metadata),
 		Properties:    parseIssueProperties(i.Properties),
+		ArchivedAt:    timestampToPtr(i.ArchivedAt),
+		ArchivedBy:    uuidToPtr(i.ArchivedBy),
 	}
 }
 
@@ -775,6 +782,13 @@ func (h *Handler) QueryIssues(w http.ResponseWriter, r *http.Request) {
 	h.ListIssues(w, r)
 }
 
+// issueIncludeArchived reports whether the caller asked to see archived
+// issues. Archiving is a visibility dimension independent of status, so it is
+// filtered out of every list unless explicitly requested.
+func issueIncludeArchived(r *http.Request) bool {
+	return r.URL.Query().Get("include_archived") == "true"
+}
+
 func (h *Handler) ListIssues(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
@@ -1014,6 +1028,11 @@ func (h *Handler) ListIssues(w http.ResponseWriter, r *http.Request) {
 	addArg := func(v any) string {
 		args = append(args, v)
 		return "$" + strconv.Itoa(len(args))
+	}
+	// Archived issues are out of view by default. Opting in is explicit, the
+	// same contract as `agent list --include-archived`.
+	if !issueIncludeArchived(r) {
+		where = append(where, "i.archived_at IS NULL")
 	}
 
 	if len(statusesFilter) > 0 {
@@ -1470,6 +1489,9 @@ func (h *Handler) ListGroupedIssues(w http.ResponseWriter, r *http.Request) {
 	addArg := func(v any) string {
 		args = append(args, v)
 		return "$" + strconv.Itoa(len(args))
+	}
+	if !issueIncludeArchived(r) {
+		where = append(where, "i.archived_at IS NULL")
 	}
 
 	statuses := splitCommaParam(r.URL.Query().Get("statuses"))
@@ -3263,6 +3285,86 @@ func (h *Handler) DeleteIssue(w http.ResponseWriter, r *http.Request) {
 	h.publish(protocol.EventIssueDeleted, uuidToString(issue.WorkspaceID), actorType, actorID, map[string]any{"issue_id": resolvedID})
 	slog.Info("issue deleted", append(logger.RequestAttrs(r), "issue_id", resolvedID, "workspace_id", uuidToString(issue.WorkspaceID))...)
 	w.WriteHeader(http.StatusNoContent)
+}
+
+// ---------------------------------------------------------------------------
+// Archiving
+// ---------------------------------------------------------------------------
+
+// setIssueArchived runs the archive/restore of an issue and everything below
+// it, then broadcasts one event per affected row.
+//
+// The subtree moves as a unit on purpose: a requirement and its sub-issues are
+// one piece of work, and archiving only the parent would leave its children in
+// the list with the context that explained them gone.
+func (h *Handler) setIssueArchived(w http.ResponseWriter, r *http.Request, archive bool) {
+	id := chi.URLParam(r, "id")
+	issue, ok := h.loadIssueForUser(w, r, id)
+	if !ok {
+		return
+	}
+	if archive && issue.ArchivedAt.Valid {
+		writeError(w, http.StatusConflict, "issue is already archived")
+		return
+	}
+	if !archive && !issue.ArchivedAt.Valid {
+		writeError(w, http.StatusConflict, "issue is not archived")
+		return
+	}
+
+	userID := requestUserID(r)
+	var affected []db.Issue
+	var err error
+	if archive {
+		affected, err = h.Queries.ArchiveIssueSubtree(r.Context(), db.ArchiveIssueSubtreeParams{
+			ID:          issue.ID,
+			WorkspaceID: issue.WorkspaceID,
+			ArchivedBy:  parseUUID(userID),
+		})
+	} else {
+		affected, err = h.Queries.UnarchiveIssueSubtree(r.Context(), db.UnarchiveIssueSubtreeParams{
+			ID:          issue.ID,
+			WorkspaceID: issue.WorkspaceID,
+		})
+	}
+	if err != nil {
+		slog.Warn("set issue archived failed",
+			append(logger.RequestAttrs(r), "error", err, "issue_id", id, "archive", archive)...)
+		writeError(w, http.StatusInternalServerError, "failed to update issue archive state")
+		return
+	}
+
+	wsID := uuidToString(issue.WorkspaceID)
+	prefix := h.getIssuePrefix(r.Context(), issue.WorkspaceID)
+	actorType, actorID := h.resolveActor(r, userID, wsID)
+	event := protocol.EventIssueRestored
+	if archive {
+		event = protocol.EventIssueArchived
+	}
+
+	responses := make([]IssueResponse, 0, len(affected))
+	for _, row := range affected {
+		resp := issueToResponse(row, prefix)
+		responses = append(responses, resp)
+		// One event per row: clients key their caches by issue id, and a
+		// parent-only event would leave the descendants visible until reload.
+		h.publish(event, wsID, actorType, actorID, map[string]any{"issue": resp})
+	}
+
+	slog.Info("issue archive state changed",
+		append(logger.RequestAttrs(r), "issue_id", uuidToString(issue.ID),
+			"workspace_id", wsID, "archive", archive, "affected", len(affected))...)
+	writeJSON(w, http.StatusOK, map[string]any{"issues": responses})
+}
+
+// ArchiveIssue handles POST /api/issues/{id}/archive.
+func (h *Handler) ArchiveIssue(w http.ResponseWriter, r *http.Request) {
+	h.setIssueArchived(w, r, true)
+}
+
+// UnarchiveIssue handles POST /api/issues/{id}/unarchive.
+func (h *Handler) UnarchiveIssue(w http.ResponseWriter, r *http.Request) {
+	h.setIssueArchived(w, r, false)
 }
 
 // ---------------------------------------------------------------------------

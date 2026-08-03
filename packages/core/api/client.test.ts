@@ -1758,3 +1758,70 @@ describe("ApiClient parent-issue response schema", () => {
     });
   });
 });
+
+describe("ApiClient issue archive response schema", () => {
+  const respond = (body: unknown, status = 200) =>
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        new Response(JSON.stringify(body), {
+          status,
+          headers: { "Content-Type": "application/json" },
+        }),
+      ),
+    );
+
+  const archivedIssue = (id: string, number: number) => ({
+    id,
+    workspace_id: "ws-1",
+    number,
+    identifier: `COC-${number}`,
+    title: id,
+    description: null,
+    status: "done",
+    priority: "none",
+    assignee_type: null,
+    assignee_id: null,
+    creator_type: "member",
+    creator_id: "user-1",
+    parent_issue_id: null,
+    project_id: null,
+    position: 0,
+    start_date: null,
+    due_date: null,
+    metadata: {},
+    properties: {},
+    created_at: "2026-08-02T00:00:00Z",
+    updated_at: "2026-08-02T00:00:00Z",
+    archived_at: "2026-08-02T00:00:00Z",
+    archived_by: "user-1",
+  });
+
+  it("returns every issue the server moved, not just the one asked for", async () => {
+    respond({
+      issues: [archivedIssue("parent", 6), archivedIssue("child", 7)],
+    });
+
+    const result = await new ApiClient("https://api.example.test").setIssueArchived(
+      "parent",
+      true,
+    );
+    expect(result.issues.map((i) => i.id)).toEqual(["parent", "child"]);
+  });
+
+  it("falls back safely when the archive response is malformed", async () => {
+    respond({ issues: "not-an-array" });
+
+    await expect(
+      new ApiClient("https://api.example.test").setIssueArchived("parent", true),
+    ).resolves.toEqual({ issues: [] });
+  });
+
+  it("surfaces the conflict when the issue is already archived", async () => {
+    respond({ error: "issue is already archived" }, 409);
+
+    await expect(
+      new ApiClient("https://api.example.test").setIssueArchived("parent", true),
+    ).rejects.toBeInstanceOf(ApiError);
+  });
+});
