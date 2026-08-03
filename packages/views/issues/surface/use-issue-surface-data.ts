@@ -120,6 +120,7 @@ export function useIssueSurfaceData({
   projectFilters,
   includeNoProject,
   labelFilters,
+  parentFilters,
   propertyFilters,
   workingIssueIDs,
   showSubIssues,
@@ -146,6 +147,7 @@ export function useIssueSurfaceData({
   projectFilters: string[];
   includeNoProject: boolean;
   labelFilters: string[];
+  parentFilters: string[];
   propertyFilters: Record<string, string[]>;
   /** Distinct running-task issue ids projected by `/api/working-agents`. */
   workingIssueIDs: ReadonlySet<string>;
@@ -246,6 +248,7 @@ export function useIssueSurfaceData({
       projectFilters,
       includeNoProject,
       labelFilters,
+      parentFilters,
       propertyFilters,
       workingOnly: agentRunningFilter,
       showSubIssues,
@@ -257,6 +260,7 @@ export function useIssueSurfaceData({
       includeNoAssignee,
       includeNoProject,
       labelFilters,
+      parentFilters,
       priorityFilters,
       projectFilters,
       propertyFilters,
@@ -508,6 +512,7 @@ export function useIssueSurfaceData({
       projectFilters,
       includeNoProject,
       labelFilters,
+      parentFilters,
       propertyFilters,
       showSubIssues,
     }),
@@ -518,6 +523,7 @@ export function useIssueSurfaceData({
       includeNoAssignee,
       includeNoProject,
       labelFilters,
+      parentFilters,
       propertyFilters,
       priorityFilters,
       projectFilters,

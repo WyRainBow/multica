@@ -806,6 +806,21 @@ export const ChildIssuesResponseSchema = z.object({
   issues: z.array(IssueSchema).default([]),
 }).loose();
 
+/** One candidate value of the "parent issue" filter. */
+export const ParentIssueSchema = z.object({
+  id: z.string(),
+  number: z.number().default(0),
+  identifier: z.string().default(""),
+  title: z.string().default(""),
+  status: z.string().default("backlog"),
+  /** Subtree size including the parent itself. */
+  subtree_size: z.number().default(0),
+}).loose();
+
+export const ParentIssuesResponseSchema = z.object({
+  issues: z.array(ParentIssueSchema).default([]),
+}).loose();
+
 export const CloudRuntimeNodeSchema = z.object({
   id: z.string(),
   owner_id: z.string(),

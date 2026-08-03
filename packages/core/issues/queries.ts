@@ -125,6 +125,8 @@ export const issueKeys = {
     [...issueKeys.childrenByParentsAll(wsId), parentIds] as const,
   childProgress: (wsId: string) =>
     [...issueKeys.all(wsId), "child-progress"] as const,
+  /** Candidate values for the "parent issue" filter. */
+  parents: (wsId: string) => [...issueKeys.all(wsId), "parents"] as const,
   /** Prefix-match keys for invalidating the per-issue caches below across
    *  all issues. These keys carry no wsId, so `issueKeys.all(wsId)` does NOT
    *  cover them — WS reconnect recovery must invalidate these `*All`
@@ -774,6 +776,19 @@ export function childIssueProgressOptions(wsId: string) {
       }
       return map;
     },
+  });
+}
+
+/**
+ * Issues that have at least one child — the candidate values behind the
+ * "parent issue" filter. Workspace-wide and independent of the active view,
+ * so the picker still offers a parent whose subtree the current filters have
+ * emptied out.
+ */
+export function parentIssuesOptions(wsId: string) {
+  return queryOptions({
+    queryKey: issueKeys.parents(wsId),
+    queryFn: () => api.listParentIssues().then((r) => r.issues),
   });
 }
 

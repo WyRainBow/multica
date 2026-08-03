@@ -1,6 +1,7 @@
 import type {
   Issue,
   IssuePriority,
+  ParentIssuesResponse,
   CreateIssueRequest,
   MoveIssueRequest,
   UpdateIssueRequest,
@@ -184,6 +185,7 @@ import {
   CancelTaskResponseSchema,
   ChatDraftRestoresResponseSchema,
   ChildIssuesResponseSchema,
+  ParentIssuesResponseSchema,
   CommentsListSchema,
   CommentTriggerPreviewSchema,
   IssueTriggerPreviewSchema,
@@ -880,6 +882,14 @@ export class ApiClient {
 
   async getChildIssueProgress(): Promise<{ progress: { parent_issue_id: string; total: number; done: number }[] }> {
     return this.fetch("/api/issues/child-progress");
+  }
+
+  /** Candidate values for the "parent issue" filter: issues that have children. */
+  async listParentIssues(): Promise<ParentIssuesResponse> {
+    const raw = await this.fetch<unknown>("/api/issues/parents");
+    return parseWithFallback(raw, ParentIssuesResponseSchema, { issues: [] }, {
+      endpoint: "GET /api/issues/parents",
+    });
   }
 
   async deleteIssue(id: string): Promise<void> {

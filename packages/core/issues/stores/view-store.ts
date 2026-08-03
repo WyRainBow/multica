@@ -156,6 +156,12 @@ export interface IssueViewState {
   includeNoProject: boolean;
   labelFilters: string[];
   /**
+   * Parent issues whose subtree the view is narrowed to. Selecting one keeps
+   * the parent itself plus every descendant, so a requirement-style parent
+   * acts as a lens over just its own work. OR across entries.
+   */
+  parentFilters: string[];
+  /**
    * Custom-property filters: definition id → selected option ids (checkbox
    * definitions use the pseudo-options "true"/"false"). Empty array = no
    * filter for that definition; matching is OR within a definition and AND
@@ -209,6 +215,7 @@ export interface IssueViewState {
   toggleProjectFilter: (projectId: string) => void;
   toggleNoProject: () => void;
   toggleLabelFilter: (labelId: string) => void;
+  toggleParentFilter: (parentId: string) => void;
   togglePropertyFilter: (propertyId: string, optionId: string) => void;
   setDateFilter: (filter: IssueDateFilter | null) => void;
   toggleAgentRunningFilter: () => void;
@@ -247,6 +254,7 @@ export const viewStoreSlice = (set: StoreApi<IssueViewState>["setState"]): Issue
   projectFilters: [],
   includeNoProject: false,
   labelFilters: [],
+  parentFilters: [],
   propertyFilters: {},
   dateFilter: null,
   agentRunningFilter: false,
@@ -336,6 +344,12 @@ export const viewStoreSlice = (set: StoreApi<IssueViewState>["setState"]): Issue
         ? state.labelFilters.filter((id) => id !== labelId)
         : [...state.labelFilters, labelId],
     })),
+  toggleParentFilter: (parentId) =>
+    set((state) => ({
+      parentFilters: state.parentFilters.includes(parentId)
+        ? state.parentFilters.filter((id) => id !== parentId)
+        : [...state.parentFilters, parentId],
+    })),
   togglePropertyFilter: (propertyId, optionId) =>
     set((state) => {
       const current = state.propertyFilters[propertyId] ?? [];
@@ -376,6 +390,7 @@ export const viewStoreSlice = (set: StoreApi<IssueViewState>["setState"]): Issue
       projectFilters: [],
       includeNoProject: false,
       labelFilters: [],
+      parentFilters: [],
       propertyFilters: {},
       dateFilter: null,
       agentRunningFilter: false,
@@ -487,6 +502,7 @@ export const viewStorePersistOptions = (name: string) => ({
     projectFilters: state.projectFilters,
     includeNoProject: state.includeNoProject,
     labelFilters: state.labelFilters,
+    parentFilters: state.parentFilters,
     propertyFilters: state.propertyFilters,
     sortBy: state.sortBy,
     sortDirection: state.sortDirection,

@@ -2009,6 +2009,79 @@ func (h *Handler) ListChildrenByParents(w http.ResponseWriter, r *http.Request) 
 	})
 }
 
+// ParentIssueResponse is one entry of GET /api/issues/parents — the candidate
+// list behind the "parent issue" filter. It carries only what the picker
+// renders, not a full issue payload.
+type ParentIssueResponse struct {
+	ID         string `json:"id"`
+	Number     int32  `json:"number"`
+	Identifier string `json:"identifier"`
+	Title      string `json:"title"`
+	Status     string `json:"status"`
+	// Size of this issue's subtree, itself included — the row count the
+	// "parent issue" filter leaves behind when this entry is selected.
+	SubtreeSize int64 `json:"subtree_size"`
+}
+
+// ListParentIssues returns the workspace issues that have at least one child.
+// Requirement-style parents are the meaningful values for the parent filter,
+// so leaf issues are never offered.
+func (h *Handler) ListParentIssues(w http.ResponseWriter, r *http.Request) {
+	wsID := h.resolveWorkspaceID(r)
+	wsUUID, ok := parseUUIDOrBadRequest(w, wsID, "workspace_id")
+	if !ok {
+		return
+	}
+
+	// `UNION` rather than `UNION ALL` so malformed cyclic data terminates.
+	const query = `
+WITH RECURSIVE descendants AS (
+    SELECT root.id AS root_id, root.id AS node_id
+    FROM issue root
+    WHERE root.workspace_id = $1
+      AND EXISTS (SELECT 1 FROM issue child WHERE child.parent_issue_id = root.id)
+    UNION
+    SELECT descendants.root_id, child.id
+    FROM descendants
+    JOIN issue child ON child.parent_issue_id = descendants.node_id
+    WHERE child.workspace_id = $1
+)
+SELECT parent.id, parent.number, parent.title, parent.status,
+       COUNT(DISTINCT descendants.node_id)::bigint AS subtree_size
+FROM descendants
+JOIN issue parent ON parent.id = descendants.root_id
+GROUP BY parent.id, parent.number, parent.title, parent.status
+ORDER BY parent.number`
+
+	rows, err := h.DB.Query(r.Context(), query, wsUUID)
+	if err != nil {
+		slog.Warn("ListParentIssues query failed", append(logger.RequestAttrs(r), "error", err)...)
+		writeError(w, http.StatusInternalServerError, "failed to list parent issues")
+		return
+	}
+	defer rows.Close()
+
+	prefix := h.getIssuePrefix(r.Context(), wsUUID)
+	resp := []ParentIssueResponse{}
+	for rows.Next() {
+		var id pgtype.UUID
+		var entry ParentIssueResponse
+		if err := rows.Scan(&id, &entry.Number, &entry.Title, &entry.Status, &entry.SubtreeSize); err != nil {
+			writeError(w, http.StatusInternalServerError, "failed to list parent issues")
+			return
+		}
+		entry.ID = uuidToString(id)
+		entry.Identifier = prefix + "-" + strconv.Itoa(int(entry.Number))
+		resp = append(resp, entry)
+	}
+	if err := rows.Err(); err != nil {
+		writeError(w, http.StatusInternalServerError, "failed to list parent issues")
+		return
+	}
+
+	writeJSON(w, http.StatusOK, map[string]any{"issues": resp})
+}
+
 func (h *Handler) ChildIssueProgress(w http.ResponseWriter, r *http.Request) {
 	wsID := h.resolveWorkspaceID(r)
 	wsUUID, ok := parseUUIDOrBadRequest(w, wsID, "workspace_id")

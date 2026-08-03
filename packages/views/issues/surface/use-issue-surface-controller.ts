@@ -190,6 +190,7 @@ export function useIssueSurfaceController({
   const projectFilters = useViewStore((s) => s.projectFilters);
   const includeNoProject = useViewStore((s) => s.includeNoProject);
   const labelFilters = useViewStore((s) => s.labelFilters);
+  const parentFilters = useViewStore((s) => s.parentFilters);
   const propertyFilters = useViewStore((s) => s.propertyFilters);
   const agentRunningFilter = useViewStore((s) => s.agentRunningFilter);
   const showSubIssues = useViewStore((s) => s.showSubIssues);
@@ -388,6 +389,7 @@ export function useIssueSurfaceController({
           : {}),
         ...(viewIncludeNoProject ? { include_no_project: true } : {}),
         ...(labelFilters.length > 0 ? { label_ids: labelFilters } : {}),
+        ...(parentFilters.length > 0 ? { parent_ids: parentFilters } : {}),
         ...(Object.keys(effectivePropertyFilters).length > 0
           ? { properties: effectivePropertyFilters }
           : {}),
@@ -412,6 +414,7 @@ export function useIssueSurfaceController({
     effectivePropertyFilters,
     includeNoAssignee,
     labelFilters,
+    parentFilters,
     priorityFilters,
     scope,
     showSubIssues,
@@ -541,6 +544,7 @@ export function useIssueSurfaceController({
         viewProjectFilters,
         viewIncludeNoProject,
         labelFilters,
+        parentFilters,
         effectivePropertyFilters,
         agentRunningFilter,
         showSubIssues,
@@ -556,6 +560,7 @@ export function useIssueSurfaceController({
       effectivePropertyFilters,
       includeNoAssignee,
       labelFilters,
+      parentFilters,
       priorityFilters,
       showSubIssues,
       statusFilters,
@@ -588,6 +593,7 @@ export function useIssueSurfaceController({
     projectFilters: viewProjectFilters,
     includeNoProject: viewIncludeNoProject,
     labelFilters,
+    parentFilters,
     propertyFilters: effectivePropertyFilters,
     workingIssueIDs,
     showSubIssues,

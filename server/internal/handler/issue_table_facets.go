@@ -63,6 +63,8 @@ func issueTableQueryWithoutFacet(input issueTableQuerySpec, facet issueTableFace
 		output.Filters.IncludeNoProject = false
 	case "label":
 		output.Filters.LabelIDs = nil
+	case "parent":
+		output.Filters.ParentIDs = nil
 	case "property":
 		delete(output.Filters.Properties, facet.PropertyID)
 	}
@@ -194,6 +196,27 @@ func (h *Handler) issueTableFacetQuery(w http.ResponseWriter, r *http.Request, r
 		query = fmt.Sprintf(`SELECT COALESCE(i.project_id::text, '__none__'), COUNT(*)::bigint FROM issue i WHERE %s GROUP BY 1`, compiled.where)
 	case "label":
 		query = fmt.Sprintf(`SELECT itl.label_id::text, COUNT(DISTINCT i.id)::bigint FROM issue i JOIN issue_to_label itl ON itl.issue_id = i.id WHERE %s GROUP BY itl.label_id`, compiled.where)
+	case "parent":
+		// Climb from every issue in the window to each of its ancestors, so a
+		// candidate parent's count is its whole subtree size (itself included)
+		// -- exactly what selecting it as a filter would leave behind. Only
+		// issues that actually have children are offered as filter values.
+		// `UNION` rather than `UNION ALL` so malformed cyclic data terminates.
+		query = fmt.Sprintf(`SELECT climbed.ancestor_id::text, COUNT(DISTINCT climbed.issue_id)::bigint
+FROM (
+    WITH RECURSIVE ancestry AS (
+        SELECT i.id AS issue_id, i.id AS ancestor_id, i.parent_issue_id AS next_parent
+        FROM issue i
+        WHERE %s
+        UNION
+        SELECT ancestry.issue_id, parent.id, parent.parent_issue_id
+        FROM ancestry
+        JOIN issue parent ON parent.id = ancestry.next_parent AND parent.workspace_id = $1
+    )
+    SELECT issue_id, ancestor_id FROM ancestry
+) AS climbed
+WHERE EXISTS (SELECT 1 FROM issue child WHERE child.parent_issue_id = climbed.ancestor_id)
+GROUP BY climbed.ancestor_id`, compiled.where)
 	case "property":
 		propertyID, err := util.ParseUUID(facet.PropertyID)
 		if err != nil {
