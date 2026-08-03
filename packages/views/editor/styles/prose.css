@@ -435,3 +435,39 @@
   box-decoration-break: clone;
   -webkit-box-decoration-break: clone;
 }
+
+/* --- Inline comment anchors --- */
+
+/* Painted as ProseMirror decorations, not marks: the description round-trips
+ * through Markdown, which has no syntax for "this span has a comment", so a
+ * mark would be erased on the next save. The span keeps its own text colour —
+ * only the background changes — because a comment is an annotation on the
+ * prose, not a change to it. */
+.comment-highlight {
+  background-color: var(--comment-highlight);
+  border-radius: 2px;
+  cursor: pointer;
+  /* Deliberately no ring. An outline in the fill colour visually grows the
+   * block by 2px on every side, which is what made the tint read as heavy
+   * even after it was lightened. */
+}
+
+/* Flash played when the reader jumps here from a comment's quote. Animates the
+ * ring rather than the fill so the prose underneath stays readable throughout —
+ * the point is to say "here", not to obscure the sentence being pointed at. */
+@keyframes comment-highlight-flash {
+  0%, 100% { box-shadow: 0 0 0 0 transparent; }
+  30% { box-shadow: 0 0 0 3px var(--find-match-active); }
+}
+
+.comment-highlight-flash {
+  animation: comment-highlight-flash 1.2s ease-in-out;
+}
+
+/* Respect a reduced-motion preference: keep the emphasis, drop the pulsing. */
+@media (prefers-reduced-motion: reduce) {
+  .comment-highlight-flash {
+    animation: none;
+    box-shadow: 0 0 0 3px var(--find-match-active);
+  }
+}

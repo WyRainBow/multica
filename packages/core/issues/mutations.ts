@@ -804,13 +804,25 @@ export function useCreateComment(issueId: string) {
       parentId,
       attachmentIds,
       suppressAgentIds,
+      anchor,
     }: {
       content: string;
       type?: string;
       parentId?: string;
       attachmentIds?: string[];
       suppressAgentIds?: string[];
-    }) => api.createComment(issueId, content, type, parentId, attachmentIds, suppressAgentIds),
+      /** Makes this an inline comment on a span of the issue description. */
+      anchor?: { text: string; offset?: number };
+    }) =>
+      api.createComment(
+        issueId,
+        content,
+        type,
+        parentId,
+        attachmentIds,
+        suppressAgentIds,
+        anchor,
+      ),
     onSuccess: (comment) => {
       const entry: TimelineEntry = {
         type: "comment",

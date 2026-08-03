@@ -58,6 +58,8 @@ import { FileCardExtension } from "./file-card";
 import { ImageView } from "./image-view";
 import { BlockMathExtension, InlineMathExtension } from "./math";
 import { HighlightExtension } from "./highlight";
+import { CommentHighlight } from "./comment-highlight";
+import type { CommentAnchor } from "../comment-anchors";
 import { codeLowlight } from "../syntax-highlight";
 
 const LinkExtension = Link.extend({ inclusive: false }).configure({
@@ -144,6 +146,15 @@ export interface EditorExtensionsOptions {
    */
   placeholder?: string | (() => string);
   queryClient?: import("@tanstack/react-query").QueryClient;
+  /**
+   * Inline-comment anchors to paint as highlights. A getter for the same
+   * reason `placeholder` is one: comments arrive over the websocket long
+   * after mount, and the highlight has to follow without remounting the
+   * editor. Omitted means no inline comments on this editor.
+   */
+  commentAnchors?: () => readonly CommentAnchor[];
+  /** Invoked when a highlighted span is clicked. See CommentHighlightOptions. */
+  onCommentAnchorClick?: () => ((commentId: string, element: HTMLElement) => void) | undefined;
   onSubmitRef?: RefObject<(() => void) | undefined>;
   onUploadFileRef?: RefObject<
     ((file: File, uploadId: string) => Promise<UploadResult | null>) | undefined
@@ -194,9 +205,17 @@ export interface EditorExtensionsOptions {
 export function createEditorExtensions(
   options: EditorExtensionsOptions,
 ): AnyExtension[] {
-  const { placeholder: placeholderText } = options;
+  const { placeholder: placeholderText, commentAnchors, onCommentAnchorClick } = options;
 
   return [
+    ...(commentAnchors
+      ? [
+          CommentHighlight.configure({
+            anchors: commentAnchors,
+            onAnchorClick: onCommentAnchorClick,
+          }),
+        ]
+      : []),
     StarterKit.configure({
       heading: { levels: [1, 2, 3] },
       link: false,

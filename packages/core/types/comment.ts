@@ -29,6 +29,13 @@ export interface Comment {
   resolved_at: string | null;
   resolved_by_type: CommentAuthorType | null;
   resolved_by_id: string | null;
+  // The description span this comment was written against (inline comments).
+  // The description is Markdown, which cannot carry a highlight, so the quoted
+  // text travels on the comment and the editor re-locates it at render time.
+  // `anchor_offset` disambiguates repeated text; when neither matches, the
+  // comment simply stops highlighting and reads as an ordinary comment.
+  anchor_text?: string | null;
+  anchor_offset?: number | null;
   source_task_id?: string | null;
   // The quick action that produced this comment (MUL-5465). A quick action
   // posts an ORDINARY comment and marks it with this id; the collapsed card

@@ -45,7 +45,7 @@ UPDATE comment SET
 WHERE comment.id IN (SELECT id FROM descendants)
   AND comment.id <> $1
   AND comment.resolved_at IS NOT NULL
-RETURNING id, issue_id, author_type, author_id, content, type, created_at, updated_at, parent_id, workspace_id, resolved_at, resolved_by_type, resolved_by_id, source_task_id, quick_action_id
+RETURNING id, issue_id, author_type, author_id, content, type, created_at, updated_at, parent_id, workspace_id, resolved_at, resolved_by_type, resolved_by_id, source_task_id, quick_action_id, anchor_text, anchor_offset
 `
 
 type ClearOtherThreadResolutionsParams struct {
@@ -89,6 +89,8 @@ func (q *Queries) ClearOtherThreadResolutions(ctx context.Context, arg ClearOthe
 			&i.ResolvedByID,
 			&i.SourceTaskID,
 			&i.QuickActionID,
+			&i.AnchorText,
+			&i.AnchorOffset,
 		); err != nil {
 			return nil, err
 		}
@@ -158,13 +160,13 @@ func (q *Queries) CountNewCommentsSince(ctx context.Context, arg CountNewComment
 const createComment = `-- name: CreateComment :one
 WITH touched_issue AS (
     UPDATE issue SET updated_at = now()
-    WHERE issue.id = $8 AND issue.workspace_id = $9
+    WHERE issue.id = $10 AND issue.workspace_id = $11
     RETURNING issue.id, issue.workspace_id
 )
-INSERT INTO comment (issue_id, workspace_id, author_type, author_id, content, type, parent_id, source_task_id, quick_action_id)
-SELECT ti.id, ti.workspace_id, $1, $2, $3, $4, $5, $6, $7
+INSERT INTO comment (issue_id, workspace_id, author_type, author_id, content, type, parent_id, source_task_id, quick_action_id, anchor_text, anchor_offset)
+SELECT ti.id, ti.workspace_id, $1, $2, $3, $4, $5, $6, $7, $8, $9
 FROM touched_issue ti
-RETURNING id, issue_id, author_type, author_id, content, type, created_at, updated_at, parent_id, workspace_id, resolved_at, resolved_by_type, resolved_by_id, source_task_id, quick_action_id
+RETURNING id, issue_id, author_type, author_id, content, type, created_at, updated_at, parent_id, workspace_id, resolved_at, resolved_by_type, resolved_by_id, source_task_id, quick_action_id, anchor_text, anchor_offset
 `
 
 type CreateCommentParams struct {
@@ -175,6 +177,8 @@ type CreateCommentParams struct {
 	ParentID      pgtype.UUID `json:"parent_id"`
 	SourceTaskID  pgtype.UUID `json:"source_task_id"`
 	QuickActionID pgtype.UUID `json:"quick_action_id"`
+	AnchorText    pgtype.Text `json:"anchor_text"`
+	AnchorOffset  pgtype.Int4 `json:"anchor_offset"`
 	IssueID       pgtype.UUID `json:"issue_id"`
 	WorkspaceID   pgtype.UUID `json:"workspace_id"`
 }
@@ -204,6 +208,8 @@ func (q *Queries) CreateComment(ctx context.Context, arg CreateCommentParams) (C
 		arg.ParentID,
 		arg.SourceTaskID,
 		arg.QuickActionID,
+		arg.AnchorText,
+		arg.AnchorOffset,
 		arg.IssueID,
 		arg.WorkspaceID,
 	)
@@ -224,6 +230,8 @@ func (q *Queries) CreateComment(ctx context.Context, arg CreateCommentParams) (C
 		&i.ResolvedByID,
 		&i.SourceTaskID,
 		&i.QuickActionID,
+		&i.AnchorText,
+		&i.AnchorOffset,
 	)
 	return i, err
 }
@@ -244,7 +252,7 @@ func (q *Queries) DeleteComment(ctx context.Context, arg DeleteCommentParams) er
 }
 
 const getComment = `-- name: GetComment :one
-SELECT id, issue_id, author_type, author_id, content, type, created_at, updated_at, parent_id, workspace_id, resolved_at, resolved_by_type, resolved_by_id, source_task_id, quick_action_id FROM comment
+SELECT id, issue_id, author_type, author_id, content, type, created_at, updated_at, parent_id, workspace_id, resolved_at, resolved_by_type, resolved_by_id, source_task_id, quick_action_id, anchor_text, anchor_offset FROM comment
 WHERE id = $1
 `
 
@@ -267,12 +275,14 @@ func (q *Queries) GetComment(ctx context.Context, id pgtype.UUID) (Comment, erro
 		&i.ResolvedByID,
 		&i.SourceTaskID,
 		&i.QuickActionID,
+		&i.AnchorText,
+		&i.AnchorOffset,
 	)
 	return i, err
 }
 
 const getCommentInWorkspace = `-- name: GetCommentInWorkspace :one
-SELECT id, issue_id, author_type, author_id, content, type, created_at, updated_at, parent_id, workspace_id, resolved_at, resolved_by_type, resolved_by_id, source_task_id, quick_action_id FROM comment
+SELECT id, issue_id, author_type, author_id, content, type, created_at, updated_at, parent_id, workspace_id, resolved_at, resolved_by_type, resolved_by_id, source_task_id, quick_action_id, anchor_text, anchor_offset FROM comment
 WHERE id = $1 AND workspace_id = $2
 `
 
@@ -300,12 +310,14 @@ func (q *Queries) GetCommentInWorkspace(ctx context.Context, arg GetCommentInWor
 		&i.ResolvedByID,
 		&i.SourceTaskID,
 		&i.QuickActionID,
+		&i.AnchorText,
+		&i.AnchorOffset,
 	)
 	return i, err
 }
 
 const getLatestMemberCommentForIssueSince = `-- name: GetLatestMemberCommentForIssueSince :one
-SELECT id, issue_id, author_type, author_id, content, type, created_at, updated_at, parent_id, workspace_id, resolved_at, resolved_by_type, resolved_by_id, source_task_id, quick_action_id FROM comment
+SELECT id, issue_id, author_type, author_id, content, type, created_at, updated_at, parent_id, workspace_id, resolved_at, resolved_by_type, resolved_by_id, source_task_id, quick_action_id, anchor_text, anchor_offset FROM comment
 WHERE issue_id = $1
   AND author_type = 'member'
   AND created_at > $2
@@ -346,6 +358,8 @@ func (q *Queries) GetLatestMemberCommentForIssueSince(ctx context.Context, arg G
 		&i.ResolvedByID,
 		&i.SourceTaskID,
 		&i.QuickActionID,
+		&i.AnchorText,
+		&i.AnchorOffset,
 	)
 	return i, err
 }
@@ -360,7 +374,7 @@ WITH RECURSIVE root_of AS (
     FROM comment p
     JOIN root_of r ON p.id = r.parent_id
 )
-SELECT c.id, c.issue_id, c.author_type, c.author_id, c.content, c.type, c.created_at, c.updated_at, c.parent_id, c.workspace_id, c.resolved_at, c.resolved_by_type, c.resolved_by_id, c.source_task_id, c.quick_action_id FROM comment c
+SELECT c.id, c.issue_id, c.author_type, c.author_id, c.content, c.type, c.created_at, c.updated_at, c.parent_id, c.workspace_id, c.resolved_at, c.resolved_by_type, c.resolved_by_id, c.source_task_id, c.quick_action_id, c.anchor_text, c.anchor_offset FROM comment c
 WHERE c.id = (SELECT id FROM root_of WHERE parent_id IS NULL LIMIT 1)
 `
 
@@ -393,6 +407,8 @@ func (q *Queries) GetThreadRoot(ctx context.Context, arg GetThreadRootParams) (C
 		&i.ResolvedByID,
 		&i.SourceTaskID,
 		&i.QuickActionID,
+		&i.AnchorText,
+		&i.AnchorOffset,
 	)
 	return i, err
 }
@@ -441,7 +457,7 @@ func (q *Queries) HasAgentRepliedInThread(ctx context.Context, arg HasAgentRepli
 }
 
 const listChildCommentsForParents = `-- name: ListChildCommentsForParents :many
-SELECT id, issue_id, author_type, author_id, content, type, created_at, updated_at, parent_id, workspace_id, resolved_at, resolved_by_type, resolved_by_id, source_task_id, quick_action_id FROM comment
+SELECT id, issue_id, author_type, author_id, content, type, created_at, updated_at, parent_id, workspace_id, resolved_at, resolved_by_type, resolved_by_id, source_task_id, quick_action_id, anchor_text, anchor_offset FROM comment
 WHERE parent_id = ANY($1::uuid[])
   AND issue_id = $2
   AND workspace_id = $3
@@ -500,6 +516,8 @@ func (q *Queries) ListChildCommentsForParents(ctx context.Context, arg ListChild
 			&i.ResolvedByID,
 			&i.SourceTaskID,
 			&i.QuickActionID,
+			&i.AnchorText,
+			&i.AnchorOffset,
 		); err != nil {
 			return nil, err
 		}
@@ -512,7 +530,7 @@ func (q *Queries) ListChildCommentsForParents(ctx context.Context, arg ListChild
 }
 
 const listCommentsByIDsForIssue = `-- name: ListCommentsByIDsForIssue :many
-SELECT id, issue_id, author_type, author_id, content, type, created_at, updated_at, parent_id, workspace_id, resolved_at, resolved_by_type, resolved_by_id, source_task_id, quick_action_id FROM comment
+SELECT id, issue_id, author_type, author_id, content, type, created_at, updated_at, parent_id, workspace_id, resolved_at, resolved_by_type, resolved_by_id, source_task_id, quick_action_id, anchor_text, anchor_offset FROM comment
 WHERE id = ANY($1::uuid[])
   AND issue_id = $2
   AND workspace_id = $3
@@ -559,6 +577,8 @@ func (q *Queries) ListCommentsByIDsForIssue(ctx context.Context, arg ListComment
 			&i.ResolvedByID,
 			&i.SourceTaskID,
 			&i.QuickActionID,
+			&i.AnchorText,
+			&i.AnchorOffset,
 		); err != nil {
 			return nil, err
 		}
@@ -571,8 +591,8 @@ func (q *Queries) ListCommentsByIDsForIssue(ctx context.Context, arg ListComment
 }
 
 const listCommentsForIssue = `-- name: ListCommentsForIssue :many
-SELECT id, issue_id, author_type, author_id, content, type, created_at, updated_at, parent_id, workspace_id, resolved_at, resolved_by_type, resolved_by_id, source_task_id, quick_action_id FROM (
-    SELECT id, issue_id, author_type, author_id, content, type, created_at, updated_at, parent_id, workspace_id, resolved_at, resolved_by_type, resolved_by_id, source_task_id, quick_action_id FROM comment
+SELECT id, issue_id, author_type, author_id, content, type, created_at, updated_at, parent_id, workspace_id, resolved_at, resolved_by_type, resolved_by_id, source_task_id, quick_action_id, anchor_text, anchor_offset FROM (
+    SELECT id, issue_id, author_type, author_id, content, type, created_at, updated_at, parent_id, workspace_id, resolved_at, resolved_by_type, resolved_by_id, source_task_id, quick_action_id, anchor_text, anchor_offset FROM comment
     WHERE issue_id = $1 AND workspace_id = $2
     ORDER BY created_at DESC, id DESC
     LIMIT $3
@@ -628,6 +648,8 @@ func (q *Queries) ListCommentsForIssue(ctx context.Context, arg ListCommentsForI
 			&i.ResolvedByID,
 			&i.SourceTaskID,
 			&i.QuickActionID,
+			&i.AnchorText,
+			&i.AnchorOffset,
 		); err != nil {
 			return nil, err
 		}
@@ -640,7 +662,7 @@ func (q *Queries) ListCommentsForIssue(ctx context.Context, arg ListCommentsForI
 }
 
 const listCommentsSinceForIssue = `-- name: ListCommentsSinceForIssue :many
-SELECT id, issue_id, author_type, author_id, content, type, created_at, updated_at, parent_id, workspace_id, resolved_at, resolved_by_type, resolved_by_id, source_task_id, quick_action_id FROM comment
+SELECT id, issue_id, author_type, author_id, content, type, created_at, updated_at, parent_id, workspace_id, resolved_at, resolved_by_type, resolved_by_id, source_task_id, quick_action_id, anchor_text, anchor_offset FROM comment
 WHERE issue_id = $1 AND workspace_id = $2 AND created_at > $3
 ORDER BY created_at ASC, id ASC
 LIMIT $4
@@ -685,6 +707,8 @@ func (q *Queries) ListCommentsSinceForIssue(ctx context.Context, arg ListComment
 			&i.ResolvedByID,
 			&i.SourceTaskID,
 			&i.QuickActionID,
+			&i.AnchorText,
+			&i.AnchorOffset,
 		); err != nil {
 			return nil, err
 		}
@@ -842,7 +866,7 @@ func (q *Queries) ListRecentThreadCommentsForIssue(ctx context.Context, arg List
 }
 
 const listReconcilableCommentsForIssueSince = `-- name: ListReconcilableCommentsForIssueSince :many
-SELECT id, issue_id, author_type, author_id, content, type, created_at, updated_at, parent_id, workspace_id, resolved_at, resolved_by_type, resolved_by_id, source_task_id, quick_action_id FROM comment
+SELECT id, issue_id, author_type, author_id, content, type, created_at, updated_at, parent_id, workspace_id, resolved_at, resolved_by_type, resolved_by_id, source_task_id, quick_action_id, anchor_text, anchor_offset FROM comment
 WHERE issue_id = $1
   AND author_type IN ('member', 'agent')
   AND (
@@ -910,6 +934,8 @@ func (q *Queries) ListReconcilableCommentsForIssueSince(ctx context.Context, arg
 			&i.ResolvedByID,
 			&i.SourceTaskID,
 			&i.QuickActionID,
+			&i.AnchorText,
+			&i.AnchorOffset,
 		); err != nil {
 			return nil, err
 		}
@@ -952,6 +978,7 @@ SELECT c.id, c.issue_id, c.author_type, c.author_id, c.content, c.type,
        c.created_at, c.updated_at, c.parent_id, c.workspace_id,
        c.resolved_at, c.resolved_by_type, c.resolved_by_id,
        c.source_task_id, c.quick_action_id,
+       c.anchor_text, c.anchor_offset,
        ts.reply_count AS reply_count,
        ts.last_activity_at AS last_activity_at
 FROM selected_roots sr
@@ -982,6 +1009,8 @@ type ListRootCommentsForIssueRow struct {
 	ResolvedByID   pgtype.UUID        `json:"resolved_by_id"`
 	SourceTaskID   pgtype.UUID        `json:"source_task_id"`
 	QuickActionID  pgtype.UUID        `json:"quick_action_id"`
+	AnchorText     pgtype.Text        `json:"anchor_text"`
+	AnchorOffset   pgtype.Int4        `json:"anchor_offset"`
 	ReplyCount     int32              `json:"reply_count"`
 	LastActivityAt pgtype.Timestamptz `json:"last_activity_at"`
 }
@@ -1023,6 +1052,8 @@ func (q *Queries) ListRootCommentsForIssue(ctx context.Context, arg ListRootComm
 			&i.ResolvedByID,
 			&i.SourceTaskID,
 			&i.QuickActionID,
+			&i.AnchorText,
+			&i.AnchorOffset,
 			&i.ReplyCount,
 			&i.LastActivityAt,
 		); err != nil {
@@ -1068,6 +1099,7 @@ SELECT c.id, c.issue_id, c.author_type, c.author_id, c.content, c.type,
        c.created_at, c.updated_at, c.parent_id, c.workspace_id,
        c.resolved_at, c.resolved_by_type, c.resolved_by_id,
        c.source_task_id, c.quick_action_id,
+       c.anchor_text, c.anchor_offset,
        ts.reply_count AS reply_count,
        ts.last_activity_at AS last_activity_at
 FROM selected_roots sr
@@ -1099,6 +1131,8 @@ type ListRootCommentsSinceForIssueRow struct {
 	ResolvedByID   pgtype.UUID        `json:"resolved_by_id"`
 	SourceTaskID   pgtype.UUID        `json:"source_task_id"`
 	QuickActionID  pgtype.UUID        `json:"quick_action_id"`
+	AnchorText     pgtype.Text        `json:"anchor_text"`
+	AnchorOffset   pgtype.Int4        `json:"anchor_offset"`
 	ReplyCount     int32              `json:"reply_count"`
 	LastActivityAt pgtype.Timestamptz `json:"last_activity_at"`
 }
@@ -1140,6 +1174,8 @@ func (q *Queries) ListRootCommentsSinceForIssue(ctx context.Context, arg ListRoo
 			&i.ResolvedByID,
 			&i.SourceTaskID,
 			&i.QuickActionID,
+			&i.AnchorText,
+			&i.AnchorOffset,
 			&i.ReplyCount,
 			&i.LastActivityAt,
 		); err != nil {
@@ -1312,7 +1348,7 @@ UPDATE comment SET
     resolved_by_id = COALESCE(resolved_by_id, $3),
     updated_at = CASE WHEN resolved_at IS NULL THEN now() ELSE updated_at END
 WHERE id = $1
-RETURNING id, issue_id, author_type, author_id, content, type, created_at, updated_at, parent_id, workspace_id, resolved_at, resolved_by_type, resolved_by_id, source_task_id, quick_action_id
+RETURNING id, issue_id, author_type, author_id, content, type, created_at, updated_at, parent_id, workspace_id, resolved_at, resolved_by_type, resolved_by_id, source_task_id, quick_action_id, anchor_text, anchor_offset
 `
 
 type ResolveCommentParams struct {
@@ -1342,6 +1378,8 @@ func (q *Queries) ResolveComment(ctx context.Context, arg ResolveCommentParams) 
 		&i.ResolvedByID,
 		&i.SourceTaskID,
 		&i.QuickActionID,
+		&i.AnchorText,
+		&i.AnchorOffset,
 	)
 	return i, err
 }
@@ -1353,7 +1391,7 @@ UPDATE comment SET
     resolved_by_id = NULL,
     updated_at = CASE WHEN resolved_at IS NOT NULL THEN now() ELSE updated_at END
 WHERE id = $1
-RETURNING id, issue_id, author_type, author_id, content, type, created_at, updated_at, parent_id, workspace_id, resolved_at, resolved_by_type, resolved_by_id, source_task_id, quick_action_id
+RETURNING id, issue_id, author_type, author_id, content, type, created_at, updated_at, parent_id, workspace_id, resolved_at, resolved_by_type, resolved_by_id, source_task_id, quick_action_id, anchor_text, anchor_offset
 `
 
 // Idempotent: a no-op clear (already unresolved) just returns the row.
@@ -1376,6 +1414,8 @@ func (q *Queries) UnresolveComment(ctx context.Context, id pgtype.UUID) (Comment
 		&i.ResolvedByID,
 		&i.SourceTaskID,
 		&i.QuickActionID,
+		&i.AnchorText,
+		&i.AnchorOffset,
 	)
 	return i, err
 }
@@ -1386,7 +1426,7 @@ UPDATE comment SET
     source_task_id = $3,
     updated_at = now()
 WHERE id = $1
-RETURNING id, issue_id, author_type, author_id, content, type, created_at, updated_at, parent_id, workspace_id, resolved_at, resolved_by_type, resolved_by_id, source_task_id, quick_action_id
+RETURNING id, issue_id, author_type, author_id, content, type, created_at, updated_at, parent_id, workspace_id, resolved_at, resolved_by_type, resolved_by_id, source_task_id, quick_action_id, anchor_text, anchor_offset
 `
 
 type UpdateCommentParams struct {
@@ -1414,6 +1454,8 @@ func (q *Queries) UpdateComment(ctx context.Context, arg UpdateCommentParams) (C
 		&i.ResolvedByID,
 		&i.SourceTaskID,
 		&i.QuickActionID,
+		&i.AnchorText,
+		&i.AnchorOffset,
 	)
 	return i, err
 }

@@ -58,6 +58,7 @@ import type { MentionItem } from "./extensions/mention-suggestion";
 import type { IssueIdentifierResolver } from "./extensions/issue-identifier-autolink";
 import type { BuiltinCommandSuggestionOptions } from "./extensions/slash-command-suggestion";
 import { createEditorExtensions } from "./extensions";
+import type { CommentAnchor } from "./comment-anchors";
 import {
   uploadAndInsertFile,
   insertUploadPlaceholder,
@@ -171,6 +172,14 @@ interface ContentEditorBaseProps {
    * under this ID and replaces the selection with a mention link.
    */
   currentIssueId?: string;
+  /**
+   * Inline-comment anchors to paint as highlights. Re-read on every decoration
+   * pass, so a comment arriving over the websocket highlights without
+   * remounting the editor.
+   */
+  commentAnchors?: readonly CommentAnchor[];
+  /** Invoked when the reader clicks a highlighted inline-comment span. */
+  onCommentAnchorClick?: (commentId: string, element: HTMLElement) => void;
   /**
    * When true, the `@` suggestion picker is disabled but the mention node
    * type remains in the schema, so existing mentions pasted in from other
@@ -364,6 +373,8 @@ const ContentEditor = forwardRef<ContentEditorRef, ContentEditorProps>(
       onUploadingChange,
       showBubbleMenu = true,
       currentIssueId,
+      commentAnchors,
+      onCommentAnchorClick,
       disableMentions = false,
       mentionMode = "default",
       mentionContextItems,
@@ -410,6 +421,12 @@ const ContentEditor = forwardRef<ContentEditorRef, ContentEditorProps>(
     // snapshots a *string* placeholder at mount, so a getter is what lets it
     // change without remounting the editor.
     const placeholderRef = useRef(placeholderText);
+    // Same getter contract as placeholderRef: the extension array is built once
+    // at mount, so anchors have to arrive through a ref the plugin re-reads.
+    const commentAnchorsRef = useRef<readonly CommentAnchor[]>(commentAnchors ?? []);
+    commentAnchorsRef.current = commentAnchors ?? [];
+    const commentAnchorClickRef = useRef(onCommentAnchorClick);
+    commentAnchorClickRef.current = onCommentAnchorClick;
 
     // In-session record of attachments freshly uploaded through this editor.
     // Surfaces (like the quick-create modal) that don't have a server-supplied
@@ -588,6 +605,12 @@ const ContentEditor = forwardRef<ContentEditorRef, ContentEditorProps>(
           : undefined,
       extensions: createEditorExtensions({
         placeholder: () => placeholderRef.current,
+        ...(commentAnchors
+          ? {
+              commentAnchors: () => commentAnchorsRef.current,
+              onCommentAnchorClick: () => commentAnchorClickRef.current,
+            }
+          : {}),
         queryClient,
         onSubmitRef,
         onUploadFileRef,
@@ -867,6 +890,15 @@ const ContentEditor = forwardRef<ContentEditorRef, ContentEditorProps>(
       // and no self-write loop is triggered.
       editor.view.dispatch(editor.state.tr);
     }, [editor, placeholderText]);
+
+    // Repaint comment highlights when the anchor set changes. Same
+    // empty-transaction nudge as the placeholder above, and for the same
+    // reason: the plugin recomputes its decorations per transaction, and a new
+    // comment changes no document text at all.
+    useEffect(() => {
+      if (!editor || editor.isDestroyed || !commentAnchors) return;
+      editor.view.dispatch(editor.state.tr);
+    }, [editor, commentAnchors]);
 
     useImperativeHandle(ref, () => ({
       // Intentionally NOT routed through `normalizeMarkdown` — see the "stays

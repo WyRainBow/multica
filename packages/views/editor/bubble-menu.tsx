@@ -33,6 +33,8 @@ import type { Editor } from "@tiptap/core";
 import { posToDOMRect } from "@tiptap/core";
 import { NodeSelection } from "@tiptap/pm/state";
 import { toast } from "sonner";
+import { useCreateComment } from "@multica/core/issues/mutations";
+import { captureSelectionAnchor } from "./extensions/comment-highlight";
 import { useCreateIssue } from "@multica/core/issues/mutations";
 import { useT } from "../i18n";
 import { createShortcutChord, type ShortcutChord } from "@multica/core/shortcuts";
@@ -73,6 +75,7 @@ import {
   Heading3,
   FilePlus,
   Loader2,
+  MessageSquare,
 } from "lucide-react";
 
 // ---------------------------------------------------------------------------
@@ -231,6 +234,95 @@ function LinkEditBar({
         </Button>
       )}
       <Button size="icon-xs" variant="ghost" onClick={() => { onClose(); editor.commands.focus(); }} onMouseDown={(e) => e.preventDefault()}>
+        <X className="size-3.5" />
+      </Button>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Inline Comment Composer
+// ---------------------------------------------------------------------------
+
+/**
+ * Writes a comment against the current selection.
+ *
+ * The selected text is sent with the comment as its anchor. It has to be
+ * captured on mount, not on submit: typing in this input blurs the editor, and
+ * on some browsers that collapses the selection the anchor describes.
+ */
+function CommentComposer({
+  editor,
+  issueId,
+  onClose,
+}: {
+  editor: Editor;
+  issueId: string;
+  onClose: () => void;
+}) {
+  const { t } = useT("editor");
+  const createComment = useCreateComment(issueId);
+  const [text, setText] = useState("");
+  const [pending, setPending] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  // Snapshot the anchor before focus leaves the editor.
+  const anchorRef = useRef(captureSelectionAnchor(editor));
+
+  useEffect(() => {
+    const id = setTimeout(() => inputRef.current?.focus(), 0);
+    return () => clearTimeout(id);
+  }, []);
+
+  const submit = useCallback(async () => {
+    const content = text.trim();
+    const anchor = anchorRef.current;
+    if (!content || !anchor || pending) return;
+    setPending(true);
+    try {
+      await createComment.mutateAsync({ content, anchor });
+      onClose();
+    } catch (err) {
+      toast.error(
+        err instanceof Error && err.message
+          ? err.message
+          : t(($) => $.bubble_menu.comment.create_failed),
+      );
+    } finally {
+      setPending(false);
+    }
+  }, [text, pending, createComment, onClose, t]);
+
+  return (
+    <div className="bubble-menu-link-edit" onMouseDown={(e) => e.preventDefault()}>
+      <Input
+        ref={inputRef}
+        value={text}
+        onChange={(e) => setText(e.target.value)}
+        placeholder={t(($) => $.bubble_menu.comment.placeholder)}
+        aria-label={t(($) => $.bubble_menu.comment.tooltip)}
+        className="h-7 flex-1 text-caption"
+        disabled={pending}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") { e.preventDefault(); void submit(); }
+          if (e.key === "Escape") { e.preventDefault(); onClose(); editor.commands.focus(); }
+        }}
+      />
+      <Button
+        size="icon-xs"
+        variant="ghost"
+        onClick={() => void submit()}
+        disabled={pending || !text.trim()}
+        onMouseDown={(e) => e.preventDefault()}
+      >
+        {pending ? <Loader2 className="size-3.5 animate-spin" /> : <Check className="size-3.5" />}
+      </Button>
+      <Button
+        size="icon-xs"
+        variant="ghost"
+        onClick={() => { onClose(); editor.commands.focus(); }}
+        onMouseDown={(e) => e.preventDefault()}
+      >
         <X className="size-3.5" />
       </Button>
     </div>
@@ -475,7 +567,7 @@ function EditorBubbleMenu({
 }) {
   const { t } = useT("editor");
   const [visible, setVisible] = useState(false);
-  const [mode, setMode] = useState<"toolbar" | "link-edit">("toolbar");
+  const [mode, setMode] = useState<"toolbar" | "link-edit" | "comment">("toolbar");
   const floatingRef = useRef<HTMLDivElement>(null);
 
   // Precise subscription to formatting state — only re-renders when these
@@ -602,6 +694,12 @@ function EditorBubbleMenu({
     >
       {mode === "link-edit" ? (
         <LinkEditBar editor={editor} onClose={() => { setMode("toolbar"); editor.commands.focus(); }} />
+      ) : mode === "comment" && currentIssueId ? (
+        <CommentComposer
+          editor={editor}
+          issueId={currentIssueId}
+          onClose={() => { setMode("toolbar"); editor.commands.focus(); }}
+        />
       ) : (
         <TooltipProvider delay={300}>
           <div className="bubble-menu">
@@ -647,6 +745,14 @@ function EditorBubbleMenu({
               <>
                 <Separator orientation="vertical" className="mx-0.5 h-5" />
                 <CreateSubIssueButton editor={editor} parentIssueId={currentIssueId} />
+                <Tooltip>
+                  <TooltipTrigger render={
+                    <Toggle size="sm" pressed={false} onPressedChange={() => setMode("comment")} onMouseDown={(e) => e.preventDefault()} />
+                  }>
+                    <MessageSquare className="size-3.5" />
+                  </TooltipTrigger>
+                  <TooltipContent side="top" sideOffset={8}>{t(($) => $.bubble_menu.comment.tooltip)}</TooltipContent>
+                </Tooltip>
               </>
             )}
           </div>
