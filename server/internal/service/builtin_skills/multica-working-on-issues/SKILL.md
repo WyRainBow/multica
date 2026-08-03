@@ -240,6 +240,24 @@ Re-archiving an already-archived issue is a `409`, not a silent no-op — the
 original `archived_at` is preserved so "when did this leave the board" stays
 answerable.
 
+### Deleting is not archiving
+
+```bash
+multica issue delete <id>           # permanent; refuses if the issue has sub-issues
+multica issue delete <id> --force   # deletes it anyway, ORPHANING its sub-issues
+```
+
+Delete destroys the issue with its comments, reactions and attachments, and it
+cannot be undone. Reach for `archive` unless the issue should genuinely stop
+existing.
+
+The one consequence worth knowing before you use `--force`: sub-issues are
+**not** deleted with their parent. The parent link is `ON DELETE SET NULL`, so
+they survive as top-level issues with no parent. `delete` refuses by default
+when children exist precisely so that becomes a decision rather than something
+you discover afterwards. If you want a whole tree gone from view, archive it —
+archiving takes the subtree; deleting does not.
+
 ## Sub-issues: `todo` starts work now, `backlog` parks it
 
 On an agent-assigned issue, create status decides whether the assignee fires
