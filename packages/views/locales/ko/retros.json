@@ -1,0 +1,31 @@
+{
+  "page": {
+    "title": "회고",
+    "count_other": "{{count}}개",
+    "new": "새 회고",
+    "search_placeholder": "회고 검색…",
+    "empty": "아직 기록이 없습니다. 요구사항에서 배운 것을 여기에 남기세요.",
+    "no_matches": "일치하는 회고가 없습니다."
+  },
+  "card": {
+    "edit": "편집",
+    "issue_missing": "연결된 요구사항이 없습니다"
+  },
+  "editor": {
+    "new_title": "새 회고",
+    "edit_title": "회고 편집",
+    "title_placeholder": "무엇을 배웠나요?",
+    "content_placeholder": "사용한 기술, 겪은 함정, 재사용할 것…",
+    "save": "저장",
+    "cancel": "취소",
+    "delete_action": "삭제",
+    "delete_confirm": "이 회고를 삭제할까요?",
+    "save_failed": "회고 저장에 실패했습니다",
+    "delete_failed": "회고 삭제에 실패했습니다"
+  },
+  "issue_section": {
+    "title": "회고",
+    "add": "추가",
+    "empty": "이 요구사항에 대한 회고가 아직 없습니다."
+  }
+}

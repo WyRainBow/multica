@@ -116,6 +116,7 @@ type NavKey =
   | "usage"
   | "runtimes"
   | "skills"
+  | "retros"
   | "settings";
 
 // Static schema (key only) — labels resolved at render via useT("layout"),
@@ -132,6 +133,7 @@ type NavLabelKey =
   | "usage"
   | "runtimes"
   | "skills"
+  | "retros"
   | "settings";
 
 // Nav icons are NOT declared here: they are derived from each item's
@@ -150,6 +152,9 @@ const workspaceNav: { key: NavKey; labelKey: NavLabelKey }[] = [
   { key: "agents", labelKey: "agents" },
   { key: "squads", labelKey: "squads" },
   { key: "usage", labelKey: "usage" },
+  // Sits with the workspace's own content, not under Configure: a retro is
+  // something the team produces, like an issue, not a setting.
+  { key: "retros", labelKey: "retros" },
 ];
 
 const configureNav: { key: NavKey; labelKey: NavLabelKey }[] = [

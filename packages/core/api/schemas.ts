@@ -602,6 +602,23 @@ export const CommentSchema = z.object({
   anchor_offset: z.number().nullable().optional(),
 }).loose();
 
+export const RetroSchema = z.object({
+  id: z.string(),
+  workspace_id: z.string(),
+  issue_id: z.string().nullable().default(null),
+  author_type: z.string().default("member"),
+  author_id: z.string().default(""),
+  title: z.string().default(""),
+  content: z.string().default(""),
+  created_at: z.string(),
+  updated_at: z.string(),
+}).loose();
+
+export const RetroListResponseSchema = z.object({
+  retros: z.array(RetroSchema).default([]),
+  total: z.number().default(0),
+}).loose();
+
 export const CommentsListSchema = z.array(CommentSchema);
 
 // Degraded placeholder for a comment response that failed schema validation.

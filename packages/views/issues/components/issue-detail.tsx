@@ -68,6 +68,7 @@ import { SubIssuesAgentWorkingChip } from "./sub-issues-agent-working-chip";
 import { ProjectPicker } from "../../projects/components/project-picker";
 import { LocalDirectoryHint } from "../../projects/components/local-directory-hint";
 import { CommentCard } from "./comment-card";
+import { IssueRetrosSection } from "../../retros";
 import { CommentInput } from "./comment-input";
 import { ResolvedThreadBar } from "./resolved-thread-bar";
 import { ThreadMinimap, type ThreadMinimapThread } from "./thread-minimap";
@@ -2635,6 +2636,11 @@ export function IssueDetail({ issueId, onDelete, onDone, defaultSidebarOpen = tr
             </div>
             {descDragOver && <FileDropOverlay />}
           </div>
+
+          {/* What this requirement taught us. Sits below the description and
+              above the sub-issues: it is about THIS issue, not about the tree
+              underneath it. */}
+          <IssueRetrosSection issueId={id} />
 
           {/* Sub-issues — Linear-style */}
           {childIssues.length === 0 && (
