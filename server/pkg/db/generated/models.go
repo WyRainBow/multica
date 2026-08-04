@@ -606,24 +606,6 @@ type GithubPullRequestCheckSuite struct {
 	UpdatedAt  pgtype.Timestamptz `json:"updated_at"`
 }
 
-type GrowthCard struct {
-	ID          pgtype.UUID        `json:"id"`
-	WorkspaceID pgtype.UUID        `json:"workspace_id"`
-	IssueID     pgtype.UUID        `json:"issue_id"`
-	AuthorType  string             `json:"author_type"`
-	AuthorID    pgtype.UUID        `json:"author_id"`
-	Title       string             `json:"title"`
-	Systems     string             `json:"systems"`
-	Unknowns    string             `json:"unknowns"`
-	AgentPlan   string             `json:"agent_plan"`
-	Understood  string             `json:"understood"`
-	Verified    string             `json:"verified"`
-	Learned     string             `json:"learned"`
-	NextGaps    string             `json:"next_gaps"`
-	CreatedAt   pgtype.Timestamptz `json:"created_at"`
-	UpdatedAt   pgtype.Timestamptz `json:"updated_at"`
-}
-
 type InboxItem struct {
 	ID            pgtype.UUID        `json:"id"`
 	WorkspaceID   pgtype.UUID        `json:"workspace_id"`
@@ -912,6 +894,18 @@ type QuickAction struct {
 	CreatedByID   pgtype.UUID        `json:"created_by_id"`
 	CreatedAt     pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt     pgtype.Timestamptz `json:"updated_at"`
+}
+
+type Retro struct {
+	ID          pgtype.UUID        `json:"id"`
+	WorkspaceID pgtype.UUID        `json:"workspace_id"`
+	IssueID     pgtype.UUID        `json:"issue_id"`
+	AuthorType  string             `json:"author_type"`
+	AuthorID    pgtype.UUID        `json:"author_id"`
+	Title       string             `json:"title"`
+	Content     string             `json:"content"`
+	CreatedAt   pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt   pgtype.Timestamptz `json:"updated_at"`
 }
 
 type RuntimeProfile struct {

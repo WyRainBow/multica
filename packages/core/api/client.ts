@@ -2,10 +2,6 @@ import type {
   Issue,
   IssuePriority,
   ParentIssuesResponse,
-  GrowthCard,
-  GrowthCardListResponse,
-  CreateGrowthCardRequest,
-  UpdateGrowthCardRequest,
   CreateIssueRequest,
   MoveIssueRequest,
   UpdateIssueRequest,
@@ -198,8 +194,6 @@ import {
   ChatMessagesPageSchema,
   ChildIssuesResponseSchema,
   ParentIssuesResponseSchema,
-  GrowthCardSchema,
-  GrowthCardListResponseSchema,
   CommentsListSchema,
   CommentTriggerPreviewSchema,
   IssueTriggerPreviewSchema,
@@ -972,65 +966,6 @@ export class ApiClient {
     return parseWithFallback(raw, CommentsListSchema, [], {
       endpoint: "GET /api/issues/:id/comments",
     });
-  }
-
-  // -------------------------------------------------------------------------
-  // Growth cards
-  // -------------------------------------------------------------------------
-
-  async listGrowthCards(params?: {
-    limit?: number;
-    offset?: number;
-  }): Promise<GrowthCardListResponse> {
-    const search = new URLSearchParams();
-    if (params?.limit) search.set("limit", String(params.limit));
-    if (params?.offset) search.set("offset", String(params.offset));
-    const query = search.toString();
-    const raw = await this.fetch<unknown>(`/api/growth-cards${query ? `?${query}` : ""}`);
-    return parseWithFallback(raw, GrowthCardListResponseSchema, { cards: [], total: 0 }, {
-      endpoint: "GET /api/growth-cards",
-    });
-  }
-
-  async listGrowthCardsForIssue(issueId: string): Promise<{ cards: GrowthCard[] }> {
-    const raw = await this.fetch<unknown>(`/api/issues/${issueId}/growth-cards`);
-    return parseWithFallback(raw, GrowthCardListResponseSchema, { cards: [], total: 0 }, {
-      endpoint: "GET /api/issues/:id/growth-cards",
-    });
-  }
-
-  async getGrowthCard(id: string): Promise<GrowthCard | null> {
-    const raw = await this.fetch<unknown>(`/api/growth-cards/${id}`);
-    return parseWithFallback(raw, GrowthCardSchema, null, {
-      endpoint: "GET /api/growth-cards/:id",
-    });
-  }
-
-  async createGrowthCard(body: CreateGrowthCardRequest): Promise<GrowthCard | null> {
-    const raw = await this.fetch<unknown>("/api/growth-cards", {
-      method: "POST",
-      body: JSON.stringify(body),
-    });
-    return parseWithFallback(raw, GrowthCardSchema, null, {
-      endpoint: "POST /api/growth-cards",
-    });
-  }
-
-  async updateGrowthCard(
-    id: string,
-    body: UpdateGrowthCardRequest,
-  ): Promise<GrowthCard | null> {
-    const raw = await this.fetch<unknown>(`/api/growth-cards/${id}`, {
-      method: "PUT",
-      body: JSON.stringify(body),
-    });
-    return parseWithFallback(raw, GrowthCardSchema, null, {
-      endpoint: "PUT /api/growth-cards/:id",
-    });
-  }
-
-  async deleteGrowthCard(id: string): Promise<void> {
-    await this.fetch(`/api/growth-cards/${id}`, { method: "DELETE" });
   }
 
   async createComment(

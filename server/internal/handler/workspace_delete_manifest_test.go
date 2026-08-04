@@ -49,9 +49,9 @@ var workspaceDeletionManifest = map[string]workspaceDeleteAction{
 	"client_usage_daily":            workspaceDeleteDetach,
 	"comment":                       workspaceDelete,
 	"comment_reaction":              workspaceDelete,
-	// A growth card belongs to the person's workspace, not to the delivery it
+	// A retro belongs to the person's workspace, not to the requirement it
 	// came from, so it goes when the workspace does.
-	"growth_card":                     workspaceDelete,
+	"retro":                           workspaceDelete,
 	"contact_sales_inquiry":           workspaceDeleteKeep,
 	"daemon_connection":               workspaceDelete,
 	"daemon_token":                    workspaceDelete,

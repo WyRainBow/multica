@@ -20,7 +20,6 @@ import {
   FileAudio,
   FileVideo,
   FileQuestion,
-  Lightbulb,
   type LucideIcon,
 } from "lucide-react";
 import { resolveRouteIconName, type RouteIconName } from "@multica/core/paths";
@@ -33,7 +32,6 @@ import { resolveRouteIconName, type RouteIconName } from "@multica/core/paths";
  * missing key a compile error.
  */
 export const ROUTE_ICON_COMPONENTS: Record<RouteIconName, LucideIcon> = {
-  Lightbulb,
   Inbox,
   MessageSquare,
   CircleUser,
