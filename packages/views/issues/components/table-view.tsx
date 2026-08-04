@@ -1,7 +1,9 @@
 "use client";
 
 import {
+  createContext,
   useCallback,
+  useContext,
   useEffect,
   useLayoutEffect,
   useMemo,
@@ -18,6 +20,8 @@ import {
   useSensor,
   useSensors,
   type DragEndEvent,
+  type DragMoveEvent,
+  type DragOverEvent,
 } from "@dnd-kit/core";
 import { restrictToHorizontalAxis, restrictToVerticalAxis } from "@dnd-kit/modifiers";
 import { CSS } from "@dnd-kit/utilities";
@@ -160,12 +164,17 @@ type TableViewProps = {
   onLoadedIssuesChange: (issues: Issue[]) => void;
   onCreateIssue: (defaults: IssueCreateDefaults) => void;
   /**
-   * Reorder a row among its siblings. Omitted (the project Gantt, exports)
-   * renders the table read-only for ordering.
+   * Move a row: reorder it among its siblings, or re-parent it by passing
+   * `parent_issue_id`. Omitted (the project Gantt, exports) renders the table
+   * read-only for ordering.
    */
   onMoveIssue?: (
     issueId: string,
-    updates: { before_id: string | null; after_id: string | null },
+    updates: {
+      before_id: string | null;
+      after_id: string | null;
+      parent_issue_id?: string;
+    },
   ) => void;
   exportIssues: () => Promise<Issue[]>;
   resolveExportLookups: (needs: {
@@ -185,6 +194,19 @@ type TableViewProps = {
  * because the table has no spare gutter and a drag only starts after the
  * pointer travels a few pixels, which leaves click-to-open intact.
  */
+/**
+ * What the in-flight drag would do to a given row, for the row to draw.
+ *
+ * A context rather than a prop because DataTable owns the row element and
+ * renders `rowComponent` with a fixed signature — threading a prop through
+ * would mean widening that seam for every table that uses it.
+ */
+const RowDropHintContext = createContext<{
+  overIssueId: string;
+  zone: RowDropZone;
+  valid: boolean;
+} | null>(null);
+
 function SortableIssueRow<TData>({
   row,
   children,
@@ -192,6 +214,9 @@ function SortableIssueRow<TData>({
 }: DataTableRowProps<TData>) {
   const original = row.original as IssueTableDisplayRow;
   const draggable = original.kind === "issue";
+  const hint = useContext(RowDropHintContext);
+  const hinted =
+    draggable && hint && hint.overIssueId === original.issue.id ? hint : null;
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
     useSortable({
       id: draggable ? rowDragId(original.issue.id) : `static:${row.id}`,
@@ -212,6 +237,19 @@ function SortableIssueRow<TData>({
       }}
       {...(draggable ? attributes : {})}
       {...(draggable ? listeners : {})}
+      className={cn(
+        props.className,
+        // Nesting reshapes the tree, so it gets the loudest affordance: the
+        // whole row reads as a container about to receive the drag. The edges
+        // get a hairline instead — a full highlight there would claim the row
+        // is the destination when it is only the neighbour.
+        hinted?.valid && hinted.zone === "nest" && "bg-primary/10 ring-1 ring-inset ring-primary",
+        hinted?.valid && hinted.zone === "before" && "shadow-[inset_0_2px_0_0_var(--color-primary)]",
+        hinted?.valid && hinted.zone === "after" && "shadow-[inset_0_-2px_0_0_var(--color-primary)]",
+        // A refused drop says so while the pointer is still there, rather
+        // than silently doing nothing on release.
+        hinted && !hinted.valid && "cursor-no-drop opacity-50",
+      )}
       style={{
         transform: CSS.Transform.toString(transform),
         transition,
@@ -247,23 +285,102 @@ function rowDragIdToIssueId(id: string | number): string {
 }
 
 /**
- * Translate "row A was dropped on row B" into the neighbour pair the move
- * endpoint expects, or null when the drop is not a reorder this table can
- * express.
+ * Where in a row the pointer landed, which is what separates "put it next to
+ * this" from "put it inside this".
  *
- * Only siblings are reorderable. A drop onto a row with a different parent
- * would have to mean "re-parent AND reposition", and the two have different
- * consequences — re-parenting an issue can wake its new parent's assignee.
- * Refusing is honest; silently doing one of the two is not.
- *
- * Anchors are the dragged row's NEW neighbours in the sibling list, computed
- * after removing it, so the server's midpoint lands where the row was dropped.
+ * The bands are deliberately uneven: nesting owns the middle half, reordering
+ * the outer quarters. A drop is a single gesture with no confirmation, and
+ * mis-nesting is the more annoying mistake to undo — it moves the row out of
+ * the list you were looking at — so the reorder edges are kept narrow enough
+ * to require aiming at them.
  */
-export function resolveRowMove(
+export type RowDropZone = "before" | "nest" | "after";
+
+const NEST_BAND_START = 0.25;
+const NEST_BAND_END = 0.75;
+
+/** Classify a pointer position within the row it is over. */
+export function rowDropZone(
+  pointerY: number,
+  rowTop: number,
+  rowHeight: number,
+): RowDropZone {
+  if (rowHeight <= 0) return "nest";
+  const ratio = (pointerY - rowTop) / rowHeight;
+  if (ratio < NEST_BAND_START) return "before";
+  if (ratio > NEST_BAND_END) return "after";
+  return "nest";
+}
+
+/**
+ * The two things a row drop can mean.
+ *
+ * Kept as one discriminated result rather than two callbacks because the
+ * caller has to choose between them once, at drop time, from the same event.
+ */
+export type RowDropResult =
+  | {
+      kind: "reorder";
+      issueId: string;
+      anchors: { before_id: string | null; after_id: string | null };
+    }
+  | {
+      kind: "nest";
+      issueId: string;
+      parentId: string;
+      anchors: { before_id: string | null; after_id: string | null };
+    };
+
+/**
+ * True when `candidateId` is `issueId` itself or sits below it in the tree.
+ *
+ * Dropping a requirement into its own sub-issue would make the subtree its own
+ * ancestor. The server rejects this too, but only after the optimistic patch
+ * has already reshaped the list — so the client refuses first and the row
+ * simply does not accept the drop.
+ */
+export function isSelfOrDescendant(
+  rows: readonly IssueTableDisplayRow[],
+  issueId: string,
+  candidateId: string,
+): boolean {
+  if (issueId === candidateId) return true;
+  const parentOf = new Map<string, string | null>();
+  for (const row of rows) {
+    if (row.kind === "issue") {
+      parentOf.set(row.issue.id, row.issue.parent_issue_id ?? null);
+    }
+  }
+  let cursor: string | null = candidateId;
+  const seen = new Set<string>();
+  while (cursor && !seen.has(cursor)) {
+    if (cursor === issueId) return true;
+    seen.add(cursor);
+    cursor = parentOf.get(cursor) ?? null;
+  }
+  return false;
+}
+
+/**
+ * Translate "row A was dropped on row B, in zone Z" into the move the endpoint
+ * expects, or null when the drop expresses nothing.
+ *
+ * Two shapes come out of this. Dropping on a row's edge reorders within a
+ * sibling list; dropping on its middle re-parents into it. Re-parenting is a
+ * heavier act than reordering — it can wake the new parent's assignee — which
+ * is why it takes the deliberate middle band rather than happening whenever
+ * two rows have different parents.
+ *
+ * Anchors are the dragged row's NEW neighbours, computed after removing it, so
+ * the server's midpoint lands where the row was dropped. A nest appends to the
+ * end of the target's children: the drop said which parent, not which slot.
+ */
+export function resolveRowDrop(
   rows: readonly IssueTableDisplayRow[],
   activeIssueId: string,
   overIssueId: string,
-): { issueId: string; anchors: { before_id: string | null; after_id: string | null } } | null {
+  zone: RowDropZone,
+): RowDropResult | null {
   const issueRows = rows.filter(
     (row): row is Extract<IssueTableDisplayRow, { kind: "issue" }> => row.kind === "issue",
   );
@@ -271,31 +388,56 @@ export function resolveRowMove(
   const over = issueRows.find((row) => row.issue.id === overIssueId);
   if (!active || !over || active === over) return null;
 
+  if (zone === "nest") {
+    // Refused rather than clamped: dropping a requirement inside its own
+    // subtree has no sensible interpretation to fall back to.
+    if (isSelfOrDescendant(rows, activeIssueId, overIssueId)) return null;
+    // Already there — the drop would be a no-op write plus a realtime event.
+    if ((active.issue.parent_issue_id ?? null) === over.issue.id) return null;
+
+    const children = issueRows.filter(
+      (row) =>
+        (row.issue.parent_issue_id ?? null) === over.issue.id &&
+        row.issue.id !== activeIssueId,
+    );
+    const last = children[children.length - 1] ?? null;
+    return {
+      kind: "nest",
+      issueId: activeIssueId,
+      parentId: over.issue.id,
+      // Appended: `before_id` is the neighbour ABOVE, so the last existing
+      // child. A target with no children yet gets a null pair, which the
+      // server reads as "anywhere in this parent".
+      anchors: { before_id: last?.issue.id ?? null, after_id: null },
+    };
+  }
+
   const activeParent = active.issue.parent_issue_id ?? null;
+  // Reordering stays within one sibling list. Dropping on an edge in a
+  // different family says nothing about which parent was meant — the middle
+  // band is how that intent is expressed.
   if (activeParent !== (over.issue.parent_issue_id ?? null)) return null;
 
   const siblings = issueRows.filter(
     (row) => (row.issue.parent_issue_id ?? null) === activeParent,
   );
-  const from = siblings.findIndex((row) => row.issue.id === activeIssueId);
   const to = siblings.findIndex((row) => row.issue.id === overIssueId);
-  if (from === -1 || to === -1) return null;
-  void from;
+  if (to === -1) return null;
 
   const without = siblings.filter((row) => row.issue.id !== activeIssueId);
   // Removing the dragged row shifts everything below it up by one, which is
-  // exactly what turns "dropped on index `to`" into the same insertion index
-  // for both directions: dragging down lands after the target, dragging up
-  // lands before it.
-  //
-  // `before` is the neighbour ABOVE and `after` the one BELOW — the server
-  // reads them as the lower and upper bound of the new position, not as
-  // "happens earlier / later" in time.
-  const before = without[to - 1] ?? null;
-  const after = without[to] ?? null;
+  // what turns "dropped on index `to`" into the same insertion index for both
+  // directions: dragging down lands after the target, dragging up lands
+  // before it. The zone then nudges by one slot so an explicit "before" on a
+  // row below still lands above it.
+  const insertAt = zone === "after" ? to + 1 : to;
+  const bounded = Math.max(0, Math.min(insertAt, without.length));
+  const before = without[bounded - 1] ?? null;
+  const after = without[bounded] ?? null;
   if (!before && !after) return null;
 
   return {
+    kind: "reorder",
     issueId: activeIssueId,
     anchors: {
       before_id: before?.issue.id ?? null,
@@ -2369,16 +2511,67 @@ export function TableView({
   // are prefixed, because a column key and an issue id share a namespace
   // otherwise and a stray collision would move the wrong thing.
   const [draggingKind, setDraggingKind] = useState<"column" | "row" | null>(null);
+  // What the current pointer position would do if released. Drives the row
+  // highlight: a drag with no preview is a coin flip between reorder and
+  // re-parent, and the user finds out only after the write.
+  const [rowDropHint, setRowDropHint] = useState<{
+    overIssueId: string;
+    zone: RowDropZone;
+    valid: boolean;
+  } | null>(null);
 
   const handleDragStart = useCallback(({ active }: DragStartEvent) => {
     setDraggingKind(isRowDragId(active.id) ? "row" : "column");
+    setRowDropHint(null);
   }, []);
 
-  const handleDragCancel = useCallback(() => setDraggingKind(null), []);
+  const handleDragCancel = useCallback(() => {
+    setDraggingKind(null);
+    setRowDropHint(null);
+  }, []);
+
+  // dnd-kit reports the collision, not the pointer, so the zone is derived
+  // from where the dragged row's own top edge sits inside the target. The
+  // vertical axis lock means that edge tracks the pointer exactly.
+  const dropZoneFromEvent = useCallback(
+    ({ active, over }: DragMoveEvent | DragEndEvent): RowDropZone | null => {
+      if (!over) return null;
+      const activeRect = active.rect.current.translated;
+      if (!activeRect) return null;
+      const pointerY = activeRect.top + activeRect.height / 2;
+      return rowDropZone(pointerY, over.rect.top, over.rect.height);
+    },
+    [],
+  );
+
+  const handleDragOver = useCallback(
+    (event: DragOverEvent) => {
+      const { active, over } = event;
+      if (!over || !isRowDragId(active.id) || !isRowDragId(over.id)) {
+        setRowDropHint(null);
+        return;
+      }
+      const zone = dropZoneFromEvent(event as unknown as DragMoveEvent);
+      if (!zone) {
+        setRowDropHint(null);
+        return;
+      }
+      const overIssueId = rowDragIdToIssueId(over.id);
+      const resolved = resolveRowDrop(
+        displayRows,
+        rowDragIdToIssueId(active.id),
+        overIssueId,
+        zone,
+      );
+      setRowDropHint({ overIssueId, zone, valid: resolved !== null });
+    },
+    [displayRows, dropZoneFromEvent],
+  );
 
   const handleDragEnd = useCallback(
     ({ active, over }: DragEndEvent) => {
       setDraggingKind(null);
+      setRowDropHint(null);
       if (!over || active.id === over.id) return;
 
       if (!isRowDragId(active.id)) {
@@ -2387,14 +2580,23 @@ export function TableView({
       }
       if (!onMoveIssue || !isRowDragId(over.id)) return;
 
-      const move = resolveRowMove(
+      const zone = dropZoneFromEvent({ active, over } as DragEndEvent);
+      if (!zone) return;
+      const move = resolveRowDrop(
         displayRows,
         rowDragIdToIssueId(active.id),
         rowDragIdToIssueId(over.id),
+        zone,
       );
-      if (move) onMoveIssue(move.issueId, move.anchors);
+      if (!move) return;
+      onMoveIssue(
+        move.issueId,
+        move.kind === "nest"
+          ? { ...move.anchors, parent_issue_id: move.parentId }
+          : move.anchors,
+      );
     },
-    [reorderTableColumn, onMoveIssue, displayRows],
+    [reorderTableColumn, onMoveIssue, displayRows, dropZoneFromEvent],
   );
 
   // Only issue rows take part; a group header has no position to write. Ids
@@ -2598,6 +2800,7 @@ export function TableView({
             : { threshold: { x: 0.05, y: 0 } }
         }
         onDragStart={handleDragStart}
+        onDragOver={handleDragOver}
         onDragCancel={handleDragCancel}
         onDragEnd={handleDragEnd}
       >
@@ -2609,6 +2812,7 @@ export function TableView({
             items={sortableRowIds}
             strategy={verticalListSortingStrategy}
           >
+          <RowDropHintContext.Provider value={rowDropHint}>
           <DataTable
             table={table}
             virtualizeRows
@@ -2664,6 +2868,7 @@ export function TableView({
             }}
             className="min-h-0 flex-1"
           />
+          </RowDropHintContext.Provider>
           </SortableContext>
         </SortableContext>
       </DndContext>
