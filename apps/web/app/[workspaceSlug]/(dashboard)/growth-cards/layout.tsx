@@ -8,7 +8,7 @@ import type { Metadata } from "next";
  * view code whose module scope calls `createContext`, which cannot be
  * evaluated in the server graph a `metadata` export would put it in.
  */
-export const metadata: Metadata = { title: "Retros" };
+export const metadata: Metadata = { title: "Growth Cards" };
 
 export default function Layout({ children }: { children: React.ReactNode }) {
   return children;

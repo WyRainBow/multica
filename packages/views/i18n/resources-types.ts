@@ -7,7 +7,7 @@ import type common from "../locales/en/common.json";
 import type auth from "../locales/en/auth.json";
 import type settings from "../locales/en/settings.json";
 import type issues from "../locales/en/issues.json";
-import type retros from "../locales/en/retros.json";
+import type growthCards from "../locales/en/growth-cards.json";
 import type agents from "../locales/en/agents.json";
 import type editor from "../locales/en/editor.json";
 import type onboarding from "../locales/en/onboarding.json";
@@ -49,7 +49,7 @@ declare global {
     auth: typeof auth;
     settings: typeof settings;
     issues: typeof issues;
-    retros: typeof retros;
+    "growth-cards": typeof growthCards;
     agents: typeof agents;
     editor: typeof editor;
     onboarding: typeof onboarding;

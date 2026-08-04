@@ -1032,7 +1032,6 @@ export class ApiClient {
   async deleteGrowthCard(id: string): Promise<void> {
     await this.fetch(`/api/growth-cards/${id}`, { method: "DELETE" });
   }
-  }
 
   async createComment(
     issueId: string,
