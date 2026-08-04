@@ -1,0 +1,32 @@
+{
+  "page": {
+    "title": "カード",
+    "count_other": "{{count}} 件",
+    "new": "新しいカード",
+    "search_placeholder": "カードを検索...",
+    "empty": "まだ何もありません。後で見返したいことを書き留めておきましょう。",
+    "no_matches": "一致するカードはありません。"
+  },
+  "card": {
+    "edit": "編集",
+    "untitled": "無題",
+    "issue_missing": "関連する issue は利用できません"
+  },
+  "editor": {
+    "new_title": "新しいカード",
+    "edit_title": "カードを編集",
+    "title_placeholder": "タイトル（任意）",
+    "content_placeholder": "自由に書いてください...",
+    "save": "保存",
+    "cancel": "キャンセル",
+    "delete_action": "削除",
+    "delete_confirm": "このカードを削除しますか？",
+    "save_failed": "カードを保存できませんでした",
+    "delete_failed": "カードを削除できませんでした"
+  },
+  "issue_section": {
+    "title": "カード",
+    "add": "カードを追加",
+    "empty": "この issue にはまだカードがありません。"
+  }
+}

@@ -69,6 +69,7 @@ import { SubIssuesAgentWorkingChip } from "./sub-issues-agent-working-chip";
 import { ProjectPicker } from "../../projects/components/project-picker";
 import { LocalDirectoryHint } from "../../projects/components/local-directory-hint";
 import { CommentCard } from "./comment-card";
+import { IssueCardsSection } from "../../cards";
 import { DescriptionOutline } from "./description-outline";
 import type { OutlineHeading } from "../../editor/outline";
 import { CommentInput } from "./comment-input";
@@ -2686,6 +2687,11 @@ export function IssueDetail({ issueId, onDelete, onDone, defaultSidebarOpen = tr
             </div>
             {descDragOver && <FileDropOverlay />}
           </div>
+
+          {/* Notes kept about this requirement. Sits below the description and
+              above the sub-issues: it is about THIS issue, not about the tree
+              underneath it. */}
+          <IssueCardsSection issueId={id} />
 
           {/* Sub-issues — Linear-style */}
           {childIssues.length === 0 && (

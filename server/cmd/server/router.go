@@ -1117,6 +1117,18 @@ func NewRouterWithOptions(pool *pgxpool.Pool, hub *realtime.Hub, bus *events.Bus
 			// Assignee frequency
 			r.Get("/api/assignee-frequency", h.GetAssigneeFrequency)
 
+			// Cards — short free-form notes that outlive whatever produced
+			// them.
+			r.Route("/api/cards", func(r chi.Router) {
+				r.Get("/", h.ListCards)
+				r.Post("/", h.CreateCard)
+				r.Route("/{id}", func(r chi.Router) {
+					r.Get("/", h.GetCard)
+					r.Put("/", h.UpdateCard)
+					r.Delete("/", h.DeleteCard)
+				})
+			})
+
 			// Issues
 			r.Route("/api/issues", func(r chi.Router) {
 				r.Post("/table/groups", h.ListIssueTableGroups)
@@ -1146,6 +1158,7 @@ func NewRouterWithOptions(pool *pgxpool.Pool, hub *realtime.Hub, bus *events.Bus
 					// finish and be archived without taking it along.
 					r.Post("/park", h.ParkIssue)
 					r.Get("/parked", h.ListParkedFromIssue)
+					r.Get("/cards", h.ListCardsForIssue)
 					r.Delete("/", h.DeleteIssue)
 					r.Post("/comments/trigger-preview", h.PreviewCommentTriggers)
 					r.Post("/comments", h.CreateComment)

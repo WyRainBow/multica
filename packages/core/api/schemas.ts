@@ -603,6 +603,25 @@ export const CommentSchema = z.object({
   anchor_offset: z.number().nullable().optional(),
 }).loose();
 
+export const CardSchema = z.object({
+  id: z.string(),
+  workspace_id: z.string(),
+  issue_id: z.string().nullable().default(null),
+  author_type: z.string().default("member"),
+  author_id: z.string().default(""),
+  // Both default to empty: a card may legitimately have no title, and an
+  // older or partial payload must still render rather than blank the list.
+  title: z.string().default(""),
+  content: z.string().default(""),
+  created_at: z.string(),
+  updated_at: z.string(),
+}).loose();
+
+export const CardListResponseSchema = z.object({
+  cards: z.array(CardSchema).default([]),
+  total: z.number().default(0),
+}).loose();
+
 export const CommentsListSchema = z.array(CommentSchema);
 
 // Degraded placeholder for a comment response that failed schema validation.
