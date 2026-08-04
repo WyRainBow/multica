@@ -218,6 +218,7 @@ export function useIssueSurfaceController({
   const sortDirection = useViewStore((s) => s.sortDirection);
   const dateFilter = useViewStore((s) => s.dateFilter);
   const statusFilters = useViewStore((s) => s.statusFilters);
+  const filterModes = useViewStore((s) => s.filterModes);
   const priorityFilters = useViewStore((s) => s.priorityFilters);
   const assigneeFilters = useViewStore((s) => s.assigneeFilters);
   const includeNoAssignee = useViewStore((s) => s.includeNoAssignee);
@@ -433,17 +434,29 @@ export function useIssueSurfaceController({
     return {
       scope: queryScope,
       filters: {
-        ...(statusFilters.length > 0 ? { statuses: statusFilters } : {}),
-        ...(priorityFilters.length > 0 ? { priorities: priorityFilters } : {}),
-        ...(assigneeFilters.length > 0 ? { assignees: assigneeFilters } : {}),
+        ...(statusFilters.length > 0
+          ? { statuses: statusFilters, status_mode: filterModes.status }
+          : {}),
+        ...(priorityFilters.length > 0
+          ? { priorities: priorityFilters, priority_mode: filterModes.priority }
+          : {}),
+        ...(assigneeFilters.length > 0
+          ? { assignees: assigneeFilters, assignee_mode: filterModes.assignee }
+          : {}),
         ...(includeNoAssignee ? { include_no_assignee: true } : {}),
-        ...(creatorFilters.length > 0 ? { creators: creatorFilters } : {}),
+        ...(creatorFilters.length > 0
+          ? { creators: creatorFilters, creator_mode: filterModes.creator }
+          : {}),
         ...(viewProjectFilters.length > 0
-          ? { project_ids: viewProjectFilters }
+          ? { project_ids: viewProjectFilters, project_mode: filterModes.project }
           : {}),
         ...(viewIncludeNoProject ? { include_no_project: true } : {}),
-        ...(labelFilters.length > 0 ? { label_ids: labelFilters } : {}),
-        ...(parentFilters.length > 0 ? { parent_ids: parentFilters } : {}),
+        ...(labelFilters.length > 0
+          ? { label_ids: labelFilters, label_mode: filterModes.label }
+          : {}),
+        ...(parentFilters.length > 0
+          ? { parent_ids: parentFilters, parent_mode: filterModes.parent }
+          : {}),
         ...(Object.keys(effectivePropertyFilters).length > 0
           ? { properties: effectivePropertyFilters }
           : {}),
@@ -467,6 +480,7 @@ export function useIssueSurfaceController({
     dateParams,
     debouncedActiveSearch,
     effectivePropertyFilters,
+    filterModes,
     includeNoAssignee,
     labelFilters,
     parentFilters,
@@ -692,6 +706,7 @@ export function useIssueSurfaceController({
     ganttShowCompleted,
     sort,
     statusFilters,
+    filterModes,
     priorityFilters,
     assigneeFilters,
     includeNoAssignee,

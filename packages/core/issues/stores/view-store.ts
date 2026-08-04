@@ -4,7 +4,14 @@ import { useEffect, useRef } from "react";
 import { create } from "zustand";
 import { createStore, type StoreApi } from "zustand/vanilla";
 import { createJSONStorage, persist } from "zustand/middleware";
-import type { IssueStatus, IssuePriority } from "../../types";
+import type {
+  IssueStatus,
+  IssuePriority,
+  IssueFilterMode,
+  IssueFilterCategory,
+  IssueFilterModes,
+} from "../../types";
+import { defaultIssueFilterModes } from "../../types";
 import { ALL_STATUSES } from "../config";
 import { createWorkspaceAwareStorage, registerForWorkspaceRehydration } from "../../platform/workspace-storage";
 import { defaultStorage } from "../../platform/storage";
@@ -168,6 +175,12 @@ export interface IssueViewState {
    * across definitions, mirroring the other filter groups.
    */
   propertyFilters: Record<string, string[]>;
+  /**
+   * Per-category include/exclude. Kept beside the selections rather than
+   * folded into them so a user can flip "status: is / is not" without losing
+   * which statuses they had picked.
+   */
+  filterModes: IssueFilterModes;
   dateFilter: IssueDateFilter | null;
   // When true, the list only shows issues that currently have at least one
   // agent task in `running` status. Drives the workspace "agents working"
@@ -212,6 +225,7 @@ export interface IssueViewState {
   toggleGanttShowCompleted: () => void;
   setGrouping: (grouping: IssueGrouping) => void;
   toggleStatusFilter: (status: IssueStatus) => void;
+  setFilterMode: (category: IssueFilterCategory, mode: IssueFilterMode) => void;
   togglePriorityFilter: (priority: IssuePriority) => void;
   toggleAssigneeFilter: (value: ActorFilterValue) => void;
   toggleNoAssignee: () => void;
@@ -261,6 +275,7 @@ export const viewStoreSlice = (set: StoreApi<IssueViewState>["setState"]): Issue
   labelFilters: [],
   parentFilters: [],
   propertyFilters: {},
+  filterModes: defaultIssueFilterModes(),
   dateFilter: null,
   agentRunningFilter: false,
   sortBy: "position",
@@ -296,6 +311,10 @@ export const viewStoreSlice = (set: StoreApi<IssueViewState>["setState"]): Issue
   toggleGanttShowCompleted: () =>
     set((state) => ({ ganttShowCompleted: !state.ganttShowCompleted })),
   setGrouping: (grouping) => set({ grouping }),
+  setFilterMode: (category, mode) =>
+    set((state) => ({
+      filterModes: { ...state.filterModes, [category]: mode },
+    })),
   toggleStatusFilter: (status) =>
     set((state) => ({
       statusFilters: state.statusFilters.includes(status)

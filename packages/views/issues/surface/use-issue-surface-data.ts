@@ -20,7 +20,7 @@ import {
   issueSurfaceListOptions,
 } from "@multica/core/issues/surface/repository";
 import type { IssueSurfaceQueryPlan } from "@multica/core/issues/surface/query-plan";
-import type { IssueStatus } from "@multica/core/types";
+import type { IssueStatus, IssueFilterModes } from "@multica/core/types";
 import {
   applyIssueFilters,
   filterAssigneeGroups,
@@ -111,6 +111,7 @@ export function useIssueSurfaceData({
   ganttShowCompleted,
   sort,
   statusFilters,
+  filterModes,
   priorityFilters,
   assigneeFilters,
   includeNoAssignee,
@@ -138,6 +139,7 @@ export function useIssueSurfaceData({
   ganttShowCompleted: boolean;
   sort: IssueSortParam;
   statusFilters: IssueStatus[];
+  filterModes?: IssueFilterModes;
   priorityFilters: IssueFilterState["priorityFilters"];
   assigneeFilters: IssueFilterState["assigneeFilters"];
   includeNoAssignee: boolean;
@@ -168,6 +170,7 @@ export function useIssueSurfaceData({
     [
       assigneeFilters,
       creatorFilters,
+      filterModes,
       includeNoAssignee,
       includeNoProject,
       labelFilters,
@@ -248,6 +251,7 @@ export function useIssueSurfaceData({
       labelFilters,
       parentFilters,
       propertyFilters,
+      filterModes,
       workingOnly: agentRunningFilter,
       showSubIssues,
     }),

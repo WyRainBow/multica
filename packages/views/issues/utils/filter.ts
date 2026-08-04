@@ -1,4 +1,11 @@
-import type { Issue, IssueStatus, IssuePriority, IssueAssigneeGroup } from "@multica/core/types";
+import type {
+  Issue,
+  IssueStatus,
+  IssuePriority,
+  IssueAssigneeGroup,
+  IssueFilterModes,
+} from "@multica/core/types";
+import { defaultIssueFilterModes } from "@multica/core/types";
 import type { ActorFilterValue } from "@multica/core/issues/stores/view-store";
 import type { IssueActivityState } from "../surface/activity";
 
@@ -31,6 +38,8 @@ export interface IssueFilters {
   // the default behaviour of showing everything, so existing callers that omit
   // it (and mobile's positional variant) are unaffected.
   showSubIssues?: boolean;
+  /** Per-category include/exclude. Omitted = every category includes. */
+  filterModes?: IssueFilterModes;
 }
 
 export interface IssueFilterState {
@@ -54,6 +63,8 @@ export interface IssueFilterState {
   workingOnly: boolean;
   /** See IssueFilters.showSubIssues — only an explicit `false` hides. */
   showSubIssues?: boolean;
+  /** Per-category include/exclude. Omitted = every category includes. */
+  filterModes?: IssueFilterModes;
 }
 
 export interface IssueFilterContext {
@@ -111,6 +122,12 @@ export function applyIssueFilters(
   context: IssueFilterContext = {},
 ): Issue[] {
   const { statusFilters, priorityFilters, assigneeFilters, includeNoAssignee, creatorFilters, projectFilters, includeNoProject, labelFilters, workingOnly } = filters;
+  const modes = filters.filterModes ?? defaultIssueFilterModes();
+  // Mirrors the server's `IS NOT TRUE` negation: excluding a value must keep
+  // the rows that have no value at all. "Not in project X" includes every
+  // issue with no project — the alternative silently hides them.
+  const keeps = (category: keyof IssueFilterModes, matched: boolean): boolean =>
+    modes[category] === "exclude" ? !matched : matched;
   const hasAssigneeFilter =
     filters.assigneeFilterActive === true ||
     assigneeFilters.length > 0 ||
@@ -146,14 +163,30 @@ export function applyIssueFilters(
 
     if (hideSubIssues && issue.parent_issue_id) return false;
 
-    if (statusFilters.length > 0 && !statusFilters.includes(issue.status))
+    if (
+      statusFilters.length > 0 &&
+      !keeps("status", statusFilters.includes(issue.status))
+    )
       return false;
 
-    if (priorityFilters.length > 0 && !priorityFilters.includes(issue.priority))
+    if (
+      priorityFilters.length > 0 &&
+      !keeps("priority", priorityFilters.includes(issue.priority))
+    )
       return false;
 
     if (hasAssigneeFilter) {
-      if (!issue.assignee_id) {
+      if (modes.assignee === "exclude") {
+        // Excluding named assignees. An unassigned issue matches nothing that
+        // was excluded, so it stays — unless "No assignee" is itself one of
+        // the things being excluded.
+        const matched = issue.assignee_id
+          ? assigneeFilters.some(
+              (f) => f.type === issue.assignee_type && f.id === issue.assignee_id,
+            )
+          : includeNoAssignee;
+        if (matched) return false;
+      } else if (!issue.assignee_id) {
         // Unassigned issue — show only if "No assignee" is checked
         if (!includeNoAssignee) return false;
       } else if (assigneeFilters.length > 0) {
@@ -169,15 +202,25 @@ export function applyIssueFilters(
 
     if (
       creatorFilters.length > 0 &&
-      !creatorFilters.some(
-        (f) => f.type === issue.creator_type && f.id === issue.creator_id,
+      !keeps(
+        "creator",
+        creatorFilters.some(
+          (f) => f.type === issue.creator_type && f.id === issue.creator_id,
+        ),
       )
     ) {
       return false;
     }
 
     if (hasProjectFilter) {
-      if (!issue.project_id) {
+      if (modes.project === "exclude") {
+        // Same rule as assignee: an issue with no project survives excluding
+        // a project, unless "No project" is what is being excluded.
+        const matched = issue.project_id
+          ? projectFilters.includes(issue.project_id)
+          : includeNoProject;
+        if (matched) return false;
+      } else if (!issue.project_id) {
         if (!includeNoProject) return false;
       } else if (projectFilters.length > 0) {
         if (!projectFilters.includes(issue.project_id)) return false;
@@ -187,14 +230,20 @@ export function applyIssueFilters(
       }
     }
 
-    if (parentSelection.size > 0 && !inSelectedSubtree(issue)) return false;
+    if (
+      parentSelection.size > 0 &&
+      !keeps("parent", inSelectedSubtree(issue))
+    )
+      return false;
 
     if (labelFilters.length > 0) {
       // OR semantics within the filter: keep issues that carry any of the
       // selected labels. Matches existing priority / project multi-select.
-      const issueLabels = issue.labels;
-      if (!issueLabels || issueLabels.length === 0) return false;
-      if (!issueLabels.some((l) => labelFilters.includes(l.id))) return false;
+      // Excluding drops those issues instead — and keeps the unlabelled ones,
+      // which carry none of the excluded labels.
+      const issueLabels = issue.labels ?? [];
+      const matched = issueLabels.some((l) => labelFilters.includes(l.id));
+      if (!keeps("label", matched)) return false;
     }
 
     if (!issueMatchesPropertyFilters(issue, filters.propertyFilters)) return false;
@@ -213,6 +262,7 @@ export function filterIssues(issues: Issue[], filters: IssueFilters): Issue[] {
       includeNoAssignee: filters.includeNoAssignee,
       assigneeFilterActive: filters.assigneeFilterActive,
       creatorFilters: filters.creatorFilters,
+      filterModes: filters.filterModes,
       projectFilters: filters.projectFilters,
       includeNoProject: filters.includeNoProject,
       labelFilters: filters.labelFilters,

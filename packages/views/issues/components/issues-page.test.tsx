@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { Issue } from "@multica/core/types";
+import { defaultIssueFilterModes } from "@multica/core/types";
 import { I18nProvider } from "@multica/core/i18n/react";
 import enCommon from "../../locales/en/common.json";
 import enIssues from "../../locales/en/issues.json";
@@ -294,6 +295,7 @@ const mockViewState = {
   viewMode: "board" as "board" | "list",
   grouping: "status" as "status" | "assignee",
   statusFilters: [] as string[],
+  filterModes: defaultIssueFilterModes(),
   priorityFilters: [] as string[],
   assigneeFilters: [] as { type: string; id: string }[],
   includeNoAssignee: false,
