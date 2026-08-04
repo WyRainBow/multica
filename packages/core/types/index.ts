@@ -1,4 +1,4 @@
-export type { Issue, IssueStatus, IssuePriority, IssueAssigneeType, IssueMetadata, IssueMetadataValue, IssueReaction } from "./issue";
+export type { Issue, IssueStatus, IssuePriority, IssueAssigneeType, IssueMetadata, IssueMetadataValue, IssueReaction, IssueFilterMode, IssueFilterCategory, IssueFilterModes } from "./issue";
 export type {
   Agent,
   AgentStatus,
@@ -250,3 +250,5 @@ export type {
   BillingCheckoutSessionStatus,
   CreateBillingPortalSessionResponse,
 } from "./billing";
+
+export { ISSUE_FILTER_CATEGORIES, defaultIssueFilterModes } from "./issue";

@@ -80,6 +80,37 @@ type issueTableDateFilterRequest struct {
 	End   string `json:"end"`
 }
 
+// issueTableFilterMode says whether a category keeps what matches or drops it.
+//
+// Absent means "include", so a client that predates exclusion sends nothing
+// and gets exactly the old behaviour.
+type issueTableFilterMode string
+
+const (
+	issueTableFilterInclude issueTableFilterMode = "include"
+	issueTableFilterExclude issueTableFilterMode = "exclude"
+)
+
+func (m issueTableFilterMode) excludes() bool { return m == issueTableFilterExclude }
+
+func (m issueTableFilterMode) valid() bool {
+	return m == "" || m == issueTableFilterInclude || m == issueTableFilterExclude
+}
+
+// applyIssueTableMode negates a predicate for an excluding category.
+//
+// `IS NOT TRUE` rather than `NOT (...)`, and the difference is the whole
+// point: `NOT (i.project_id = ANY(...))` is NULL for an issue with no project,
+// and a NULL predicate drops the row — so "exclude project X" would silently
+// also hide every issue that has no project at all. `IS NOT TRUE` maps both
+// FALSE and NULL to TRUE, which is what "everything except X" means.
+func applyIssueTableMode(predicate string, mode issueTableFilterMode) string {
+	if !mode.excludes() {
+		return predicate
+	}
+	return "(" + predicate + ") IS NOT TRUE"
+}
+
 type issueTableFiltersRequest struct {
 	Statuses          []string                     `json:"statuses,omitempty"`
 	Priorities        []string                     `json:"priorities,omitempty"`
@@ -98,6 +129,18 @@ type issueTableFiltersRequest struct {
 	WorkingOnly       bool                         `json:"working_only,omitempty"`
 	WorkingIssueIDs   []string                     `json:"working_issue_ids,omitempty"`
 	IncludeSubIssues  *bool                        `json:"include_sub_issues,omitempty"`
+	// Per-category include/exclude. Each mode applies to the list above it:
+	// StatusMode governs Statuses, LabelMode governs LabelIDs, and so on.
+	// Archiving has no mode — IncludeArchived is already a show/hide switch,
+	// not a "which ones" filter.
+	StatusMode   issueTableFilterMode `json:"status_mode,omitempty"`
+	PriorityMode issueTableFilterMode `json:"priority_mode,omitempty"`
+	AssigneeMode issueTableFilterMode `json:"assignee_mode,omitempty"`
+	CreatorMode  issueTableFilterMode `json:"creator_mode,omitempty"`
+	ProjectMode  issueTableFilterMode `json:"project_mode,omitempty"`
+	LabelMode    issueTableFilterMode `json:"label_mode,omitempty"`
+	ParentMode   issueTableFilterMode `json:"parent_mode,omitempty"`
+
 	// Archived issues are hidden from every surface unless this is true.
 	// Archiving is a visibility dimension, independent of `status` — a card
 	// keeps its done/cancelled answer after it leaves the board.
@@ -422,6 +465,21 @@ func (h *Handler) compileIssueTableQuery(w http.ResponseWriter, r *http.Request,
 		return "$" + strconv.Itoa(len(args))
 	}
 
+	for name, mode := range map[string]issueTableFilterMode{
+		"filters.status_mode":   spec.Filters.StatusMode,
+		"filters.priority_mode": spec.Filters.PriorityMode,
+		"filters.assignee_mode": spec.Filters.AssigneeMode,
+		"filters.creator_mode":  spec.Filters.CreatorMode,
+		"filters.project_mode":  spec.Filters.ProjectMode,
+		"filters.label_mode":    spec.Filters.LabelMode,
+		"filters.parent_mode":   spec.Filters.ParentMode,
+	} {
+		if !mode.valid() {
+			writeError(w, http.StatusBadRequest, "invalid "+name)
+			return issueTableSQL{}, false
+		}
+	}
+
 	for _, status := range spec.Filters.Statuses {
 		if !issueTableContainsString(validIssueStatuses, status) {
 			writeError(w, http.StatusBadRequest, "invalid filters.statuses")
@@ -429,7 +487,9 @@ func (h *Handler) compileIssueTableQuery(w http.ResponseWriter, r *http.Request,
 		}
 	}
 	if len(spec.Filters.Statuses) > 0 {
-		where = append(where, fmt.Sprintf("i.status = ANY(%s::text[])", addArg(sortedUniqueStrings(spec.Filters.Statuses))))
+		where = append(where, applyIssueTableMode(
+			fmt.Sprintf("i.status = ANY(%s::text[])", addArg(sortedUniqueStrings(spec.Filters.Statuses))),
+			spec.Filters.StatusMode))
 	}
 	for _, priority := range spec.Filters.Priorities {
 		if !issueTableContainsString(validIssuePriorities, priority) {
@@ -438,7 +498,9 @@ func (h *Handler) compileIssueTableQuery(w http.ResponseWriter, r *http.Request,
 		}
 	}
 	if len(spec.Filters.Priorities) > 0 {
-		where = append(where, fmt.Sprintf("i.priority = ANY(%s::text[])", addArg(sortedUniqueStrings(spec.Filters.Priorities))))
+		where = append(where, applyIssueTableMode(
+			fmt.Sprintf("i.priority = ANY(%s::text[])", addArg(sortedUniqueStrings(spec.Filters.Priorities))),
+			spec.Filters.PriorityMode))
 	}
 
 	switch spec.Scope.Kind {
@@ -529,10 +591,15 @@ func (h *Handler) compileIssueTableQuery(w http.ResponseWriter, r *http.Request,
 		if len(ors) == 0 {
 			// Omitted assignees means "no assignee filter"; an explicitly
 			// empty list means "match none", so API callers can preserve an
-			// intentionally active empty predicate.
-			where = append(where, "FALSE")
+			// intentionally active empty predicate. Excluding nothing, on the
+			// other hand, removes nothing — so the excluding form of an empty
+			// list is simply no predicate at all.
+			if !spec.Filters.AssigneeMode.excludes() {
+				where = append(where, "FALSE")
+			}
 		} else {
-			where = append(where, "("+strings.Join(ors, " OR ")+")")
+			where = append(where, applyIssueTableMode(
+				"("+strings.Join(ors, " OR ")+")", spec.Filters.AssigneeMode))
 		}
 	}
 
@@ -545,7 +612,8 @@ func (h *Handler) compileIssueTableQuery(w http.ResponseWriter, r *http.Request,
 			}
 			ors = append(ors, fmt.Sprintf("(i.creator_type = %s::text AND i.creator_id = %s::uuid)", addArg(actor.actorType), addArg(actor.actorID)))
 		}
-		where = append(where, "("+strings.Join(ors, " OR ")+")")
+		where = append(where, applyIssueTableMode(
+			"("+strings.Join(ors, " OR ")+")", spec.Filters.CreatorMode))
 	}
 
 	projectIDs, ok := parseIssueTableUUIDList(w, spec.Filters.ProjectIDs, "filters.project_ids")
@@ -560,7 +628,8 @@ func (h *Handler) compileIssueTableQuery(w http.ResponseWriter, r *http.Request,
 		if spec.Filters.IncludeNoProject {
 			ors = append(ors, "i.project_id IS NULL")
 		}
-		where = append(where, "("+strings.Join(ors, " OR ")+")")
+		where = append(where, applyIssueTableMode(
+			"("+strings.Join(ors, " OR ")+")", spec.Filters.ProjectMode))
 	}
 
 	labelIDs, ok := parseIssueTableUUIDList(w, spec.Filters.LabelIDs, "filters.label_ids")
@@ -568,7 +637,9 @@ func (h *Handler) compileIssueTableQuery(w http.ResponseWriter, r *http.Request,
 		return issueTableSQL{}, false
 	}
 	if len(labelIDs) > 0 {
-		where = append(where, fmt.Sprintf("EXISTS (SELECT 1 FROM issue_to_label itl WHERE itl.issue_id = i.id AND itl.label_id = ANY(%s::uuid[]))", addArg(labelIDs)))
+		where = append(where, applyIssueTableMode(
+			fmt.Sprintf("EXISTS (SELECT 1 FROM issue_to_label itl WHERE itl.issue_id = i.id AND itl.label_id = ANY(%s::uuid[]))", addArg(labelIDs)),
+			spec.Filters.LabelMode))
 	}
 
 	parentIDs, ok := parseIssueTableUUIDList(w, spec.Filters.ParentIDs, "filters.parent_ids")
@@ -580,7 +651,7 @@ func (h *Handler) compileIssueTableQuery(w http.ResponseWriter, r *http.Request,
 		// subtree, not just direct children. The recursion is workspace-scoped
 		// on both legs and `UNION` (not `UNION ALL`) so a cycle introduced by
 		// bad data terminates instead of spinning.
-		where = append(where, fmt.Sprintf(`i.id IN (
+		where = append(where, applyIssueTableMode(fmt.Sprintf(`i.id IN (
 			WITH RECURSIVE issue_subtree AS (
 				SELECT root.id
 				FROM issue root
@@ -592,7 +663,7 @@ func (h *Handler) compileIssueTableQuery(w http.ResponseWriter, r *http.Request,
 				WHERE child.workspace_id = $1
 			)
 			SELECT id FROM issue_subtree
-		)`, addArg(parentIDs)))
+		)`, addArg(parentIDs)), spec.Filters.ParentMode))
 	}
 
 	if len(spec.Filters.Properties) > 0 {

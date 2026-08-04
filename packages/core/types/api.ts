@@ -1,4 +1,4 @@
-import type { Issue, IssueMetadata, IssueStatus, IssuePriority, IssueAssigneeType } from "./issue";
+import type { Issue, IssueMetadata, IssueStatus, IssuePriority, IssueAssigneeType, IssueFilterMode } from "./issue";
 import type { MemberRole } from "./workspace";
 import type { Project } from "./project";
 
@@ -265,6 +265,22 @@ export interface IssueTableFilters {
    */
   parent_ids?: string[];
   properties?: Record<string, string[]>;
+  /**
+   * Per-category include/exclude. Each mode governs the list above it:
+   * status_mode governs statuses, label_mode governs label_ids, and so on.
+   * Omitted means "include", so a request that predates exclusion behaves
+   * exactly as before.
+   *
+   * Archiving has no mode — include_archived is already a show/hide switch,
+   * not a "which ones" filter.
+   */
+  status_mode?: IssueFilterMode;
+  priority_mode?: IssueFilterMode;
+  assignee_mode?: IssueFilterMode;
+  creator_mode?: IssueFilterMode;
+  project_mode?: IssueFilterMode;
+  label_mode?: IssueFilterMode;
+  parent_mode?: IssueFilterMode;
   date?: {
     field: "created_at" | "updated_at";
     start: string;

@@ -10,6 +10,50 @@ export type IssueStatus =
   | "blocked"
   | "cancelled";
 
+/**
+ * Whether a filter category keeps what matches or drops it.
+ *
+ * "exclude" exists because the include form cannot express "everything except
+ * backlog" without ticking every other status by hand — which is also wrong
+ * the moment a new status is added.
+ */
+export type IssueFilterMode = "include" | "exclude";
+
+/** The filter categories that support exclusion. */
+export type IssueFilterCategory =
+  | "status"
+  | "priority"
+  | "assignee"
+  | "creator"
+  | "project"
+  | "label"
+  | "parent";
+
+export type IssueFilterModes = Record<IssueFilterCategory, IssueFilterMode>;
+
+export const ISSUE_FILTER_CATEGORIES: readonly IssueFilterCategory[] = [
+  "status",
+  "priority",
+  "assignee",
+  "creator",
+  "project",
+  "label",
+  "parent",
+];
+
+/** Every category including, which is the behaviour that predates exclusion. */
+export function defaultIssueFilterModes(): IssueFilterModes {
+  return {
+    status: "include",
+    priority: "include",
+    assignee: "include",
+    creator: "include",
+    project: "include",
+    label: "include",
+    parent: "include",
+  };
+}
+
 export type IssuePriority = "urgent" | "high" | "medium" | "low" | "none";
 
 export type IssueAssigneeType = "member" | "agent" | "squad";

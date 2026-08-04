@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import type { Issue, IssueAssigneeGroup } from "@multica/core/types";
+import { defaultIssueFilterModes } from "@multica/core/types";
 import {
   applyIssueFilters,
   filterAssigneeGroups,
@@ -522,5 +523,119 @@ describe("parent filter", () => {
       statusFilters: ["done"],
     });
     expect(result.map((i) => i.id)).toEqual(["mid"]);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Exclusion ("is not")
+// ---------------------------------------------------------------------------
+
+const EXCLUDING = (
+  category: keyof ReturnType<typeof defaultIssueFilterModes>,
+) => ({ ...defaultIssueFilterModes(), [category]: "exclude" as const });
+
+describe("filterIssues — exclusion", () => {
+  // The reason the feature exists: "everything except backlog" cannot be
+  // written as an include list without ticking every other status, which is
+  // also wrong the moment a status is added.
+  it("keeps everything but the excluded status", () => {
+    const result = filterIssues(issues, {
+      ...NO_FILTER,
+      statusFilters: ["todo"],
+      filterModes: EXCLUDING("status"),
+    });
+    expect(result.map((i) => i.id)).toEqual(["2", "3"]);
+  });
+
+  it("leaves the including form untouched when no modes are given", () => {
+    const result = filterIssues(issues, { ...NO_FILTER, statusFilters: ["todo"] });
+    expect(result.map((i) => i.id)).toEqual(["1", "4"]);
+  });
+
+  // The NULL trap, client side. Excluding a project must not also hide every
+  // issue that has no project — the server's `IS NOT TRUE` says the same.
+  it("keeps issues with no project when excluding a project", () => {
+    const result = filterIssues(issues, {
+      ...NO_FILTER,
+      projectFilters: ["p-1"],
+      filterModes: EXCLUDING("project"),
+    });
+    // p-2 and the project-less issue survive; both p-1 issues are dropped.
+    expect(result.map((i) => i.id)).toEqual(["2", "3"]);
+  });
+
+  it("keeps unassigned issues when excluding an assignee", () => {
+    const result = filterIssues(issues, {
+      ...NO_FILTER,
+      assigneeFilters: [{ type: "member", id: "u-1" }],
+      filterModes: EXCLUDING("assignee"),
+    });
+    expect(result.map((i) => i.id)).toEqual(["2", "3", "4"]);
+  });
+
+  // "No assignee" is itself selectable, so excluding it must drop exactly the
+  // unassigned issues and keep every assigned one.
+  it("drops unassigned issues when excluding 'no assignee'", () => {
+    const result = filterIssues(issues, {
+      ...NO_FILTER,
+      includeNoAssignee: true,
+      filterModes: EXCLUDING("assignee"),
+    });
+    expect(result.map((i) => i.id)).toEqual(["1", "2", "4"]);
+  });
+
+  it("keeps unlabelled issues when excluding a label", () => {
+    const labelled = [
+      makeIssue({ id: "L1", labels: [{ id: "lab-1", workspace_id: "ws-1", name: "bug", color: "#f00", created_at: "", updated_at: "" }] }),
+      makeIssue({ id: "L2", labels: [] }),
+    ] as Issue[];
+    const result = filterIssues(labelled, {
+      ...NO_FILTER,
+      labelFilters: ["lab-1"],
+      filterModes: EXCLUDING("label"),
+    });
+    expect(result.map((i) => i.id)).toEqual(["L2"]);
+  });
+
+  it("excludes a parent's whole subtree", () => {
+    const tree = [
+      makeIssue({ id: "root" }),
+      makeIssue({ id: "kid", parent_issue_id: "root" }),
+      makeIssue({ id: "other" }),
+    ];
+    const result = applyIssueFilters(tree, {
+      ...NO_FILTER,
+      workingOnly: false,
+      parentFilters: ["root"],
+      filterModes: EXCLUDING("parent"),
+    });
+    expect(result.map((i) => i.id)).toEqual(["other"]);
+  });
+
+  // Each excluding category removes its own set; they intersect.
+  it("combines two excluding categories", () => {
+    const result = filterIssues(issues, {
+      ...NO_FILTER,
+      statusFilters: ["todo"],
+      projectFilters: ["p-2"],
+      filterModes: {
+        ...defaultIssueFilterModes(),
+        status: "exclude",
+        project: "exclude",
+      },
+    });
+    // not todo (drops 1, 4) and not p-2 (drops 2)
+    expect(result.map((i) => i.id)).toEqual(["3"]);
+  });
+
+  it("mixes an including category with an excluding one", () => {
+    const result = filterIssues(issues, {
+      ...NO_FILTER,
+      statusFilters: ["todo"],
+      projectFilters: ["p-1"],
+      filterModes: EXCLUDING("project"),
+    });
+    // todo status, minus the ones in p-1 — nothing left.
+    expect(result.map((i) => i.id)).toEqual([]);
   });
 });

@@ -97,6 +97,7 @@ import { Tooltip, TooltipTrigger, TooltipContent } from "@multica/ui/components/
 import { useT } from "../../i18n";
 import { matchesPinyin } from "../../editor/extensions/pinyin-match";
 import { FILTER_ITEM_CLASS, HoverCheck } from "../../common/hover-check";
+import { FilterModeToggle } from "./filter-mode-toggle";
 import { WorkspaceAgentWorkingChip } from "./workspace-agent-working-chip";
 import { TableColumnPicker } from "./table-view";
 
@@ -1068,6 +1069,7 @@ export function IssueDisplayControls({
   const labelFilters = useViewStore((s) => s.labelFilters);
   const parentFilters = useViewStore((s) => s.parentFilters);
   const propertyFilters = useViewStore((s) => s.propertyFilters);
+  const filterModes = useViewStore((s) => s.filterModes);
   const cardPropertyIds = useViewStore((s) => s.cardPropertyIds);
   const sortBy = useViewStore((s) => s.sortBy);
   const sortDirection = useViewStore((s) => s.sortDirection);
@@ -1259,6 +1261,11 @@ export function IssueDisplayControls({
                 )}
               </DropdownMenuSubTrigger>
               <DropdownMenuSubContent className="w-auto min-w-48">
+                <FilterModeToggle
+                  category="status"
+                  mode={filterModes.status}
+                  onChange={act.setFilterMode}
+                />
                 {ALL_STATUSES.map((s) => {
                   const checked = statusFilters.includes(s);
                   const count = counts.status.get(s) ?? 0;
@@ -1299,6 +1306,11 @@ export function IssueDisplayControls({
                 )}
               </DropdownMenuSubTrigger>
               <DropdownMenuSubContent className="w-auto min-w-44">
+                <FilterModeToggle
+                  category="priority"
+                  mode={filterModes.priority}
+                  onChange={act.setFilterMode}
+                />
                 {PRIORITY_ORDER.map((p) => {
                   const checked = priorityFilters.includes(p);
                   const count = counts.priority.get(p) ?? 0;
@@ -1359,6 +1371,11 @@ export function IssueDisplayControls({
                 )}
               </DropdownMenuSubTrigger>
               <DropdownMenuSubContent className="w-auto min-w-52 p-0">
+                <FilterModeToggle
+                  category="assignee"
+                  mode={filterModes.assignee}
+                  onChange={act.setFilterMode}
+                />
                 <ActorSubContent
                   counts={counts.assignee}
                   selected={assigneeFilters}
@@ -1387,6 +1404,11 @@ export function IssueDisplayControls({
                 )}
               </DropdownMenuSubTrigger>
               <DropdownMenuSubContent className="w-auto min-w-52 p-0">
+                <FilterModeToggle
+                  category="creator"
+                  mode={filterModes.creator}
+                  onChange={act.setFilterMode}
+                />
                 <ActorSubContent
                   counts={counts.creator}
                   selected={creatorFilters}
@@ -1412,6 +1434,11 @@ export function IssueDisplayControls({
                 )}
               </DropdownMenuSubTrigger>
               <DropdownMenuSubContent className="w-auto min-w-52 p-0">
+                <FilterModeToggle
+                  category="project"
+                  mode={filterModes.project}
+                  onChange={act.setFilterMode}
+                />
                 <ProjectSubContent
                   counts={counts.project}
                   selected={projectFilters}
@@ -1439,6 +1466,11 @@ export function IssueDisplayControls({
                 )}
               </DropdownMenuSubTrigger>
               <DropdownMenuSubContent className="w-auto min-w-52 p-0">
+                <FilterModeToggle
+                  category="label"
+                  mode={filterModes.label}
+                  onChange={act.setFilterMode}
+                />
                 <LabelSubContent
                   counts={counts.label}
                   selected={labelFilters}
@@ -1463,6 +1495,11 @@ export function IssueDisplayControls({
                 )}
               </DropdownMenuSubTrigger>
               <DropdownMenuSubContent className="w-auto min-w-64 p-0">
+                <FilterModeToggle
+                  category="parent"
+                  mode={filterModes.parent}
+                  onChange={act.setFilterMode}
+                />
                 <ParentSubContent
                   counts={counts.parent}
                   selected={parentFilters}
