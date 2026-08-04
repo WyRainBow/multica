@@ -21,6 +21,12 @@ interface IssuePickerModalProps {
   title: string;
   description: string;
   excludeIds: string[];
+  /**
+   * Extra predicate applied to search results. Lets a caller narrow the picker
+   * to a kind of issue — a growth card, for instance, only ever attaches to a
+   * top-level requirement — without every caller re-implementing search.
+   */
+  filter?: (issue: Issue) => boolean;
   onSelect: (issue: Issue) => void;
 }
 
@@ -30,6 +36,7 @@ export function IssuePickerModal({
   title,
   description,
   excludeIds,
+  filter,
   onSelect,
 }: IssuePickerModalProps) {
   const { t } = useT("modals");
@@ -70,7 +77,11 @@ export function IssuePickerModal({
             signal: controller.signal,
           });
           if (!controller.signal.aborted) {
-            setResults(res.issues.filter((i) => !excludeIds.includes(i.id)));
+            setResults(
+              res.issues.filter(
+                (i) => !excludeIds.includes(i.id) && (!filter || filter(i)),
+              ),
+            );
             setIsLoading(false);
           }
         } catch {
@@ -80,7 +91,7 @@ export function IssuePickerModal({
         }
       }, 300);
     },
-    [excludeIds],
+    [excludeIds, filter],
   );
 
   return (

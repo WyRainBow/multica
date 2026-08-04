@@ -1,5 +1,11 @@
 export type { Issue, IssueStatus, IssuePriority, IssueAssigneeType, IssueMetadata, IssueMetadataValue, IssueReaction } from "./issue";
-export type { Retro, CreateRetroRequest, UpdateRetroRequest, RetroListResponse } from "./retro";
+export type {
+  GrowthCard,
+  GrowthCardFields,
+  CreateGrowthCardRequest,
+  UpdateGrowthCardRequest,
+  GrowthCardListResponse,
+} from "./growth-card";
 export type {
   Agent,
   AgentStatus,
