@@ -1776,6 +1776,30 @@ describe("IssueDetail (shared)", () => {
     expect(screen.getByText("Parked out of this")).toBeInTheDocument();
   });
 
+  // The number a CLI reader actually pulls in: `multica issue get` returns the
+  // Markdown, so counting anything else would not match what a reader pays.
+  it("shows the description length in characters", async () => {
+    mockApiObj.getIssue.mockResolvedValue({
+      ...mockIssue,
+      description: "12345",
+    });
+
+    renderIssueDetail();
+
+    expect(await screen.findByText("5 characters")).toBeInTheDocument();
+  });
+
+  // A "0 characters" label on every fresh issue is noise; the number only
+  // means something once there is something to measure.
+  it("hides the length while the description is empty", async () => {
+    mockApiObj.getIssue.mockResolvedValue({ ...mockIssue, description: "" });
+
+    renderIssueDetail();
+
+    await screen.findByText("Implement authentication");
+    expect(screen.queryByText(/characters$/)).not.toBeInTheDocument();
+  });
+
 });
 
 describe("groupSubIssuesByStage", () => {

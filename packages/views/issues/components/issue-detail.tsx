@@ -1792,6 +1792,18 @@ export function IssueDetail({ issueId, onDelete, onDone, defaultSidebarOpen = tr
   const descEditorRef = useRef<ContentEditorRef>(null);
   // Headings of the description, refreshed by the editor as they are typed.
   const [descOutline, setDescOutline] = useState<OutlineHeading[]>([]);
+  // Length of the description as Markdown — the same thing `multica issue get`
+  // returns, so a number read here matches what a CLI reader actually pulls
+  // in. Counted in characters, not words: the descriptions here are Chinese,
+  // where a word count means nothing.
+  //
+  // Seeded from the saved value and refreshed on the editor's debounced
+  // update, so it is correct on open and settles a moment after typing stops.
+  // A per-keystroke count would mean serializing the document on every key.
+  const [descLength, setDescLength] = useState(0);
+  useEffect(() => {
+    setDescLength((issue?.description ?? "").length);
+  }, [issue?.description]);
   const jumpToHeading = useCallback((heading: OutlineHeading) => {
     descEditorRef.current?.scrollToPosition(heading.pos);
   }, []);
@@ -2637,6 +2649,7 @@ export function IssueDetail({ issueId, onDelete, onDone, defaultSidebarOpen = tr
               value={issue.description || ""}
               placeholder={t(($) => $.detail.desc_placeholder)}
               onUpdate={(md) => {
+                setDescLength(md.length);
                 // Bind any pending uploads still referenced in the markdown
                 // so they appear in `issueAttachments` after refresh and the
                 // editor's text/code preview keeps working past reload.
@@ -2684,6 +2697,16 @@ export function IssueDetail({ issueId, onDelete, onDone, defaultSidebarOpen = tr
                 multiple
                 onSelect={(file) => descEditorRef.current?.uploadFile(file)}
               />
+              {/* Hidden while the description is empty: a "0 characters" label
+                  on every fresh issue is noise, and the number only starts
+                  meaning something once there is something to measure. No
+                  threshold colour — length is not the same as bloat, and
+                  flagging a long-but-clean description would be wrong. */}
+              {descLength > 0 && (
+                <span className="ml-auto shrink-0 text-caption tabular-nums text-faint-foreground">
+                  {t(($) => $.detail.description_length, { count: descLength })}
+                </span>
+              )}
             </div>
             {descDragOver && <FileDropOverlay />}
           </div>

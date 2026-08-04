@@ -244,6 +244,7 @@
     "desc_placeholder": "Add description...",
     "sub_issues_label": "Sub-issues",
     "sub_issue_of": "Sub-issue of",
+    "description_length_other": "{{count}} characters",
     "parked_from": "Parked out of",
     "section_parked": "Parked out of this",
     "section_parked_hint": "Not part of finishing this requirement. These stay when it is archived.",
