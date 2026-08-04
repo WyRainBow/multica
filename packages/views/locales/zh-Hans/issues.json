@@ -335,6 +335,10 @@
     "workdir_path_copy_failed": "复制本地 workdir 路径失败",
     "workdir_path_unavailable": "暂无本地 workdir — 这个 issue 还没被本地 agent 运行过"
   },
+  "outline": {
+    "collapse": "收起目录",
+    "expand": "展开目录"
+  },
   "timeline": {
     "loading": "加载中…"
   },

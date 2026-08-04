@@ -338,6 +338,10 @@
     "workdir_path_copy_failed": "Failed to copy workdir path",
     "workdir_path_unavailable": "No local workdir yet — issue has not been run by a local agent"
   },
+  "outline": {
+    "collapse": "Collapse outline",
+    "expand": "Show outline"
+  },
   "timeline": {
     "loading": "Loading..."
   },

@@ -59,6 +59,7 @@ import { ImageView } from "./image-view";
 import { BlockMathExtension, InlineMathExtension } from "./math";
 import { HighlightExtension } from "./highlight";
 import { CommentHighlight } from "./comment-highlight";
+import { HeadingAnchor } from "./heading-anchor";
 import type { CommentAnchor } from "../comment-anchors";
 import { codeLowlight } from "../syntax-highlight";
 
@@ -208,6 +209,10 @@ export function createEditorExtensions(
   const { placeholder: placeholderText, commentAnchors, onCommentAnchorClick } = options;
 
   return [
+    // Stamps headings with their document position so a host outline can
+    // measure where each one rendered. Unconditional: cheap, and every editor
+    // that can hold headings can host an outline.
+    HeadingAnchor,
     ...(commentAnchors
       ? [
           CommentHighlight.configure({

@@ -69,6 +69,8 @@ import { ProjectPicker } from "../../projects/components/project-picker";
 import { LocalDirectoryHint } from "../../projects/components/local-directory-hint";
 import { CommentCard } from "./comment-card";
 import { IssueRetrosSection } from "../../retros";
+import { DescriptionOutline } from "./description-outline";
+import type { OutlineHeading } from "../../editor/outline";
 import { CommentInput } from "./comment-input";
 import { ResolvedThreadBar } from "./resolved-thread-bar";
 import { ThreadMinimap, type ThreadMinimapThread } from "./thread-minimap";
@@ -1766,6 +1768,11 @@ export function IssueDetail({ issueId, onDelete, onDone, defaultSidebarOpen = tr
   }, [highlightCommentId, items, targetIdx, scrollContainerEl, replyToRoot, expandedResolved, timelineView, toggleResolvedExpand]);
 
   const descEditorRef = useRef<ContentEditorRef>(null);
+  // Headings of the description, refreshed by the editor as they are typed.
+  const [descOutline, setDescOutline] = useState<OutlineHeading[]>([]);
+  const jumpToHeading = useCallback((heading: OutlineHeading) => {
+    descEditorRef.current?.scrollToPosition(heading.pos);
+  }, []);
   // Keep the description editor mounted from the start. Unlike the empty
   // composer shells, a long rendered description cannot swap between
   // react-markdown and ProseMirror without small per-block height differences
@@ -2616,6 +2623,7 @@ export function IssueDetail({ issueId, onDelete, onDone, defaultSidebarOpen = tr
               // the image markdown and its attachment_ids bind (MUL-3254).
               flushPendingOnUnmount
               currentIssueId={id}
+              onOutlineChange={setDescOutline}
               commentAnchors={descriptionCommentAnchors}
               onCommentAnchorClick={handleCommentAnchorClick}
               attachments={descEditorAttachments}
@@ -2961,6 +2969,27 @@ export function IssueDetail({ issueId, onDelete, onDone, defaultSidebarOpen = tr
             the resize handle's 4px drag strip at the panel edge. Hover
             previews a thread, click jumps to it. Hidden on mobile: no
             hover, and the gutter is too tight. */}
+        {/* Description outline — the left-edge counterpart to the thread rail
+            on the right: one jumps to a section of the prose, the other to a
+            comment thread. Mounted HERE, as a sibling of the scroll container,
+            rather than beside the description: anything inside that container
+            scrolls away with the text, which is exactly what an outline must
+            not do.
+
+            `top-12` matches the thread rail so the two read as a pair. The
+            content column is max-w-4xl and centred, so the gutter it sits in
+            is the same one the rail uses on the other side; xl-only because
+            below that width the gutter is gone and the outline would push the
+            prose sideways. */}
+        {!isMobile && (
+          <DescriptionOutline
+            headings={descOutline}
+            scrollContainer={scrollContainerEl}
+            onJump={jumpToHeading}
+            className="absolute bottom-0 left-3 top-24 hidden w-44 pb-4 xl:flex"
+          />
+        )}
+
         {!isMobile && (
           <ThreadMinimap
             threads={minimapThreads}
