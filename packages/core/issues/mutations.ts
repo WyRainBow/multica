@@ -1169,6 +1169,30 @@ export function useUnsubscribeFromIssueSubtree(issueId: string) {
 }
 
 /**
+ * Park an issue: lift it out of its parent so the parent can finish and be
+ * archived without taking it along.
+ *
+ * No optimistic patch. Parking MOVES the issue out of a subtree — it vanishes
+ * from the parent's child list and reappears as a top-level backlog issue —
+ * and the repo's rule is that removals await the server. It also rewrites
+ * three fields at once, so a half-applied guess would show an issue that is
+ * detached but still says in_progress.
+ */
+export function useParkIssue() {
+  const qc = useQueryClient();
+  const wsId = useWorkspaceId();
+  return useMutation({
+    mutationFn: (id: string) => api.parkIssue(id),
+    onSuccess: (issue) => {
+      if (issue) qc.setQueryData(issueKeys.detail(wsId, issue.id), issue);
+    },
+    onSettled: () => {
+      qc.invalidateQueries({ queryKey: issueKeys.all(wsId) });
+    },
+  });
+}
+
+/**
  * Archive or restore an issue and its sub-issue subtree.
  *
  * No optimistic patch: archiving REMOVES rows from every visible surface, and

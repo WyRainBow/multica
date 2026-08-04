@@ -4664,6 +4664,8 @@ func IssueToMap(issue db.Issue, issuePrefix string) map[string]any {
 		"properties":      util.JSONObjectOrEmpty(issue.Properties),
 		"archived_at":     util.TimestampToPtr(issue.ArchivedAt),
 		"archived_by":     util.UUIDToPtr(issue.ArchivedBy),
+
+		"parked_from_issue_id": util.UUIDToPtr(issue.ParkedFromIssueID),
 	}
 }
 

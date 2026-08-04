@@ -51,6 +51,7 @@ function makeIssue(
     archived_at: null,
     archived_by: null,
     ...overrides,
+    parked_from_issue_id: null,
   };
 }
 

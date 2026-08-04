@@ -18,6 +18,7 @@ import {
   Trash2,
   Archive,
   Unlink,
+  PauseCircle,
   UserMinus,
 } from "lucide-react";
 import type { AgentTask, Issue } from "@multica/core/types";
@@ -116,6 +117,7 @@ export function IssueActionsMenuItems({
     openDeleteConfirm,
     toggleArchived,
     isArchived,
+    parkFromParent,
   } = actions;
 
   // Subscribe to the issue's task list so the cache is warm by the time the
@@ -307,6 +309,17 @@ export function IssueActionsMenuItems({
             <P.Item onClick={removeParent}>
               <Unlink className="h-3.5 w-3.5" />
               {t(($) => $.actions.remove_parent_issue)}
+            </P.Item>
+          )}
+          {/* Sits next to "remove parent" because it is the same move made
+              for a different reason: detaching because this is not part of
+              the requirement, and saying so — backlog, plus a note of where
+              it came from. Offered only from under a parent; on a top-level
+              issue there is nothing to lift out of. */}
+          {issue.parent_issue_id && (
+            <P.Item onClick={parkFromParent}>
+              <PauseCircle className="h-3.5 w-3.5" />
+              {t(($) => $.actions.park_issue)}
             </P.Item>
           )}
           <P.Item onClick={openAddChild}>

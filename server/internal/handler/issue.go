@@ -75,6 +75,11 @@ type IssueResponse struct {
 	// the work ended. Null on every issue still on the board.
 	ArchivedAt *string `json:"archived_at"`
 	ArchivedBy *string `json:"archived_by"`
+	// ParkedFromIssueID is the requirement this issue was lifted out of. Only
+	// a provenance note — the issue is top-level and no longer follows that
+	// requirement's status or archiving. May point at an issue that has since
+	// been deleted, so readers must tolerate it resolving to nothing.
+	ParkedFromIssueID *string `json:"parked_from_issue_id"`
 }
 
 // validIssueStatuses / validIssuePriorities mirror the CHECK constraints on
@@ -121,6 +126,8 @@ func issueToResponse(i db.Issue, issuePrefix string) IssueResponse {
 		Properties:    parseIssueProperties(i.Properties),
 		ArchivedAt:    timestampToPtr(i.ArchivedAt),
 		ArchivedBy:    uuidToPtr(i.ArchivedBy),
+
+		ParkedFromIssueID: uuidToPtr(i.ParkedFromIssueID),
 	}
 }
 
@@ -3745,4 +3752,92 @@ func (h *Handler) BatchDeleteIssues(w http.ResponseWriter, r *http.Request) {
 
 	slog.Info("batch delete issues", append(logger.RequestAttrs(r), "count", deleted)...)
 	writeJSON(w, http.StatusOK, map[string]any{"deleted": deleted})
+}
+
+// ---------------------------------------------------------------------------
+// Parking
+// ---------------------------------------------------------------------------
+
+// ParkIssue handles POST /api/issues/{id}/park.
+//
+// Parking answers a specific problem: while delivering a requirement you
+// notice something to optimize or watch later. Filed as a sub-issue it blocks
+// nothing, but archiving the finished parent takes it too, because archiving
+// is subtree-wide — so the thought is lost exactly when the work that produced
+// it wraps up.
+//
+// So parking lifts it out: no parent, status back to backlog, and a record of
+// where it came from. It is deliberately NOT a new status value; "later" is
+// what backlog already means, and a second near-synonym would only make the
+// two indistinguishable in a month.
+func (h *Handler) ParkIssue(w http.ResponseWriter, r *http.Request) {
+	issue, ok := h.loadIssueForUser(w, r, chi.URLParam(r, "id"))
+	if !ok {
+		return
+	}
+	if issue.ArchivedAt.Valid {
+		writeError(w, http.StatusConflict, "cannot park an archived issue")
+		return
+	}
+
+	// Keep the first origin. Re-parking an already-parked issue (it got
+	// re-attached to a parent, then lifted out again) should still point at
+	// where the thought started, not at the most recent waypoint. Parking a
+	// top-level issue records no origin rather than pointing at itself.
+	parkedFrom := issue.ParkedFromIssueID
+	if !parkedFrom.Valid {
+		parkedFrom = issue.ParentIssueID
+	}
+
+	parked, err := h.Queries.ParkIssue(r.Context(), db.ParkIssueParams{
+		ID:                issue.ID,
+		WorkspaceID:       issue.WorkspaceID,
+		ParkedFromIssueID: parkedFrom,
+	})
+	if err != nil {
+		slog.Warn("park issue failed",
+			append(logger.RequestAttrs(r), "error", err, "issue_id", uuidToString(issue.ID))...)
+		writeError(w, http.StatusInternalServerError, "failed to park issue")
+		return
+	}
+
+	wsID := uuidToString(issue.WorkspaceID)
+	prefix := h.getIssuePrefix(r.Context(), issue.WorkspaceID)
+	userID := requestUserID(r)
+	actorType, actorID := h.resolveActor(r, userID, wsID)
+	resp := issueToResponse(parked, prefix)
+	h.publish(protocol.EventIssueUpdated, wsID, actorType, actorID, map[string]any{"issue": resp})
+
+	slog.Info("issue parked",
+		append(logger.RequestAttrs(r), "issue_id", uuidToString(issue.ID),
+			"workspace_id", wsID, "parked_from", uuidToString(parkedFrom))...)
+	writeJSON(w, http.StatusOK, resp)
+}
+
+// ListParkedFromIssue handles GET /api/issues/{id}/parked.
+//
+// The reverse view: what got lifted out of this requirement. Reachable while
+// the origin still exists, which is what lets a finished requirement be read
+// as "and these are the threads it left open".
+func (h *Handler) ListParkedFromIssue(w http.ResponseWriter, r *http.Request) {
+	issue, ok := h.loadIssueForUser(w, r, chi.URLParam(r, "id"))
+	if !ok {
+		return
+	}
+	rows, err := h.Queries.ListParkedFromIssue(r.Context(), db.ListParkedFromIssueParams{
+		WorkspaceID:       issue.WorkspaceID,
+		ParkedFromIssueID: issue.ID,
+	})
+	if err != nil {
+		slog.Warn("list parked issues failed",
+			append(logger.RequestAttrs(r), "error", err, "issue_id", uuidToString(issue.ID))...)
+		writeError(w, http.StatusInternalServerError, "failed to list parked issues")
+		return
+	}
+	prefix := h.getIssuePrefix(r.Context(), issue.WorkspaceID)
+	responses := make([]IssueResponse, 0, len(rows))
+	for _, row := range rows {
+		responses = append(responses, issueToResponse(row, prefix))
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"issues": responses})
 }

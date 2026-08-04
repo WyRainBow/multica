@@ -708,6 +708,7 @@ export const IssueSchema = z.object({
   // missing field as "not archived" without nil-guarding.
   archived_at: z.string().nullable().default(null),
   archived_by: z.string().nullable().default(null),
+  parked_from_issue_id: z.string().nullable().default(null),
   created_at: z.string(),
   updated_at: z.string(),
 }).loose();

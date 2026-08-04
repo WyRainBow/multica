@@ -1,0 +1,12 @@
+-- Where an issue was parked out of.
+--
+-- Set when a sub-issue is lifted out of its parent because it is not part of
+-- that requirement's completion: an optimization noticed mid-flight, a thing
+-- to watch later. The issue becomes top-level so the parent can finish and be
+-- archived without dragging it along (archiving is subtree-wide), and this
+-- column is the only remaining trace of where the thought came from.
+--
+-- Nullable and unenforced by design: no foreign key per project rules, and the
+-- origin may later be deleted. Readers must tolerate an id that resolves to
+-- nothing and fall back to showing no origin.
+ALTER TABLE issue ADD COLUMN parked_from_issue_id UUID;

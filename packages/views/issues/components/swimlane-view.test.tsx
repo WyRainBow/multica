@@ -299,6 +299,7 @@ const mockIssues: Issue[] = [
     updated_at: "2026-01-01T00:00:00Z",
     archived_at: null,
     archived_by: null,
+    parked_from_issue_id: null,
   },
   {
     id: "child-1",
@@ -325,6 +326,7 @@ const mockIssues: Issue[] = [
     updated_at: "2026-01-01T00:00:00Z",
     archived_at: null,
     archived_by: null,
+    parked_from_issue_id: null,
   },
   {
     id: "orphan-1",
@@ -351,6 +353,7 @@ const mockIssues: Issue[] = [
     updated_at: "2026-01-01T00:00:00Z",
     archived_at: null,
     archived_by: null,
+    parked_from_issue_id: null,
   },
 ];
 
@@ -477,6 +480,7 @@ describe("SwimLaneView", () => {
     updated_at: "2026-01-01T00:00:00Z",
     archived_at: null,
     archived_by: null,
+    parked_from_issue_id: null,
   };
 
   it("renders a Cancelled column and its cards by default", () => {
@@ -627,6 +631,7 @@ describe("SwimLaneView", () => {
     updated_at: "2026-01-01T00:00:00Z",
     archived_at: null,
     archived_by: null,
+    parked_from_issue_id: null,
   };
 
   it("renders children whose parent is not in the loaded set under an 'Other parents' fallback lane", () => {
@@ -1049,6 +1054,7 @@ describe("SwimLaneView", () => {
       updated_at: "2026-01-01T00:00:00Z",
       archived_at: null,
       archived_by: null,
+      parked_from_issue_id: null,
     },
     {
       id: "parent-2",
@@ -1075,6 +1081,7 @@ describe("SwimLaneView", () => {
       updated_at: "2026-01-01T00:00:00Z",
       archived_at: null,
       archived_by: null,
+      parked_from_issue_id: null,
     },
     {
       id: "child-of-1",
@@ -1101,6 +1108,7 @@ describe("SwimLaneView", () => {
       updated_at: "2026-01-01T00:00:00Z",
       archived_at: null,
       archived_by: null,
+      parked_from_issue_id: null,
     },
     {
       id: "child-of-2",
@@ -1127,6 +1135,7 @@ describe("SwimLaneView", () => {
       updated_at: "2026-01-01T00:00:00Z",
       archived_at: null,
       archived_by: null,
+      parked_from_issue_id: null,
     },
   ];
 
@@ -1586,6 +1595,7 @@ describe("SwimLaneView", () => {
       updated_at: "2026-01-01T00:00:00Z",
       archived_at: null,
       archived_by: null,
+      parked_from_issue_id: null,
     };
     const parent: Issue = {
       ...grandparent,
@@ -1663,6 +1673,7 @@ describe("SwimLaneView", () => {
       updated_at: "2026-01-01T00:00:00Z",
       archived_at: null,
       archived_by: null,
+      parked_from_issue_id: null,
     };
     const childProgressMap = new Map<string, { done: number; total: number }>([
       ["p-only", { done: 0, total: 3 }],
@@ -1747,6 +1758,7 @@ describe("SwimLaneView", () => {
       updated_at: "2026-01-01T00:00:00Z",
       archived_at: null,
       archived_by: null,
+      parked_from_issue_id: null,
     };
     const parent: Issue = {
       ...grandparent,
@@ -1843,6 +1855,7 @@ describe("SwimLaneView", () => {
       updated_at: "2026-01-01T00:00:00Z",
       archived_at: null,
       archived_by: null,
+      parked_from_issue_id: null,
     };
     const parent: Issue = {
       ...grandparent,
@@ -1985,6 +1998,7 @@ describe("SwimLaneView", () => {
       updated_at: "2026-01-01T00:00:00Z",
       archived_at: null,
       archived_by: null,
+      parked_from_issue_id: null,
     };
     const parent: Issue = {
       ...grandparent,
