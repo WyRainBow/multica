@@ -2396,7 +2396,11 @@ export function IssueDetail({ issueId, onDelete, onDone, defaultSidebarOpen = tr
       : [];
 
   const detailContent = (
-    <div className="relative flex h-full min-w-0 flex-1 flex-col">
+    // @container: the description outline shows only when THIS panel is wide
+    // enough for it, not when the viewport is. Opening the properties sidebar
+    // narrows the panel without changing the viewport, so a `xl:` breakpoint
+    // would keep the outline mounted and lay it straight over the prose.
+    <div className="@container relative flex h-full min-w-0 flex-1 flex-col">
         {/* In-page find bar — floats over the top-right of the content column
             (below the breadcrumb header), outside the scroll container so it
             stays put while the timeline scrolls and its own text isn't walked.
@@ -2972,15 +2976,21 @@ export function IssueDetail({ issueId, onDelete, onDone, defaultSidebarOpen = tr
 
             `top-12` matches the thread rail so the two read as a pair. The
             content column is max-w-4xl and centred, so the gutter it sits in
-            is the same one the rail uses on the other side; xl-only because
-            below that width the gutter is gone and the outline would push the
-            prose sideways. */}
+            is the same one the rail uses on the other side.
+
+            The 81rem threshold is that gutter, computed rather than picked:
+            the column is 56rem wide, the outline ends at left-3 + w-44 =
+            11.75rem, and 0.75rem of clearance keeps it off the text — so the
+            outline fits from 56 + 2 × 12.5 = 81rem up. It is a CONTAINER
+            query, not `xl:`: opening the properties sidebar narrows this
+            panel while the viewport stays put, and a viewport breakpoint
+            would leave the outline sitting on top of the prose. */}
         {!isMobile && (
           <DescriptionOutline
             headings={descOutline}
             scrollContainer={scrollContainerEl}
             onJump={jumpToHeading}
-            className="absolute bottom-0 left-3 top-24 hidden w-44 pb-4 xl:flex"
+            className="absolute bottom-0 left-3 top-24 hidden w-44 pb-4 @[81rem]:flex"
           />
         )}
 
