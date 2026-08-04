@@ -86,7 +86,7 @@ import { useWorkspacePaths } from "@multica/core/paths";
 import { useActorName } from "@multica/core/workspace/hooks";
 import { useWorkspaceId } from "@multica/core/hooks";
 import { useRecentContextStore } from "@multica/core/chat";
-import { issueListOptions, issueDetailOptions, childIssuesOptions, childIssueProgressOptions, issueUsageOptions, issueAttachmentsOptions } from "@multica/core/issues/queries";
+import { issueListOptions, issueDetailOptions, childIssuesOptions, parkedFromIssueOptions, childIssueProgressOptions, issueUsageOptions, issueAttachmentsOptions } from "@multica/core/issues/queries";
 import { projectDetailOptions } from "@multica/core/projects/queries";
 import { ProjectIcon } from "../../projects/components/project-icon";
 import { issueLabelsOptions } from "@multica/core/labels";
@@ -1679,6 +1679,16 @@ export function IssueDetail({ issueId, onDelete, onDone, defaultSidebarOpen = tr
     return clearSelection;
   }, [id, clearSelection]);
 
+  // Issues parked out of THIS requirement. Deliberately a separate query from
+  // childIssues: a parked issue is no longer a child — that is the whole point
+  // of parking — so folding it into the child list would put it back in the
+  // subtree the user just lifted it out of, and it would start counting toward
+  // the "x/y done" progress it was removed from.
+  const { data: parkedIssues = [] } = useQuery({
+    ...parkedFromIssueOptions(wsId, id),
+    enabled: !!issue,
+  });
+
   const childIssueIds = useMemo(() => childIssues.map((c) => c.id), [childIssues]);
   const childSelectedCount = childIssueIds.filter((cid) =>
     selectedIds.has(cid),
@@ -2793,6 +2803,44 @@ export function IssueDetail({ issueId, onDelete, onDone, defaultSidebarOpen = tr
               </IssueContextMenuProvider>
             );
           })()}
+
+          {/* Parked out of this requirement.
+              Rendered only when non-empty, and with no "add" affordance: a
+              parked issue is produced by parking one from somewhere else, not
+              created here. Reuses SubIssueRow so the rows read and behave the
+              same as sub-issues — same right-click actions, same inline edits
+              — because the only difference is what the list MEANS, not what a
+              row is. */}
+          {parkedIssues.length > 0 && (
+            <IssueContextMenuProvider>
+              <div className="mt-10">
+                <div className="mb-2 flex items-center gap-2">
+                  <PauseCircle className="h-3.5 w-3.5 text-muted-foreground" />
+                  <h3 className="text-body font-medium">
+                    {t(($) => $.detail.section_parked)}
+                  </h3>
+                  <span className="text-caption text-muted-foreground tabular-nums">
+                    {parkedIssues.length}
+                  </span>
+                </div>
+                {/* Says what the list is FOR. Without it a reader assumes
+                    these are sub-issues that failed to render as such. */}
+                <p className="mb-2 text-caption text-muted-foreground">
+                  {t(($) => $.detail.section_parked_hint)}
+                </p>
+                <div className="overflow-hidden rounded-lg border bg-card/30 divide-y divide-border/60">
+                  {parkedIssues.map((parked) => (
+                    <SubIssueRow
+                      key={parked.id}
+                      child={parked}
+                      rowProps={subIssueRowProps}
+                      customProperties={subIssueCustomProps}
+                    />
+                  ))}
+                </div>
+              </div>
+            </IssueContextMenuProvider>
+          )}
 
           <div className="my-8 border-t" />
 

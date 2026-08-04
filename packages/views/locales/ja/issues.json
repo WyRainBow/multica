@@ -240,6 +240,8 @@
     "sub_issues_label": "サブイシュー",
     "sub_issue_of": "親イシュー",
     "parked_from": "保留元",
+    "section_parked": "ここから保留したもの",
+    "section_parked_hint": "この要件の完了範囲には含まれません。要件をアーカイブしても残ります。",
     "add_sub_issues": "サブイシューを追加",
     "add_sub_issue_tooltip": "サブイシューを追加",
     "add_sub_issue_aria": "サブイシューを追加",

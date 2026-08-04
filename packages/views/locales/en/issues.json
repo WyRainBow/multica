@@ -242,6 +242,8 @@
     "sub_issues_label": "Sub-issues",
     "sub_issue_of": "Sub-issue of",
     "parked_from": "Parked out of",
+    "section_parked": "Parked out of this",
+    "section_parked_hint": "Not part of finishing this requirement. These stay when it is archived.",
     "add_sub_issues": "Add sub-issues",
     "add_sub_issue_tooltip": "Add sub-issue",
     "add_sub_issue_aria": "Add sub-issue",

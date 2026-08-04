@@ -277,6 +277,7 @@ const mockApiObj = vi.hoisted(() => ({
   rerunIssue: vi.fn(),
   listTaskMessages: vi.fn().mockResolvedValue([]),
   listChildIssues: vi.fn().mockResolvedValue({ issues: [] }),
+  listParkedFromIssue: vi.fn().mockResolvedValue({ issues: [] }),
   getChildIssueProgress: vi.fn().mockResolvedValue({ progress: [] }),
   getAgentTaskSnapshot: vi.fn().mockResolvedValue([]),
   // The sub-issues header chip reads this narrowed to the parent issue.
@@ -643,6 +644,7 @@ describe("IssueDetail (shared)", () => {
     mockApiObj.listIssueReactions.mockResolvedValue([]);
     mockApiObj.listIssueSubscribers.mockResolvedValue([]);
     mockApiObj.listChildIssues.mockResolvedValue({ issues: [] });
+    mockApiObj.listParkedFromIssue.mockResolvedValue({ issues: [] });
     mockApiObj.getChildIssueProgress.mockResolvedValue({ progress: [] });
     mockApiObj.getAgentTaskSnapshot.mockResolvedValue([]);
     mockApiObj.getWorkspaceWorkingAgents.mockResolvedValue([]);
@@ -1712,6 +1714,68 @@ describe("IssueDetail (shared)", () => {
       expect(due.closest("span")?.className).toContain("text-muted-foreground");
     });
   });
+  // The reverse view of parking: what this requirement left open. Without it
+  // a parked issue is only reachable from its own page, and the requirement
+  // that produced it reads as if nothing was set aside.
+  it("lists the issues parked out of this requirement", async () => {
+    mockApiObj.listParkedFromIssue.mockResolvedValue({
+      issues: [
+        {
+          ...mockIssue,
+          id: "parked-1",
+          identifier: "TES-9",
+          title: "Optimize the subtree query",
+          status: "backlog",
+          parent_issue_id: null,
+          parked_from_issue_id: "issue-1",
+        },
+      ],
+    });
+
+    renderIssueDetail();
+
+    expect(await screen.findByText("Optimize the subtree query")).toBeInTheDocument();
+    expect(screen.getByText("Parked out of this")).toBeInTheDocument();
+  });
+
+  // An empty section would put a permanent "nothing here" block on every
+  // requirement in the workspace, which is noise on all but a few.
+  it("renders no parked section when nothing was parked", async () => {
+    renderIssueDetail();
+
+    await screen.findByText("Implement authentication");
+    expect(screen.queryByText("Parked out of this")).not.toBeInTheDocument();
+  });
+
+  // Parked issues must not be mistaken for sub-issues: they were deliberately
+  // removed from the subtree, and counting them again in the "x/y done"
+  // progress would undo exactly what parking achieved.
+  it("keeps parked issues out of the sub-issue list", async () => {
+    mockApiObj.listChildIssues.mockResolvedValue({
+      issues: [{ ...mockIssue, id: "child-1", identifier: "TES-2", title: "A real sub-issue" }],
+    });
+    mockApiObj.listParkedFromIssue.mockResolvedValue({
+      issues: [
+        {
+          ...mockIssue,
+          id: "parked-1",
+          identifier: "TES-9",
+          title: "Optimize the subtree query",
+          status: "backlog",
+          parked_from_issue_id: "issue-1",
+        },
+      ],
+    });
+
+    renderIssueDetail();
+
+    await screen.findByText("A real sub-issue");
+    // Both render, but under different headings — the sub-issue count must
+    // not have grown to include the parked one.
+    expect(screen.getByText("Optimize the subtree query")).toBeInTheDocument();
+    expect(screen.getByText("Parked out of this")).toBeInTheDocument();
+  });
+
 });
 
 describe("groupSubIssuesByStage", () => {
