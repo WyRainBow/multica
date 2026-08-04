@@ -1117,15 +1117,15 @@ func NewRouterWithOptions(pool *pgxpool.Pool, hub *realtime.Hub, bus *events.Bus
 			// Assignee frequency
 			r.Get("/api/assignee-frequency", h.GetAssigneeFrequency)
 
-			// Retros — what a piece of work taught someone, kept after the
-			// requirement itself is done with.
-			r.Route("/api/retros", func(r chi.Router) {
-				r.Get("/", h.ListRetros)
-				r.Post("/", h.CreateRetro)
+			// Growth cards — what a delivery taught the person who delivered
+			// it, kept after the requirement itself is done with.
+			r.Route("/api/growth-cards", func(r chi.Router) {
+				r.Get("/", h.ListGrowthCards)
+				r.Post("/", h.CreateGrowthCard)
 				r.Route("/{id}", func(r chi.Router) {
-					r.Get("/", h.GetRetro)
-					r.Put("/", h.UpdateRetro)
-					r.Delete("/", h.DeleteRetro)
+					r.Get("/", h.GetGrowthCard)
+					r.Put("/", h.UpdateGrowthCard)
+					r.Delete("/", h.DeleteGrowthCard)
 				})
 			})
 
@@ -1168,7 +1168,7 @@ func NewRouterWithOptions(pool *pgxpool.Pool, hub *realtime.Hub, bus *events.Bus
 					r.Post("/rerun", h.RerunIssue)
 					r.Post("/quick-actions/{quickActionId}/run", h.RunQuickAction)
 					r.Post("/quick-actions/{quickActionId}/render", h.RenderQuickAction)
-					r.Get("/retros", h.ListRetrosForIssue)
+					r.Get("/growth-cards", h.ListGrowthCardsForIssue)
 					r.Get("/task-runs", h.ListTasksByIssue)
 					r.Get("/usage", h.GetIssueUsage)
 					r.Post("/reactions", h.AddIssueReaction)

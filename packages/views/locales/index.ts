@@ -3,7 +3,7 @@ import enCommon from "./en/common.json";
 import enAuth from "./en/auth.json";
 import enSettings from "./en/settings.json";
 import enIssues from "./en/issues.json";
-import enRetros from "./en/retros.json";
+import enGrowthCards from "./en/growth-cards.json";
 import enAgents from "./en/agents.json";
 import enEditor from "./en/editor.json";
 import enOnboarding from "./en/onboarding.json";
@@ -29,7 +29,7 @@ import zhHansCommon from "./zh-Hans/common.json";
 import zhHansAuth from "./zh-Hans/auth.json";
 import zhHansSettings from "./zh-Hans/settings.json";
 import zhHansIssues from "./zh-Hans/issues.json";
-import zhHansRetros from "./zh-Hans/retros.json";
+import zhHansGrowthCards from "./zh-Hans/growth-cards.json";
 import zhHansAgents from "./zh-Hans/agents.json";
 import zhHansEditor from "./zh-Hans/editor.json";
 import zhHansOnboarding from "./zh-Hans/onboarding.json";
@@ -55,7 +55,7 @@ import koCommon from "./ko/common.json";
 import koAuth from "./ko/auth.json";
 import koSettings from "./ko/settings.json";
 import koIssues from "./ko/issues.json";
-import koRetros from "./ko/retros.json";
+import koGrowthCards from "./ko/growth-cards.json";
 import koAgents from "./ko/agents.json";
 import koEditor from "./ko/editor.json";
 import koOnboarding from "./ko/onboarding.json";
@@ -81,7 +81,7 @@ import jaCommon from "./ja/common.json";
 import jaAuth from "./ja/auth.json";
 import jaSettings from "./ja/settings.json";
 import jaIssues from "./ja/issues.json";
-import jaRetros from "./ja/retros.json";
+import jaGrowthCards from "./ja/growth-cards.json";
 import jaAgents from "./ja/agents.json";
 import jaEditor from "./ja/editor.json";
 import jaOnboarding from "./ja/onboarding.json";
@@ -113,7 +113,7 @@ export const RESOURCES: Record<SupportedLocale, LocaleResources> = {
     auth: enAuth,
     settings: enSettings,
     issues: enIssues,
-    retros: enRetros,
+    "growth-cards": enGrowthCards,
     agents: enAgents,
     editor: enEditor,
     onboarding: enOnboarding,
@@ -141,7 +141,7 @@ export const RESOURCES: Record<SupportedLocale, LocaleResources> = {
     auth: zhHansAuth,
     settings: zhHansSettings,
     issues: zhHansIssues,
-    retros: zhHansRetros,
+    "growth-cards": zhHansGrowthCards,
     agents: zhHansAgents,
     editor: zhHansEditor,
     onboarding: zhHansOnboarding,
@@ -169,7 +169,7 @@ export const RESOURCES: Record<SupportedLocale, LocaleResources> = {
     auth: koAuth,
     settings: koSettings,
     issues: koIssues,
-    retros: koRetros,
+    "growth-cards": koGrowthCards,
     agents: koAgents,
     editor: koEditor,
     onboarding: koOnboarding,
@@ -197,7 +197,7 @@ export const RESOURCES: Record<SupportedLocale, LocaleResources> = {
     auth: jaAuth,
     settings: jaSettings,
     issues: jaIssues,
-    retros: jaRetros,
+    "growth-cards": jaGrowthCards,
     agents: jaAgents,
     editor: jaEditor,
     onboarding: jaOnboarding,

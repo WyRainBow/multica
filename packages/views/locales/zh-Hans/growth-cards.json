@@ -1,0 +1,79 @@
+{
+  "page": {
+    "title": "成长卡片",
+    "count_other": "{{count}} 张",
+    "new": "新建卡片",
+    "search_placeholder": "搜索卡片...",
+    "empty": "还没有卡片。做完一个需求、把真正学会的东西写下来。",
+    "no_matches": "没有匹配的卡片。"
+  },
+  "card": {
+    "edit": "编辑",
+    "untitled": "未命名卡片",
+    "issue_missing": "关联的 issue 已不可用",
+    "more_fields_other": "还有 {{count}} 栏",
+    "progress": "{{filled}}/{{total}}"
+  },
+  "fields": {
+    "title": {
+      "label": "需求",
+      "hint": "这次做的是什么？",
+      "placeholder": "例：在 issue 详情页加上成长卡片"
+    },
+    "systems": {
+      "label": "系统涉及",
+      "hint": "改动碰到了哪些部分？",
+      "placeholder": "例：Go handler、sqlc 查询、views 的 i18n 文案"
+    },
+    "unknowns": {
+      "label": "我原本不会的东西",
+      "hint": "开工前哪些是新的？",
+      "placeholder": "例：i18next 怎么解析复数 key"
+    },
+    "agent_plan": {
+      "label": "Agent 给出的方案",
+      "hint": "它建议怎么做？",
+      "placeholder": "例：新建一张表并改 namespace、再重写四个语言的文案"
+    },
+    "understood": {
+      "label": "我确认理解的关键点",
+      "hint": "哪些现在能讲清楚？",
+      "placeholder": "例：parity 测试为什么把 _one 和 _other 归到同一个 key"
+    },
+    "verified": {
+      "label": "我亲自验证了什么",
+      "hint": "为了确认，你跑了什么、看了什么？",
+      "placeholder": "例：跑了 parity 测试、并搜过残留的旧 key"
+    },
+    "learned": {
+      "label": "这次真正学会了什么",
+      "hint": "一个月后还记得的是什么？",
+      "placeholder": "例：改 namespace 还要同时动 index.ts、类型映射和每个语言目录"
+    },
+    "next_gaps": {
+      "label": "下次要补的知识",
+      "hint": "哪里还是黑盒？",
+      "placeholder": "例：i18next 怎么选回退语言"
+    }
+  },
+  "editor": {
+    "new_title": "新建成长卡片",
+    "edit_title": "编辑成长卡片",
+    "linked_issue": "关联的 issue",
+    "link_issue": "关联 issue",
+    "unlink_issue": "取消关联",
+    "link_issue_title": "关联 issue",
+    "link_issue_description": "选择这张卡片对应的需求。",
+    "save": "保存",
+    "cancel": "取消",
+    "delete_action": "删除",
+    "delete_confirm": "确定删除这张卡片？",
+    "save_failed": "无法保存卡片",
+    "delete_failed": "无法删除卡片"
+  },
+  "issue_section": {
+    "title": "成长卡片",
+    "add": "写卡片",
+    "empty": "这个 issue 还没有成长卡片。"
+  }
+}

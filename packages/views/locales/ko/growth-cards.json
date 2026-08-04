@@ -1,0 +1,79 @@
+{
+  "page": {
+    "title": "성장 카드",
+    "count_other": "{{count}}장",
+    "new": "카드 만들기",
+    "search_placeholder": "카드 검색...",
+    "empty": "아직 카드가 없습니다. 하나를 끝냈다면 실제로 배운 것을 적어 두세요.",
+    "no_matches": "검색과 일치하는 카드가 없습니다."
+  },
+  "card": {
+    "edit": "편집",
+    "untitled": "제목 없는 카드",
+    "issue_missing": "연결된 이슈를 사용할 수 없습니다",
+    "more_fields_other": "외 {{count}}개 항목",
+    "progress": "{{filled}}/{{total}}"
+  },
+  "fields": {
+    "title": {
+      "label": "요구사항",
+      "hint": "이번에 무엇을 만들었나요?",
+      "placeholder": "예: 이슈 상세 페이지에 성장 카드 추가"
+    },
+    "systems": {
+      "label": "관련된 시스템",
+      "hint": "어느 부분을 건드렸나요?",
+      "placeholder": "예: Go 핸들러, sqlc 쿼리, views의 i18n 문구"
+    },
+    "unknowns": {
+      "label": "원래 몰랐던 것",
+      "hint": "시작할 때 새로웠던 것은?",
+      "placeholder": "예: i18next가 복수형 키를 해석하는 방식"
+    },
+    "agent_plan": {
+      "label": "에이전트가 제시한 방안",
+      "hint": "어떻게 하자고 제안했나요?",
+      "placeholder": "예: 테이블을 추가하고 네임스페이스를 바꾼 뒤 4개 언어 문구를 다시 작성"
+    },
+    "understood": {
+      "label": "이해했다고 확인한 핵심",
+      "hint": "지금 설명할 수 있는 부분은?",
+      "placeholder": "예: parity 테스트가 _one과 _other를 같은 키로 맞추는 이유"
+    },
+    "verified": {
+      "label": "직접 검증한 것",
+      "hint": "확인하려고 무엇을 실행하거나 읽었나요?",
+      "placeholder": "예: parity 테스트를 실행하고 남아 있는 예전 키를 검색함"
+    },
+    "learned": {
+      "label": "이번에 진짜 배운 것",
+      "hint": "한 달 뒤에도 기억할 것은?",
+      "placeholder": "예: 네임스페이스 변경은 index.ts, 타입 정의, 모든 언어 디렉터리를 함께 고쳐야 함"
+    },
+    "next_gaps": {
+      "label": "다음에 채울 지식",
+      "hint": "아직 블랙박스인 부분은?",
+      "placeholder": "예: i18next가 폴백 언어를 고르는 방식"
+    }
+  },
+  "editor": {
+    "new_title": "성장 카드 만들기",
+    "edit_title": "성장 카드 편집",
+    "linked_issue": "연결된 이슈",
+    "link_issue": "이슈 연결",
+    "unlink_issue": "연결 해제",
+    "link_issue_title": "이슈 연결",
+    "link_issue_description": "이 카드가 다루는 요구사항을 선택하세요.",
+    "save": "저장",
+    "cancel": "취소",
+    "delete_action": "삭제",
+    "delete_confirm": "이 카드를 삭제할까요?",
+    "save_failed": "카드를 저장하지 못했습니다",
+    "delete_failed": "카드를 삭제하지 못했습니다"
+  },
+  "issue_section": {
+    "title": "성장 카드",
+    "add": "카드 추가",
+    "empty": "이 이슈에는 아직 카드가 없습니다."
+  }
+}
