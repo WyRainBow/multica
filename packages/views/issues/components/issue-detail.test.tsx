@@ -403,6 +403,15 @@ vi.mock("@multica/core/issues/stores", async () => ({
       getState: () => ({ sticky: true, toggleSticky: () => {} }),
     },
   ),
+  useDescriptionOutlineStore: Object.assign(
+    (selector?: any) => {
+      const state = { collapsed: false, toggleCollapsed: () => {} };
+      return selector ? selector(state) : state;
+    },
+    {
+      getState: () => ({ collapsed: false, toggleCollapsed: () => {} }),
+    },
+  ),
 }));
 
 // Mock react-virtuoso: jsdom has no real layout, so the real Virtuoso would

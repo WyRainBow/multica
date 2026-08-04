@@ -2588,16 +2588,6 @@ export function IssueDetail({ issueId, onDelete, onDone, defaultSidebarOpen = tr
           )}
 
           <div {...descDropZoneProps} className="relative mt-5 rounded-lg">
-            {/* The gutter left of the description is empty at this width, so
-                the outline costs no reading space. Absolute + hidden below xl
-                because on a narrow window that gutter does not exist and the
-                rail would push the prose sideways. */}
-            <DescriptionOutline
-              headings={descOutline}
-              scrollContainer={scrollContainerEl}
-              onJump={jumpToHeading}
-              className="absolute right-full top-0 mr-6 hidden w-40 xl:flex"
-            />
             <ContentEditor
               ref={descEditorRef}
               key={id}
@@ -2979,6 +2969,27 @@ export function IssueDetail({ issueId, onDelete, onDone, defaultSidebarOpen = tr
             the resize handle's 4px drag strip at the panel edge. Hover
             previews a thread, click jumps to it. Hidden on mobile: no
             hover, and the gutter is too tight. */}
+        {/* Description outline — the left-edge counterpart to the thread rail
+            on the right: one jumps to a section of the prose, the other to a
+            comment thread. Mounted HERE, as a sibling of the scroll container,
+            rather than beside the description: anything inside that container
+            scrolls away with the text, which is exactly what an outline must
+            not do.
+
+            `top-12` matches the thread rail so the two read as a pair. The
+            content column is max-w-4xl and centred, so the gutter it sits in
+            is the same one the rail uses on the other side; xl-only because
+            below that width the gutter is gone and the outline would push the
+            prose sideways. */}
+        {!isMobile && (
+          <DescriptionOutline
+            headings={descOutline}
+            scrollContainer={scrollContainerEl}
+            onJump={jumpToHeading}
+            className="absolute bottom-0 left-3 top-24 hidden w-44 pb-4 xl:flex"
+          />
+        )}
+
         {!isMobile && (
           <ThreadMinimap
             threads={minimapThreads}
