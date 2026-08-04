@@ -1117,18 +1117,6 @@ func NewRouterWithOptions(pool *pgxpool.Pool, hub *realtime.Hub, bus *events.Bus
 			// Assignee frequency
 			r.Get("/api/assignee-frequency", h.GetAssigneeFrequency)
 
-			// Growth cards — what a delivery taught the person who delivered
-			// it, kept after the requirement itself is done with.
-			r.Route("/api/growth-cards", func(r chi.Router) {
-				r.Get("/", h.ListGrowthCards)
-				r.Post("/", h.CreateGrowthCard)
-				r.Route("/{id}", func(r chi.Router) {
-					r.Get("/", h.GetGrowthCard)
-					r.Put("/", h.UpdateGrowthCard)
-					r.Delete("/", h.DeleteGrowthCard)
-				})
-			})
-
 			// Issues
 			r.Route("/api/issues", func(r chi.Router) {
 				r.Post("/table/groups", h.ListIssueTableGroups)
@@ -1168,7 +1156,6 @@ func NewRouterWithOptions(pool *pgxpool.Pool, hub *realtime.Hub, bus *events.Bus
 					r.Post("/rerun", h.RerunIssue)
 					r.Post("/quick-actions/{quickActionId}/run", h.RunQuickAction)
 					r.Post("/quick-actions/{quickActionId}/render", h.RenderQuickAction)
-					r.Get("/growth-cards", h.ListGrowthCardsForIssue)
 					r.Get("/task-runs", h.ListTasksByIssue)
 					r.Get("/usage", h.GetIssueUsage)
 					r.Post("/reactions", h.AddIssueReaction)

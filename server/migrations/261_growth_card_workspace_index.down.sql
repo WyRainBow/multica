@@ -1,1 +1,0 @@
-DROP INDEX CONCURRENTLY IF EXISTS idx_growth_card_workspace_created;

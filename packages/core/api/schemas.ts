@@ -603,31 +603,6 @@ export const CommentSchema = z.object({
   anchor_offset: z.number().nullable().optional(),
 }).loose();
 
-export const GrowthCardSchema = z.object({
-  id: z.string(),
-  workspace_id: z.string(),
-  issue_id: z.string().nullable().default(null),
-  author_type: z.string().default("member"),
-  author_id: z.string().default(""),
-  // Every field defaults to empty: a card saved by an older client, or one
-  // whose writer only filled in two boxes, must still render.
-  title: z.string().default(""),
-  systems: z.string().default(""),
-  unknowns: z.string().default(""),
-  agent_plan: z.string().default(""),
-  understood: z.string().default(""),
-  verified: z.string().default(""),
-  learned: z.string().default(""),
-  next_gaps: z.string().default(""),
-  created_at: z.string(),
-  updated_at: z.string(),
-}).loose();
-
-export const GrowthCardListResponseSchema = z.object({
-  cards: z.array(GrowthCardSchema).default([]),
-  total: z.number().default(0),
-}).loose();
-
 export const CommentsListSchema = z.array(CommentSchema);
 
 // Degraded placeholder for a comment response that failed schema validation.

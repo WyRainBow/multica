@@ -116,7 +116,6 @@ type NavKey =
   | "usage"
   | "runtimes"
   | "skills"
-  | "growthCards"
   | "settings";
 
 // Static schema (key only) — labels resolved at render via useT("layout"),
@@ -133,7 +132,6 @@ type NavLabelKey =
   | "usage"
   | "runtimes"
   | "skills"
-  | "growth_cards"
   | "settings";
 
 // Nav icons are NOT declared here: they are derived from each item's
@@ -152,9 +150,6 @@ const workspaceNav: { key: NavKey; labelKey: NavLabelKey }[] = [
   { key: "agents", labelKey: "agents" },
   { key: "squads", labelKey: "squads" },
   { key: "usage", labelKey: "usage" },
-  // Sits with the workspace's own content, not under Configure: a growth card
-  // is something the team produces, like an issue, not a setting.
-  { key: "growthCards", labelKey: "growth_cards" },
 ];
 
 const configureNav: { key: NavKey; labelKey: NavLabelKey }[] = [
