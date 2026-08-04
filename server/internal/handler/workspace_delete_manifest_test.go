@@ -45,6 +45,8 @@ var workspaceDeletionManifest = map[string]workspaceDeleteAction{
 	"chat_draft_restore":            workspaceDelete,
 	"chat_message":                  workspaceDelete,
 	"chat_pinned_agent":             workspaceDelete,
+	// A card belongs to the workspace, not to the requirement it came out of.
+	"card":                           workspaceDelete,
 	"chat_session":                  workspaceDelete,
 	"client_usage_daily":            workspaceDeleteDetach,
 	"comment":                       workspaceDelete,

@@ -1,0 +1,32 @@
+{
+  "page": {
+    "title": "Cards",
+    "count_other": "{{count}}",
+    "new": "New card",
+    "search_placeholder": "Search cards...",
+    "empty": "Nothing written down yet. Keep whatever is worth coming back to.",
+    "no_matches": "No card matches that search."
+  },
+  "card": {
+    "edit": "Edit",
+    "untitled": "Untitled",
+    "issue_missing": "requirement no longer available"
+  },
+  "editor": {
+    "new_title": "New card",
+    "edit_title": "Edit card",
+    "title_placeholder": "Title (optional)",
+    "content_placeholder": "Write anything...",
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete_action": "Delete",
+    "delete_confirm": "Delete this card?",
+    "save_failed": "Failed to save the card",
+    "delete_failed": "Failed to delete the card"
+  },
+  "issue_section": {
+    "title": "Cards",
+    "add": "Add card",
+    "empty": "Nothing recorded for this requirement yet."
+  }
+}

@@ -1,4 +1,8 @@
 import type {
+  Card,
+  CardListResponse,
+  CreateCardRequest,
+  UpdateCardRequest,
   Issue,
   IssuePriority,
   ParentIssuesResponse,
@@ -194,6 +198,8 @@ import {
   ChatMessagesPageSchema,
   ChildIssuesResponseSchema,
   IssueSchema,
+  CardSchema,
+  CardListResponseSchema,
   ParentIssuesResponseSchema,
   CommentsListSchema,
   CommentTriggerPreviewSchema,
@@ -989,6 +995,53 @@ export class ApiClient {
     return parseWithFallback(raw, CommentsListSchema, [], {
       endpoint: "GET /api/issues/:id/comments",
     });
+  }
+
+  // -------------------------------------------------------------------------
+  // Cards
+  // -------------------------------------------------------------------------
+
+  async listCards(params?: { limit?: number; offset?: number }): Promise<CardListResponse> {
+    const search = new URLSearchParams();
+    if (params?.limit) search.set("limit", String(params.limit));
+    if (params?.offset) search.set("offset", String(params.offset));
+    const query = search.toString();
+    const raw = await this.fetch<unknown>(`/api/cards${query ? `?${query}` : ""}`);
+    return parseWithFallback(raw, CardListResponseSchema, { cards: [], total: 0 }, {
+      endpoint: "GET /api/cards",
+    });
+  }
+
+  async listCardsForIssue(issueId: string): Promise<{ cards: Card[] }> {
+    const raw = await this.fetch<unknown>(`/api/issues/${issueId}/cards`);
+    return parseWithFallback(raw, CardListResponseSchema, { cards: [], total: 0 }, {
+      endpoint: "GET /api/issues/:id/cards",
+    });
+  }
+
+  async getCard(id: string): Promise<Card | null> {
+    const raw = await this.fetch<unknown>(`/api/cards/${id}`);
+    return parseWithFallback(raw, CardSchema, null, { endpoint: "GET /api/cards/:id" });
+  }
+
+  async createCard(body: CreateCardRequest): Promise<Card | null> {
+    const raw = await this.fetch<unknown>("/api/cards", {
+      method: "POST",
+      body: JSON.stringify(body),
+    });
+    return parseWithFallback(raw, CardSchema, null, { endpoint: "POST /api/cards" });
+  }
+
+  async updateCard(id: string, body: UpdateCardRequest): Promise<Card | null> {
+    const raw = await this.fetch<unknown>(`/api/cards/${id}`, {
+      method: "PUT",
+      body: JSON.stringify(body),
+    });
+    return parseWithFallback(raw, CardSchema, null, { endpoint: "PUT /api/cards/:id" });
+  }
+
+  async deleteCard(id: string): Promise<void> {
+    await this.fetch(`/api/cards/${id}`, { method: "DELETE" });
   }
 
   async createComment(

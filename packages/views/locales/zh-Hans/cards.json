@@ -1,0 +1,32 @@
+{
+  "page": {
+    "title": "卡片",
+    "count_other": "{{count}} 张",
+    "new": "新建卡片",
+    "search_placeholder": "搜索卡片...",
+    "empty": "还没有卡片。值得以后回头看的，随手记在这里。",
+    "no_matches": "没有匹配的卡片。"
+  },
+  "card": {
+    "edit": "编辑",
+    "untitled": "无标题",
+    "issue_missing": "关联的 issue 已不可用"
+  },
+  "editor": {
+    "new_title": "新建卡片",
+    "edit_title": "编辑卡片",
+    "title_placeholder": "标题（可不填）",
+    "content_placeholder": "随便写点什么...",
+    "save": "保存",
+    "cancel": "取消",
+    "delete_action": "删除",
+    "delete_confirm": "确定删除这张卡片？",
+    "save_failed": "无法保存卡片",
+    "delete_failed": "无法删除卡片"
+  },
+  "issue_section": {
+    "title": "卡片",
+    "add": "写卡片",
+    "empty": "这个 issue 还没有卡片。"
+  }
+}
