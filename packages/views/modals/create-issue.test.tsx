@@ -23,6 +23,10 @@ function I18nWrapper({ children }: { children: ReactNode }) {
 
 const mockPush = vi.hoisted(() => vi.fn());
 const mockCreateIssue = vi.hoisted(() => vi.fn());
+// Signed-in member behind the dialog. The assignee default reads this, so it
+// is a variable rather than a literal: one test signs out to prove the
+// default degrades to "unassigned" instead of erroring.
+const mockAuthUser = vi.hoisted(() => ({ current: { id: "user-1" } as { id: string } | null }));
 const mockAttachLabel = vi.hoisted(() => vi.fn());
 const mockListProperties = vi.hoisted(() => vi.fn());
 const mockSetIssueProperty = vi.hoisted(() => vi.fn());
@@ -206,6 +210,11 @@ vi.mock("@multica/core/issues/stores/issue-create-settings-store", () => ({
   useIssueCreateSettingsStore: (
     selector?: (state: typeof mockCreateSettingsStore) => unknown,
   ) => (selector ? selector(mockCreateSettingsStore) : mockCreateSettingsStore),
+}));
+
+vi.mock("@multica/core/auth", () => ({
+  useAuthStore: (selector?: (state: { user: { id: string } | null }) => unknown) =>
+    selector ? selector({ user: mockAuthUser.current }) : { user: mockAuthUser.current },
 }));
 
 vi.mock("@multica/core/issues/mutations", () => ({
@@ -642,8 +651,9 @@ describe("CreateIssueModal", () => {
         description: undefined,
         status: "todo",
         priority: "none",
-        assignee_type: undefined,
-        assignee_id: undefined,
+        // Filing from the dialog assigns to the signed-in member by default.
+        assignee_type: "member",
+        assignee_id: "user-1",
         start_date: undefined,
         due_date: undefined,
         attachment_ids: undefined,
@@ -652,7 +662,7 @@ describe("CreateIssueModal", () => {
       });
     });
 
-    expect(mockSetLastAssignee).toHaveBeenCalledWith(undefined, undefined);
+    expect(mockSetLastAssignee).toHaveBeenCalledWith("member", "user-1");
     expect(mockClearDraft).toHaveBeenCalled();
     expect(onClose).toHaveBeenCalled();
     expect(mockToastCustom).toHaveBeenCalledTimes(1);
@@ -754,8 +764,9 @@ describe("CreateIssueModal", () => {
         description: "Description to clear",
         status: "todo",
         priority: "none",
-        assignee_type: undefined,
-        assignee_id: undefined,
+        // Same default as any other filing: assigned to the signed-in member.
+        assignee_type: "member",
+        assignee_id: "user-1",
         start_date: undefined,
         due_date: undefined,
         attachment_ids: undefined,
@@ -771,8 +782,10 @@ describe("CreateIssueModal", () => {
       title: "",
       description: "",
       status: "todo",
-      assigneeType: undefined,
-      assigneeId: undefined,
+      // The batch keeps the assignee just used, which is now the signed-in
+      // member by default rather than nobody.
+      assigneeType: "member",
+      assigneeId: "user-1",
       startDate: null,
       labelIds: [],
       propertyValues: {},
@@ -1641,4 +1654,64 @@ describe("CreateIssueModal", () => {
       expect(createButton.className).not.toContain("aria-disabled:pointer-events-none");
     });
   });
+  // An unassigned issue does not show up in "my issues" — the list its author
+  // is most likely to open next — so filing one for yourself is the default.
+  it("assigns a new issue to the signed-in member by default", async () => {
+    const user = userEvent.setup();
+    mockCreateIssue.mockResolvedValue({ id: "new-issue", identifier: "TES-9" });
+    renderModal(<CreateIssueModal onClose={vi.fn()} />);
+
+    fireEvent.change(screen.getByPlaceholderText("Issue title"), {
+      target: { value: "Defaults to me" },
+    });
+    await user.click(screen.getByRole("button", { name: "Create Issue" }));
+
+    await waitFor(() => {
+      expect(mockCreateIssue).toHaveBeenCalledWith(
+        expect.objectContaining({ assignee_type: "member", assignee_id: "user-1" }),
+      );
+    });
+  });
+
+  // The default fills an empty slot; it must never overwrite a restored draft,
+  // which already carries whatever assignee the author last chose.
+  it("keeps the drafted assignee instead of overwriting it with self", async () => {
+    const user = userEvent.setup();
+    mockDraftStore.draft.manual.assigneeType = "agent";
+    mockDraftStore.draft.manual.assigneeId = "agent-7";
+    mockCreateIssue.mockResolvedValue({ id: "new-issue", identifier: "TES-9" });
+    renderModal(<CreateIssueModal onClose={vi.fn()} />);
+
+    fireEvent.change(screen.getByPlaceholderText("Issue title"), {
+      target: { value: "Drafted assignee wins" },
+    });
+    await user.click(screen.getByRole("button", { name: "Create Issue" }));
+
+    await waitFor(() => {
+      expect(mockCreateIssue).toHaveBeenCalledWith(
+        expect.objectContaining({ assignee_type: "agent", assignee_id: "agent-7" }),
+      );
+    });
+  });
+
+  // No signed-in member is not an error state: the dialog falls back to the
+  // behaviour that predates the default.
+  it("creates unassigned when there is no signed-in member", async () => {
+    const user = userEvent.setup();
+    mockAuthUser.current = null;
+    mockCreateIssue.mockResolvedValue({ id: "new-issue", identifier: "TES-9" });
+    renderModal(<CreateIssueModal onClose={vi.fn()} />);
+
+    fireEvent.change(screen.getByPlaceholderText("Issue title"), {
+      target: { value: "No member" },
+    });
+    await user.click(screen.getByRole("button", { name: "Create Issue" }));
+
+    await waitFor(() => {
+      expect(mockCreateIssue).toHaveBeenCalledWith(
+        expect.objectContaining({ assignee_type: undefined, assignee_id: undefined }),
+      );
+    });
+  });
+
 });

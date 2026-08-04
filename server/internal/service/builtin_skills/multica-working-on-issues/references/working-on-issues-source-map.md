@@ -205,6 +205,7 @@ away, so no task is left orphaned.
 | Stage barrier: notify+wake fire only when the lowest unfinished stage is all-terminal; unstaged set = one implicit stage | `server/internal/handler/issue_child_done.go:231` (`stageBarrierClosed`) |
 | Per-stage summary + next stage for the wake comment | `server/internal/handler/issue_child_done.go:254` (`stageProgressSummary`) |
 | `--stage` on `issue create` / `issue update` | `server/cmd/multica/cmd_issue.go:328,350` |
+| `issue create` defaults the assignee to the caller's member id (`/api/me`); `--no-assignee` opts out. Agent tokens have no member identity, so the lookup returns nothing and the issue stays unassigned | `server/cmd/multica/cmd_issue.go` (`currentMemberID`) |
 | `multica issue children <id>` (sub-issues grouped by stage) | `server/cmd/multica/cmd_issue.go:114,678`; route `GET /api/issues/{id}/children` → `ListChildIssues` |
 
 Advancement is agent-driven: the server only detects the closed barrier and
