@@ -31,6 +31,7 @@ function mk(id: string, status: Issue["status"], position: number): Issue {
     updated_at: "2025-01-01T00:00:00Z",
     archived_at: null,
     archived_by: null,
+    parked_from_issue_id: null,
   };
 }
 

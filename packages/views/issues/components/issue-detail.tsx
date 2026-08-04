@@ -23,6 +23,7 @@ import {
   Tag,
   Unlink,
   Users,
+  PauseCircle,
 } from "lucide-react";
 import { BreadcrumbHeader, type BreadcrumbSegment } from "../../layout/breadcrumb-header";
 import { Skeleton } from "@multica/ui/components/ui/skeleton";
@@ -1623,6 +1624,17 @@ export function IssueDetail({ issueId, onDelete, onDone, defaultSidebarOpen = tr
     initialData: () => allIssues.find((i) => i.id === parentIssueId),
   });
 
+  // Where this issue was parked out of. A provenance note only — the issue is
+  // top-level now — but without it an "optimize this later" card is unreadable
+  // three months on. May resolve to nothing if the origin was deleted, which
+  // is why the row below is gated on the resolved issue, not on the id.
+  const parkedFromId = issue?.parked_from_issue_id;
+  const { data: parkedFromIssue = null } = useQuery({
+    ...issueDetailOptions(wsId, parkedFromId ?? ""),
+    enabled: !!parkedFromId,
+    initialData: () => allIssues.find((i) => i.id === parkedFromId),
+  });
+
   // Project segment in the breadcrumb. The issue's project_id is the source of
   // truth — same URL renders the same breadcrumb regardless of entry path.
   const issueProjectId = issue?.project_id;
@@ -2587,6 +2599,23 @@ export function IssueDetail({ issueId, onDelete, onDone, defaultSidebarOpen = tr
                   </span>
                 );
               })()}
+            </AppLink>
+          )}
+
+          {/* Parked-out-of line. Mutually exclusive with the parent line in
+              practice — parking detaches — and styled the same way so the two
+              read as one slot answering "where did this come from". */}
+          {parkedFromIssue && (
+            <AppLink
+              href={paths.issueDetail(parkedFromIssue.id)}
+              className="mt-2 inline-flex max-w-full items-center gap-1.5 text-caption text-muted-foreground hover:text-foreground transition-colors group/parked"
+            >
+              <PauseCircle className="h-3.5 w-3.5 shrink-0" />
+              <span className="font-medium shrink-0">{t(($) => $.detail.parked_from)}</span>
+              <span className="tabular-nums shrink-0">{parkedFromIssue.identifier}</span>
+              <span className="truncate group-hover/parked:text-foreground">
+                {parkedFromIssue.title}
+              </span>
             </AppLink>
           )}
 

@@ -115,6 +115,8 @@ export const issueKeys = {
   /** Prefix for every per-parent children query in a workspace. */
   childrenAll: (wsId: string) =>
     [...issueKeys.all(wsId), "children"] as const,
+  parkedFrom: (wsId: string, id: string) =>
+    [...issueKeys.all(wsId), "parked-from", id] as const,
   children: (wsId: string, id: string) =>
     [...issueKeys.childrenAll(wsId), id] as const,
   /** Prefix for invalidating all batched-children queries in a workspace. */
@@ -789,6 +791,21 @@ export function parentIssuesOptions(wsId: string) {
   return queryOptions({
     queryKey: issueKeys.parents(wsId),
     queryFn: () => api.listParentIssues().then((r) => r.issues),
+  });
+}
+
+/**
+ * Issues parked out of this requirement.
+ *
+ * Kept separate from `children`: a parked issue is deliberately NOT a child
+ * any more — that is the whole point of parking — so folding it into the child
+ * list would put it back in the subtree the user just lifted it out of.
+ */
+export function parkedFromIssueOptions(wsId: string, id: string) {
+  return queryOptions({
+    queryKey: issueKeys.parkedFrom(wsId, id),
+    queryFn: () => api.listParkedFromIssue(id).then((r) => r.issues),
+    enabled: !!id,
   });
 }
 

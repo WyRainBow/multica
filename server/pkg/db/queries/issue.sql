@@ -438,3 +438,32 @@ UPDATE issue
 SET archived_at = NULL, archived_by = NULL, updated_at = now()
 WHERE id IN (SELECT id FROM subtree) AND archived_at IS NOT NULL
 RETURNING *;
+
+-- name: ParkIssue :one
+-- Lifts an issue out of its parent so the parent can finish without it.
+--
+-- Three writes that only make sense together: detach from the parent (so
+-- subtree archiving no longer takes it), drop to backlog (it is explicitly
+-- not current work), and record where it came from (an "optimize this later"
+-- with no origin is unreadable three months on).
+--
+-- parked_from is passed in rather than read from parent_issue_id here so the
+-- handler can keep an earlier origin when an already-parked issue is parked
+-- again from somewhere else, and so parking a top-level issue records nothing.
+UPDATE issue
+SET parent_issue_id      = NULL,
+    stage                = NULL,
+    status               = 'backlog',
+    parked_from_issue_id = sqlc.narg('parked_from_issue_id'),
+    updated_at           = now()
+WHERE id = sqlc.arg('id') AND workspace_id = sqlc.arg('workspace_id')
+RETURNING *;
+
+-- name: ListParkedFromIssue :many
+-- What was parked out of this requirement, oldest first. Excludes archived
+-- rows: a parked issue that was later archived is done with.
+SELECT * FROM issue
+WHERE workspace_id = sqlc.arg('workspace_id')
+  AND parked_from_issue_id = sqlc.arg('parked_from_issue_id')
+  AND archived_at IS NULL
+ORDER BY created_at ASC;

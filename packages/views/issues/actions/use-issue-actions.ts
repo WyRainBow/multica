@@ -10,6 +10,7 @@ import { useWorkspacePaths } from "@multica/core/paths";
 import { useModalStore } from "@multica/core/modals";
 import { useUpdateIssue,
   useSetIssueArchived,
+  useParkIssue,
 } from "@multica/core/issues/mutations";
 import { pinListOptions, useCreatePin, useDeletePin } from "@multica/core/pins";
 import { copyText } from "@multica/ui/lib/clipboard";
@@ -31,6 +32,8 @@ export interface UseIssueActionsResult {
   isArchived: boolean;
   /** Archive or restore the issue together with its sub-issue subtree. */
   toggleArchived: () => void;
+  /** Lift the issue out of its parent so the parent can finish without it. */
+  parkFromParent: () => void;
   openDeleteConfirm: (opts?: { onDeletedFallbackPath?: string }) => void;
 }
 
@@ -249,6 +252,26 @@ export function useIssueActions(issue: Issue | null): UseIssueActionsResult {
     );
   }, [issueId, isArchived, setArchived, t]);
 
+  const parkIssue = useParkIssue();
+
+  // Parking is for the thought you have WHILE delivering something else: an
+  // optimization to make later, a thing to watch. Left as a sub-issue it would
+  // be archived along with the finished parent, because archiving is
+  // subtree-wide — so parking lifts it out and drops it to backlog, keeping
+  // only a note of where it came from.
+  const parkFromParent = useCallback(() => {
+    if (!issueId) return;
+    parkIssue.mutate(issueId, {
+      onSuccess: () => toast.success(t(($) => $.actions.park_issue_success)),
+      onError: (err) =>
+        toast.error(
+          err instanceof Error && err.message
+            ? err.message
+            : t(($) => $.detail.update_failed),
+        ),
+    });
+  }, [issueId, parkIssue, t]);
+
   const openDeleteConfirm = useCallback(
     (opts?: { onDeletedFallbackPath?: string }) => {
       if (!issueId) return;
@@ -273,6 +296,7 @@ export function useIssueActions(issue: Issue | null): UseIssueActionsResult {
     openAddChild,
     toggleArchived,
     isArchived,
+    parkFromParent,
     openDeleteConfirm,
   };
 }

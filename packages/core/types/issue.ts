@@ -71,4 +71,9 @@ export interface Issue {
   // ended, which is exactly what folding archiving into status would destroy.
   archived_at: string | null;
   archived_by: string | null;
+  // The requirement this issue was lifted out of, when it was parked. Only a
+  // provenance note: a parked issue is top-level and no longer follows that
+  // requirement's status or archiving. May point at an issue that has since
+  // been deleted, so readers must tolerate it resolving to nothing.
+  parked_from_issue_id: string | null;
 }

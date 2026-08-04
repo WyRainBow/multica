@@ -1142,6 +1142,10 @@ func NewRouterWithOptions(pool *pgxpool.Pool, hub *realtime.Hub, bus *events.Bus
 					r.Post("/move", h.MoveIssue)
 					r.Post("/archive", h.ArchiveIssue)
 					r.Post("/unarchive", h.UnarchiveIssue)
+					// Lift a sub-issue out of its parent so the parent can
+					// finish and be archived without taking it along.
+					r.Post("/park", h.ParkIssue)
+					r.Get("/parked", h.ListParkedFromIssue)
 					r.Delete("/", h.DeleteIssue)
 					r.Post("/comments/trigger-preview", h.PreviewCommentTriggers)
 					r.Post("/comments", h.CreateComment)

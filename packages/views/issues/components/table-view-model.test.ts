@@ -37,6 +37,7 @@ function makeIssue(id: string, overrides: Partial<Issue> = {}): Issue {
     archived_at: null,
     archived_by: null,
     ...overrides,
+    parked_from_issue_id: null,
   };
 }
 

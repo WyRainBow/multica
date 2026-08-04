@@ -193,6 +193,7 @@ import {
   ChatMessageListSchema,
   ChatMessagesPageSchema,
   ChildIssuesResponseSchema,
+  IssueSchema,
   ParentIssuesResponseSchema,
   CommentsListSchema,
   CommentTriggerPreviewSchema,
@@ -943,6 +944,28 @@ export class ApiClient {
     );
     return parseWithFallback(raw, ChildIssuesResponseSchema, { issues: [] }, {
       endpoint: "POST /api/issues/:id/archive",
+    });
+  }
+
+  /**
+   * Lift an issue out of its parent so the parent can finish without it.
+   *
+   * Detaches, drops to backlog, and records where it came from — three writes
+   * that only mean anything together, which is why this is one endpoint rather
+   * than a parent_issue_id patch plus a status patch.
+   */
+  async parkIssue(id: string): Promise<Issue | null> {
+    const raw = await this.fetch<unknown>(`/api/issues/${id}/park`, { method: "POST" });
+    return parseWithFallback(raw, IssueSchema, null, {
+      endpoint: "POST /api/issues/:id/park",
+    });
+  }
+
+  /** What was parked out of this requirement — the reverse of parkIssue. */
+  async listParkedFromIssue(id: string): Promise<{ issues: Issue[] }> {
+    const raw = await this.fetch<unknown>(`/api/issues/${id}/parked`);
+    return parseWithFallback(raw, ChildIssuesResponseSchema, { issues: [] }, {
+      endpoint: "GET /api/issues/:id/parked",
     });
   }
 

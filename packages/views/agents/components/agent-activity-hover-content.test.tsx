@@ -85,6 +85,7 @@ function makeIssue(id: string, identifier: string, title: string): Issue {
     updated_at: "2026-06-08T08:00:00Z",
     archived_at: null,
     archived_by: null,
+    parked_from_issue_id: null,
   };
 }
 

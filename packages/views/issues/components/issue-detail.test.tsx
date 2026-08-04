@@ -530,6 +530,7 @@ const mockIssue: Issue = {
   updated_at: "2026-01-20T00:00:00Z",
   archived_at: null,
   archived_by: null,
+  parked_from_issue_id: null,
 };
 
 const mockTimeline: TimelineEntry[] = [
