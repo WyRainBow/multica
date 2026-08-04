@@ -242,6 +242,7 @@
     "desc_placeholder": "添加描述...",
     "sub_issues_label": "子 issue",
     "sub_issue_of": "属于父 issue",
+    "description_length_other": "{{count}} 字",
     "parked_from": "挂起自",
     "section_parked": "从这里挂起的",
     "section_parked_hint": "不属于这个需求的完成范围。归档这个需求时它们会留下。",

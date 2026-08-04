@@ -242,6 +242,7 @@
     "desc_placeholder": "説明を追加...",
     "sub_issues_label": "サブイシュー",
     "sub_issue_of": "親イシュー",
+    "description_length_other": "{{count}} 文字",
     "parked_from": "保留元",
     "section_parked": "ここから保留したもの",
     "section_parked_hint": "この要件の完了範囲には含まれません。要件をアーカイブしても残ります。",

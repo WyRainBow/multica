@@ -242,6 +242,7 @@
     "desc_placeholder": "설명 추가...",
     "sub_issues_label": "하위 이슈",
     "sub_issue_of": "상위 이슈",
+    "description_length_other": "{{count}}자",
     "parked_from": "보류 출처",
     "section_parked": "여기서 보류한 항목",
     "section_parked_hint": "이 요구사항의 완료 범위가 아닙니다. 요구사항을 보관해도 남습니다.",
