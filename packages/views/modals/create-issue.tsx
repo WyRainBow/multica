@@ -1,8 +1,9 @@
 "use client";
 
-import { useState, useRef, useEffect, useLayoutEffect } from "react";
+import { useState, useRef, useEffect, useLayoutEffect, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useNavigation } from "../navigation";
+import { useAuthStore } from "@multica/core/auth";
 import {
   AlertTriangle,
   ArrowDown,
@@ -232,22 +233,42 @@ export function ManualCreatePanel({
   const { isDragOver: descDragOver, dropZoneProps: descDropZoneProps } = useFileDropZone({
     onDrop: (files) => files.forEach((f) => descEditorRef.current?.uploadFile(f)),
   });
+  const currentUserId = useAuthStore((s) => s.user?.id);
   const [status, setStatus] = useState<IssueStatus>((data?.status as IssueStatus) || draft.manual.status);
   const [priority, setPriority] = useState<IssuePriority>(
     (data?.priority as IssuePriority | undefined) ?? draft.shared.priority,
   );
-  const [assigneeType, setAssigneeType] = useState<IssueAssigneeType | undefined>(() => {
+  // Assignee defaults to whoever is filing the issue.
+  //
+  // The two halves are resolved together, never independently: a type without
+  // an id (or the reverse) is not a valid assignee and would submit as a
+  // half-set field. Precedence is caller-supplied data, then the restored
+  // draft (which already carries the last assignee used), then self — so the
+  // default only fills a genuinely empty slot and is still one click to clear.
+  const initialAssignee = useMemo<{
+    type: IssueAssigneeType | undefined;
+    id: string | undefined;
+  }>(() => {
     if (data && "assignee_type" in data) {
-      return (data.assignee_type as IssueAssigneeType | null) ?? undefined;
+      return {
+        type: (data.assignee_type as IssueAssigneeType | null) ?? undefined,
+        id: (data.assignee_id as string | null) ?? undefined,
+      };
     }
-    return draft.manual.assigneeType;
-  });
-  const [assigneeId, setAssigneeId] = useState<string | undefined>(() => {
-    if (data && "assignee_id" in data) {
-      return (data.assignee_id as string | null) ?? undefined;
+    if (draft.manual.assigneeType && draft.manual.assigneeId) {
+      return { type: draft.manual.assigneeType, id: draft.manual.assigneeId };
     }
-    return draft.manual.assigneeId;
-  });
+    if (currentUserId) return { type: "member", id: currentUserId };
+    return { type: undefined, id: undefined };
+    // Initial state only — later edits are owned by the pickers below.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  const [assigneeType, setAssigneeType] = useState<IssueAssigneeType | undefined>(
+    initialAssignee.type,
+  );
+  const [assigneeId, setAssigneeId] = useState<string | undefined>(
+    initialAssignee.id,
+  );
   const [startDate, setStartDate] = useState<string | null>(draft.manual.startDate);
   const [dueDate, setDueDate] = useState<string | null>(
     (data?.due_date as string | undefined) ?? draft.shared.dueDate,

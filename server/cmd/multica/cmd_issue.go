@@ -519,6 +519,7 @@ func init() {
 	issueCreateCmd.Flags().String("priority", "", "Issue priority")
 	issueCreateCmd.Flags().String("assignee", "", "Assignee name (member, agent, or squad; fuzzy match)")
 	issueCreateCmd.Flags().String("assignee-id", "", "Assignee UUID — member, agent, or squad (mutually exclusive with --assignee)")
+	issueCreateCmd.Flags().Bool("no-assignee", false, "Create the issue unassigned instead of assigning it to you")
 	issueCreateCmd.Flags().String("parent", "", "Parent issue ID")
 	issueCreateCmd.Flags().Int("stage", 0, "Stage ordinal (>=1) grouping this sub-issue into an ordered barrier group under its parent; omit for unstaged. The parent assignee is woken only when every sub-issue in a stage finishes.")
 	issueCreateCmd.Flags().String("project", "", "Project ID")
@@ -1112,6 +1113,19 @@ func quickCreateAttachmentIDsFromEnv() ([]string, error) {
 	return appendUniqueStrings(nil, ids...), nil
 }
 
+// currentMemberID returns the member id behind the current token, or "" when
+// there is not one (agent tokens) or the lookup fails. Callers treat "" as
+// "no default" rather than as an error.
+func currentMemberID(ctx context.Context, client *cli.APIClient) string {
+	var me struct {
+		ID string `json:"id"`
+	}
+	if err := client.GetJSON(ctx, "/api/me", &me); err != nil {
+		return ""
+	}
+	return me.ID
+}
+
 func runIssueCreate(cmd *cobra.Command, _ []string) error {
 	title, _ := cmd.Flags().GetString("title")
 	if title == "" {
@@ -1199,6 +1213,20 @@ func runIssueCreate(cmd *cobra.Command, _ []string) error {
 	if hasAssignee {
 		body["assignee_type"] = aType
 		body["assignee_id"] = aID
+	} else if noAssignee, _ := cmd.Flags().GetBool("no-assignee"); !noAssignee {
+		// Default the assignee to whoever is running the command. Filing an
+		// issue from the CLI is almost always filing it for yourself, and an
+		// unassigned issue is invisible in "my issues" — the list its author
+		// is most likely to look at next.
+		//
+		// Best effort on purpose: an agent token has no member identity, and
+		// /api/me can fail for reasons that have nothing to do with the issue
+		// being created. Either way the issue is still created, just
+		// unassigned — the old behaviour.
+		if id := currentMemberID(ctx, client); id != "" {
+			body["assignee_type"] = "member"
+			body["assignee_id"] = id
+		}
 	}
 
 	// Quick-create stamp: when the daemon sets MULTICA_QUICK_CREATE_TASK_ID

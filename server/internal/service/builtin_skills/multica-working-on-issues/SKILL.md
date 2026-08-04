@@ -290,6 +290,17 @@ when children exist precisely so that becomes a decision rather than something
 you discover afterwards. If you want a whole tree gone from view, archive it —
 archiving takes the subtree; deleting does not.
 
+## `issue create` assigns to the caller unless told otherwise
+
+`multica issue create` with no `--assignee` / `--assignee-id` assigns the new
+issue to the member behind the current token. Pass `--no-assignee` to leave it
+unassigned.
+
+This does not change anything for you: an agent token has no member identity,
+so the default resolves to nothing and the issue is created unassigned exactly
+as before. Keep passing `--assignee <agent>` when handing work to an agent —
+that is still the only way the issue reaches one.
+
 ## Sub-issues: `todo` starts work now, `backlog` parks it
 
 On an agent-assigned issue, create status decides whether the assignee fires
