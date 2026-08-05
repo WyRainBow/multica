@@ -57,7 +57,7 @@ import type { Attachment, Issue, IssueProperty, IssueStatus, IssuePriority, Time
 import { contentReferencesAttachment } from "@multica/core/types";
 import { STATUS_CONFIG, PRIORITY_CONFIG } from "@multica/core/issues/config";
 import { formatDateOnly, isPastDateOnly } from "@multica/core/issues/date";
-import { useUpdateIssue } from "@multica/core/issues/mutations";
+import { useUpdateIssue, useSetCommentPhase } from "@multica/core/issues/mutations";
 import { toast } from "sonner";
 import { StatusIcon, PriorityIcon, StatusPicker, PriorityPicker, StagePicker, StartDatePicker, DueDatePicker, AssigneePicker, LabelPicker } from ".";
 import { maxSiblingStage } from "./pickers/stage-picker";
@@ -71,6 +71,7 @@ import { ProjectPicker } from "../../projects/components/project-picker";
 import { LocalDirectoryHint } from "../../projects/components/local-directory-hint";
 import { CommentCard } from "./comment-card";
 import { IssueCardsSection } from "../../cards";
+import { PhaseTrack } from "./phase-track";
 import { DescriptionOutline } from "./description-outline";
 import type { OutlineHeading } from "../../editor/outline";
 import { CommentInput } from "./comment-input";
@@ -88,7 +89,7 @@ import { useWorkspacePaths } from "@multica/core/paths";
 import { useActorName } from "@multica/core/workspace/hooks";
 import { useWorkspaceId } from "@multica/core/hooks";
 import { useRecentContextStore } from "@multica/core/chat";
-import { issueListOptions, issueDetailOptions, childIssuesOptions, parkedFromIssueOptions, childIssueProgressOptions, issueUsageOptions, issueAttachmentsOptions } from "@multica/core/issues/queries";
+import { issueListOptions, issueDetailOptions, childIssuesOptions, parkedFromIssueOptions, issuePhasesOptions, childIssueProgressOptions, issueUsageOptions, issueAttachmentsOptions } from "@multica/core/issues/queries";
 import { projectDetailOptions } from "@multica/core/projects/queries";
 import { ProjectIcon } from "../../projects/components/project-icon";
 import { issueLabelsOptions } from "@multica/core/labels";
@@ -1720,6 +1721,35 @@ export function IssueDetail({ issueId, onDelete, onDone, defaultSidebarOpen = tr
   // of parking — so folding it into the child list would put it back in the
   // subtree the user just lifted it out of, and it would start counting toward
   // the "x/y done" progress it was removed from.
+  // The route this requirement takes. Rendered under the title as a header:
+  // it says where the work is, while what happened at each station hangs
+  // further down under that station's heading.
+  const { data: issuePhases = [] } = useQuery({
+    ...issuePhasesOptions(wsId, id),
+    enabled: !!issue,
+  });
+
+  // Grouping a comment under a station. Invalidates rather than patches: the
+  // phase's comment count is server-derived, so a local guess would be a guess
+  // about a number this client does not own.
+  const setCommentPhase = useSetCommentPhase(id);
+  const handleSetCommentPhase = useCallback(
+    (commentId: string, phaseId: string | null) => {
+      setCommentPhase.mutate(
+        { commentId, phaseId },
+        {
+          onError: (err) =>
+            toast.error(
+              err instanceof Error && err.message
+                ? err.message
+                : t(($) => $.detail.update_failed),
+            ),
+        },
+      );
+    },
+    [setCommentPhase, t],
+  );
+
   const { data: parkedIssues = [] } = useQuery({
     ...parkedFromIssueOptions(wsId, id),
     enabled: !!issue,
@@ -2414,6 +2444,8 @@ export function IssueDetail({ issueId, onDelete, onDone, defaultSidebarOpen = tr
             onReply={submitReply}
             onEdit={editComment}
             onDelete={deleteComment}
+            phases={issuePhases}
+            onSetPhase={handleSetCommentPhase}
             onToggleReaction={handleToggleReaction}
             onResolveToggle={handleResolveToggle}
             onCollapseResolved={isResolved ? () => toggleResolvedExpand(item.id, false) : undefined}
@@ -2685,6 +2717,17 @@ export function IssueDetail({ issueId, onDelete, onDone, defaultSidebarOpen = tr
               </span>
             </AppLink>
           )}
+
+          {/* The route this requirement takes. Sits between the title block
+              and the description: it answers "where is this" before the
+              reader starts on "what is this", and the stations it names are
+              the headings the comments below are grouped under.
+
+              Shown on a finished issue too — the record of which route the
+              work took is exactly what a finished issue is for — but the
+              track's own controls no-op there, since every transition it
+              offers is a write. */}
+          <PhaseTrack issueId={id} phases={issuePhases} className="mt-4" />
 
           {frozen ? (
             // ReadonlyContent rather than a disabled editor: content-editor.tsx

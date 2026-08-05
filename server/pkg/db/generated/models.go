@@ -472,6 +472,7 @@ type Comment struct {
 	QuickActionID  pgtype.UUID        `json:"quick_action_id"`
 	AnchorText     pgtype.Text        `json:"anchor_text"`
 	AnchorOffset   pgtype.Int4        `json:"anchor_offset"`
+	PhaseID        pgtype.UUID        `json:"phase_id"`
 }
 
 type CommentReaction struct {
@@ -684,6 +685,18 @@ type IssueLabel struct {
 	UpdatedAt    pgtype.Timestamptz `json:"updated_at"`
 	ResourceType string             `json:"resource_type"`
 	Description  string             `json:"description"`
+}
+
+type IssuePhase struct {
+	ID          pgtype.UUID        `json:"id"`
+	WorkspaceID pgtype.UUID        `json:"workspace_id"`
+	IssueID     pgtype.UUID        `json:"issue_id"`
+	Name        string             `json:"name"`
+	Position    int32              `json:"position"`
+	EnteredAt   pgtype.Timestamptz `json:"entered_at"`
+	CompletedAt pgtype.Timestamptz `json:"completed_at"`
+	CreatedAt   pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt   pgtype.Timestamptz `json:"updated_at"`
 }
 
 type IssueProperty struct {

@@ -654,5 +654,16 @@
     "row_backlog_hint": "에이전트를 대기 상태로 유지",
     "row_todo_label": "할 일",
     "row_todo_hint": "에이전트 시작"
+  },
+  "phases": {
+    "add_first": "단계 추가",
+    "add": "단계 추가",
+    "name_placeholder": "단계 이름",
+    "enter_hint": "클릭하여 이 단계로 진입",
+    "complete_hint": "클릭하여 이 단계 완료",
+    "section": "단계",
+    "assign": "단계로 이동",
+    "ungrouped": "단계 없음",
+    "clear": "단계에서 제거"
   }
 }

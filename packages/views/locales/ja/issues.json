@@ -654,5 +654,16 @@
     "row_backlog_hint": "エージェントを一時停止のままにします",
     "row_todo_label": "未着手",
     "row_todo_hint": "エージェントを開始します"
+  },
+  "phases": {
+    "add_first": "フェーズを追加",
+    "add": "フェーズを追加",
+    "name_placeholder": "フェーズ名",
+    "enter_hint": "クリックしてこのフェーズに入る",
+    "complete_hint": "クリックしてこのフェーズを完了",
+    "section": "フェーズ",
+    "assign": "フェーズに移動",
+    "ungrouped": "フェーズなし",
+    "clear": "フェーズから外す"
   }
 }

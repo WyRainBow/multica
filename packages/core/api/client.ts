@@ -1,6 +1,7 @@
 import type {
   Card,
   CardListResponse,
+  IssuePhase,
   CreateCardRequest,
   UpdateCardRequest,
   Issue,
@@ -200,6 +201,8 @@ import {
   IssueSchema,
   CardSchema,
   CardListResponseSchema,
+  IssuePhaseSchema,
+  IssuePhasesResponseSchema,
   ParentIssuesResponseSchema,
   CommentsListSchema,
   CommentTriggerPreviewSchema,
@@ -994,6 +997,59 @@ export class ApiClient {
     const raw = await this.fetch<unknown>(`/api/issues/${issueId}/comments`);
     return parseWithFallback(raw, CommentsListSchema, [], {
       endpoint: "GET /api/issues/:id/comments",
+    });
+  }
+
+  // -------------------------------------------------------------------------
+  // Issue phases
+  // -------------------------------------------------------------------------
+
+  async listIssuePhases(issueId: string): Promise<{ phases: IssuePhase[] }> {
+    const raw = await this.fetch<unknown>(`/api/issues/${issueId}/phases`);
+    return parseWithFallback(raw, IssuePhasesResponseSchema, { phases: [] }, {
+      endpoint: "GET /api/issues/:id/phases",
+    });
+  }
+
+  async createIssuePhase(issueId: string, name: string): Promise<IssuePhase | null> {
+    const raw = await this.fetch<unknown>(`/api/issues/${issueId}/phases`, {
+      method: "POST",
+      body: JSON.stringify({ name }),
+    });
+    return parseWithFallback(raw, IssuePhaseSchema, null, {
+      endpoint: "POST /api/issues/:id/phases",
+    });
+  }
+
+  async enterIssuePhase(issueId: string, phaseId: string): Promise<IssuePhase | null> {
+    const raw = await this.fetch<unknown>(
+      `/api/issues/${issueId}/phases/${phaseId}/enter`,
+      { method: "POST" },
+    );
+    return parseWithFallback(raw, IssuePhaseSchema, null, {
+      endpoint: "POST /api/issues/:id/phases/:phaseId/enter",
+    });
+  }
+
+  async completeIssuePhase(issueId: string, phaseId: string): Promise<IssuePhase | null> {
+    const raw = await this.fetch<unknown>(
+      `/api/issues/${issueId}/phases/${phaseId}/complete`,
+      { method: "POST" },
+    );
+    return parseWithFallback(raw, IssuePhaseSchema, null, {
+      endpoint: "POST /api/issues/:id/phases/:phaseId/complete",
+    });
+  }
+
+  async deleteIssuePhase(issueId: string, phaseId: string): Promise<void> {
+    await this.fetch(`/api/issues/${issueId}/phases/${phaseId}`, { method: "DELETE" });
+  }
+
+  /** Group a comment under a phase, or pass null to ungroup it. */
+  async setCommentPhase(commentId: string, phaseId: string | null): Promise<void> {
+    await this.fetch(`/api/comments/${commentId}/phase`, {
+      method: "PUT",
+      body: JSON.stringify({ phase_id: phaseId }),
     });
   }
 

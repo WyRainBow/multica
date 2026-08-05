@@ -654,5 +654,16 @@
     "row_backlog_hint": "智能体保持暂停",
     "row_todo_label": "Todo",
     "row_todo_hint": "启动智能体"
+  },
+  "phases": {
+    "add_first": "添加阶段",
+    "add": "添加阶段",
+    "name_placeholder": "阶段名",
+    "enter_hint": "点击进入这个阶段",
+    "complete_hint": "点击完成这个阶段",
+    "section": "阶段",
+    "assign": "归到阶段",
+    "ungrouped": "未归属阶段",
+    "clear": "移出阶段"
   }
 }

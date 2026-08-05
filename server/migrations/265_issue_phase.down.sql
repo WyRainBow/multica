@@ -1,0 +1,2 @@
+ALTER TABLE comment DROP COLUMN IF EXISTS phase_id;
+DROP TABLE IF EXISTS issue_phase;

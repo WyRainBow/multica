@@ -1169,6 +1169,65 @@ export function useUnsubscribeFromIssueSubtree(issueId: string) {
 }
 
 /**
+ * Phase writes invalidate rather than patch.
+ *
+ * Every one of them changes something the server derives — the entry
+ * timestamp, the comment counts, which station is current — so a local guess
+ * would be a guess about data this client does not own.
+ */
+function useIssuePhaseInvalidation(issueId: string) {
+  const qc = useQueryClient();
+  const wsId = useWorkspaceId();
+  return () => {
+    qc.invalidateQueries({ queryKey: issueKeys.phases(wsId, issueId) });
+    // Comments carry the grouping, so a phase change moves them too.
+    qc.invalidateQueries({ queryKey: issueKeys.timeline(issueId) });
+  };
+}
+
+export function useCreateIssuePhase(issueId: string) {
+  const invalidate = useIssuePhaseInvalidation(issueId);
+  return useMutation({
+    mutationFn: (name: string) => api.createIssuePhase(issueId, name),
+    onSettled: invalidate,
+  });
+}
+
+export function useEnterIssuePhase(issueId: string) {
+  const invalidate = useIssuePhaseInvalidation(issueId);
+  return useMutation({
+    mutationFn: (phaseId: string) => api.enterIssuePhase(issueId, phaseId),
+    onSettled: invalidate,
+  });
+}
+
+export function useCompleteIssuePhase(issueId: string) {
+  const invalidate = useIssuePhaseInvalidation(issueId);
+  return useMutation({
+    mutationFn: (phaseId: string) => api.completeIssuePhase(issueId, phaseId),
+    onSettled: invalidate,
+  });
+}
+
+export function useDeleteIssuePhase(issueId: string) {
+  const invalidate = useIssuePhaseInvalidation(issueId);
+  return useMutation({
+    mutationFn: (phaseId: string) => api.deleteIssuePhase(issueId, phaseId),
+    onSettled: invalidate,
+  });
+}
+
+/** Group a comment under a phase, or pass null to ungroup it. */
+export function useSetCommentPhase(issueId: string) {
+  const invalidate = useIssuePhaseInvalidation(issueId);
+  return useMutation({
+    mutationFn: ({ commentId, phaseId }: { commentId: string; phaseId: string | null }) =>
+      api.setCommentPhase(commentId, phaseId),
+    onSettled: invalidate,
+  });
+}
+
+/**
  * Park an issue: lift it out of its parent so the parent can finish and be
  * archived without taking it along.
  *

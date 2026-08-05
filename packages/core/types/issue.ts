@@ -54,6 +54,33 @@ export function defaultIssueFilterModes(): IssueFilterModes {
   };
 }
 
+/**
+ * One station in a requirement's life: 开始 / 已冻结 / 实施中 / 等待部署 / 结束.
+ *
+ * A container, not a status. `status` is a single value that answers "where is
+ * this now" and forgets everything it passed through; a phase stays, holding
+ * the comments made while the issue was in it.
+ *
+ * Also not `stage`, which already exists and means a barrier group among
+ * sibling sub-issues. That one schedules; this one archives.
+ */
+export interface IssuePhase {
+  id: string;
+  workspace_id: string;
+  issue_id: string;
+  name: string;
+  /** Order along the track. Sparse, so a station can be inserted between two
+   *  others without renumbering their neighbours. */
+  position: number;
+  /** Derived from transitions, never typed in. */
+  entered_at: string | null;
+  completed_at: string | null;
+  /** How many comments hang under this phase. */
+  comment_count: number;
+  created_at: string;
+  updated_at: string;
+}
+
 export type IssuePriority = "urgent" | "high" | "medium" | "low" | "none";
 
 export type IssueAssigneeType = "member" | "agent" | "squad";

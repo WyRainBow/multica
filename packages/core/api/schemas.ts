@@ -500,6 +500,7 @@ const TimelineEntrySchema = z.object({
   comment_type: z.string().optional(),
   anchor_text: z.string().nullable().optional(),
   anchor_offset: z.number().nullable().optional(),
+  phase_id: z.string().nullable().optional(),
   reactions: z.array(ReactionSchema).optional(),
   attachments: z.array(AttachmentSchema).optional(),
   source_task_id: z.string().nullable().optional(),
@@ -601,6 +602,24 @@ export const CommentSchema = z.object({
   // comment has neither.
   anchor_text: z.string().nullable().optional(),
   anchor_offset: z.number().nullable().optional(),
+}).loose();
+
+export const IssuePhaseSchema = z.object({
+  id: z.string(),
+  workspace_id: z.string(),
+  issue_id: z.string(),
+  name: z.string().default(""),
+  position: z.number().default(0),
+  entered_at: z.string().nullable().default(null),
+  completed_at: z.string().nullable().default(null),
+  // Defaults so a phase still renders if an older backend omits the count.
+  comment_count: z.number().default(0),
+  created_at: z.string(),
+  updated_at: z.string(),
+}).loose();
+
+export const IssuePhasesResponseSchema = z.object({
+  phases: z.array(IssuePhaseSchema).default([]),
 }).loose();
 
 export const CardSchema = z.object({

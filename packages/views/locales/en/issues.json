@@ -679,5 +679,16 @@
     "row_backlog_hint": "keeps the agent paused",
     "row_todo_label": "Todo",
     "row_todo_hint": "starts the agent"
+  },
+  "phases": {
+    "add_first": "Add phases",
+    "add": "Add phase",
+    "name_placeholder": "Phase name",
+    "enter_hint": "Click to enter this phase",
+    "complete_hint": "Click to complete this phase",
+    "section": "Phases",
+    "assign": "Move to phase",
+    "ungrouped": "No phase",
+    "clear": "Remove from phase"
   }
 }
