@@ -693,10 +693,14 @@
     "composer_hint": "Writing in {{name}}",
     "templates": {
       "requirement": "Issue lifecycle",
-      "requirement_desc": "Start · Review · Frozen",
       "custom": "Custom…",
       "apply_failed": "Failed to add the phases"
     },
-    "another_round": "Another round: {{name}}"
+    "another_round": "Another round: {{name}}",
+    "delete": "Delete phase: {{name}}",
+    "delete_confirm_title": "Delete {{name}}?",
+    "delete_confirm_body_other": "Its {{count}} comments are deleted with it. This cannot be undone.",
+    "delete_action": "Delete",
+    "cancel": "Cancel"
   }
 }

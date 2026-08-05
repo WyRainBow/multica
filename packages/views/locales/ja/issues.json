@@ -668,10 +668,14 @@
     "composer_hint": "「{{name}}」に書き込みます",
     "templates": {
       "requirement": "issue のライフサイクル",
-      "requirement_desc": "開始 · レビュー · 凍結",
       "custom": "カスタム…",
       "apply_failed": "フェーズの追加に失敗しました"
     },
-    "another_round": "もう一巡：{{name}}"
+    "another_round": "もう一巡：{{name}}",
+    "delete": "フェーズを削除：{{name}}",
+    "delete_confirm_title": "「{{name}}」を削除しますか？",
+    "delete_confirm_body_other": "このフェーズの {{count}} 件のコメントも削除されます。元に戻せません。",
+    "delete_action": "削除",
+    "cancel": "キャンセル"
   }
 }

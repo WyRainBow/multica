@@ -668,10 +668,14 @@
     "composer_hint": "将写入「{{name}}」",
     "templates": {
       "requirement": "issue 生命周期",
-      "requirement_desc": "开始 · 评审 · 冻结",
       "custom": "自定义…",
       "apply_failed": "添加节点失败"
     },
-    "another_round": "再来一轮：{{name}}"
+    "another_round": "再来一轮：{{name}}",
+    "delete": "删除节点：{{name}}",
+    "delete_confirm_title": "删除「{{name}}」？",
+    "delete_confirm_body_other": "这个节点下的 {{count}} 条评论会一并删除、无法恢复。",
+    "delete_action": "删除",
+    "cancel": "取消"
   }
 }

@@ -275,20 +275,25 @@ func (h *Handler) UpdateIssuePhase(w http.ResponseWriter, r *http.Request) {
 
 // DeleteIssuePhase handles DELETE /api/issues/{id}/phases/{phaseId}.
 //
-// Comments are detached, not deleted. A station being removed from the route
-// does not mean the discussion that happened there never happened — the
-// comments fall back to ungrouped, which is where every comment written before
-// phases existed already sits.
+// The comments filed under it go with it, and so do their replies. A phase is
+// a container: deleting one deletes what it held, the same way deleting a
+// folder takes its files.
+//
+// An earlier version detached them instead, on the reasoning that a discussion
+// still happened even if the station is gone. That left orphaned remarks with
+// no context, which is worse than not having them — and it made "delete this
+// phase" the one destructive action that quietly did not destroy anything.
+// Irreversible, so the client confirms first.
 func (h *Handler) DeleteIssuePhase(w http.ResponseWriter, r *http.Request) {
 	phase, ok := h.loadIssuePhaseForUser(w, r)
 	if !ok {
 		return
 	}
-	if err := h.Queries.DetachCommentsFromPhase(r.Context(), db.DetachCommentsFromPhaseParams{
+	if err := h.Queries.DeleteCommentsInPhase(r.Context(), db.DeleteCommentsInPhaseParams{
 		PhaseID:     phase.ID,
 		WorkspaceID: phase.WorkspaceID,
 	}); err != nil {
-		slog.Warn("detach comments from phase failed",
+		slog.Warn("delete comments in phase failed",
 			append(logger.RequestAttrs(r), "error", err)...)
 		writeError(w, http.StatusInternalServerError, "failed to delete phase")
 		return

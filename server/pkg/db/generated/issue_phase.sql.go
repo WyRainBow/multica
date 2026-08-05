@@ -117,6 +117,34 @@ func (q *Queries) CreateIssuePhase(ctx context.Context, arg CreateIssuePhasePara
 	return i, err
 }
 
+const deleteCommentsInPhase = `-- name: DeleteCommentsInPhase :exec
+DELETE FROM comment AS target
+WHERE target.workspace_id = $2
+  AND (
+    target.phase_id = $1
+    OR target.parent_id IN (
+      SELECT root.id FROM comment AS root
+      WHERE root.phase_id = $1 AND root.workspace_id = $2
+    )
+  )
+`
+
+type DeleteCommentsInPhaseParams struct {
+	PhaseID     pgtype.UUID `json:"phase_id"`
+	WorkspaceID pgtype.UUID `json:"workspace_id"`
+}
+
+// Deletes the comments filed under a phase AND their replies.
+//
+// Replies are included because they carry no phase of their own — a thread is
+// filed by its root — so leaving them would strand answers whose question is
+// gone. Written as one statement rather than a read-then-delete so a reply
+// arriving between the two cannot survive its root.
+func (q *Queries) DeleteCommentsInPhase(ctx context.Context, arg DeleteCommentsInPhaseParams) error {
+	_, err := q.db.Exec(ctx, deleteCommentsInPhase, arg.PhaseID, arg.WorkspaceID)
+	return err
+}
+
 const deleteIssuePhase = `-- name: DeleteIssuePhase :exec
 DELETE FROM issue_phase
 WHERE id = $1 AND workspace_id = $2
@@ -127,26 +155,10 @@ type DeleteIssuePhaseParams struct {
 	WorkspaceID pgtype.UUID `json:"workspace_id"`
 }
 
-// Comments pointing at it are detached in application code first; the column
-// is nullable precisely so a deleted phase loses its grouping rather than its
-// comments.
+// Its comments are deleted first, in application code. A phase is a
+// container: removing it removes what it held.
 func (q *Queries) DeleteIssuePhase(ctx context.Context, arg DeleteIssuePhaseParams) error {
 	_, err := q.db.Exec(ctx, deleteIssuePhase, arg.ID, arg.WorkspaceID)
-	return err
-}
-
-const detachCommentsFromPhase = `-- name: DetachCommentsFromPhase :exec
-UPDATE comment SET phase_id = NULL, updated_at = now()
-WHERE phase_id = $1 AND workspace_id = $2
-`
-
-type DetachCommentsFromPhaseParams struct {
-	PhaseID     pgtype.UUID `json:"phase_id"`
-	WorkspaceID pgtype.UUID `json:"workspace_id"`
-}
-
-func (q *Queries) DetachCommentsFromPhase(ctx context.Context, arg DetachCommentsFromPhaseParams) error {
-	_, err := q.db.Exec(ctx, detachCommentsFromPhase, arg.PhaseID, arg.WorkspaceID)
 	return err
 }
 

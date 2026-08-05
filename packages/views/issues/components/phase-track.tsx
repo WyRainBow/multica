@@ -1,23 +1,33 @@
 "use client";
 
 import { useState } from "react";
-import { Plus, Check, Circle, CircleDot, Play, RotateCw } from "lucide-react";
+import { Plus, Check, Circle, CircleDot, Play, RotateCw, Route, X } from "lucide-react";
 import { nextRoundName } from "./phase-round";
 import type { IssuePhase } from "@multica/core/types";
 import {
   useCreateIssuePhase,
   useEnterIssuePhase,
   useCompleteIssuePhase,
+  useDeleteIssuePhase,
 } from "@multica/core/issues/mutations";
 import { Button } from "@multica/ui/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@multica/ui/components/ui/dropdown-menu";
 import { Input } from "@multica/ui/components/ui/input";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@multica/ui/components/ui/alert-dialog";
 import { cn } from "@multica/ui/lib/utils";
 import { toast } from "sonner";
 import { useT } from "../../i18n";
@@ -89,13 +99,20 @@ export function PhaseTrack({
 }) {
   const { t } = useT("issues");
   const [adding, setAdding] = useState(false);
+  // The station awaiting confirmation. Deleting one takes its comments with
+  // it and cannot be undone, so it is the one action here that asks first.
+  const [confirmDelete, setConfirmDelete] = useState<IssuePhase | null>(null);
   const [name, setName] = useState("");
 
   const createPhase = useCreateIssuePhase(issueId);
+  const deletePhase = useDeleteIssuePhase(issueId);
   const enterPhase = useEnterIssuePhase(issueId);
   const completePhase = useCompleteIssuePhase(issueId);
   const pending =
-    createPhase.isPending || enterPhase.isPending || completePhase.isPending;
+    createPhase.isPending ||
+    enterPhase.isPending ||
+    completePhase.isPending ||
+    deletePhase.isPending;
 
   const fail = (err: unknown) =>
     toast.error(
@@ -141,50 +158,44 @@ export function PhaseTrack({
     });
   };
 
+  // Matches the "add property" menu in the sidebar: one compact row per
+  // choice, icon then label. The two are the same kind of thing — pick
+  // something to add — and a heavier layout here would read as a different,
+  // more consequential control than it is.
   const addMenu = (trigger: React.ReactElement) => (
     <DropdownMenu>
       <DropdownMenuTrigger render={trigger} />
-      <DropdownMenuContent align="start" className="w-64">
+      <DropdownMenuContent align="start" className="w-44 p-1">
         {PHASE_TEMPLATES.map((template) => (
           <DropdownMenuItem
             key={template.key}
             onClick={() => void applyTemplate(template.key)}
-            className="flex-col items-start gap-0.5"
+            className="gap-2 rounded-md px-2 py-1 text-caption"
           >
-            <span className="font-medium">
-              {t(($) => $.phases.templates[template.key])}
-            </span>
-            {/* The station names, so the choice is made on content rather than
-                on a label nobody recognises. */}
-            <span className="text-caption text-muted-foreground">
-              {t(($) => $.phases.templates[`${template.key}_desc` as const])}
-            </span>
+            <Route className="size-3.5 shrink-0 text-muted-foreground" />
+            {t(($) => $.phases.templates[template.key])}
           </DropdownMenuItem>
         ))}
-        {/* Another round of whatever is being looked at. Placed here rather
-            than on the chip because it is a third action, and a chip with
-            three targets stops being readable. Hidden with nothing selected:
-            "another round" has no meaning without a station to repeat. */}
         {selected && (
-          <>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem
-              onClick={() =>
-                createPhase.mutate(nextRoundName(phases, selected.name), {
-                  onError: fail,
-                })
-              }
-            >
-              <RotateCw className="size-3.5" />
-              {t(($) => $.phases.another_round, {
-                name: nextRoundName(phases, selected.name),
-              })}
-            </DropdownMenuItem>
-          </>
+          <DropdownMenuItem
+            onClick={() =>
+              createPhase.mutate(nextRoundName(phases, selected.name), {
+                onError: fail,
+              })
+            }
+            className="gap-2 rounded-md px-2 py-1 text-caption"
+          >
+            <RotateCw className="size-3.5 shrink-0 text-muted-foreground" />
+            {t(($) => $.phases.another_round, {
+              name: nextRoundName(phases, selected.name),
+            })}
+          </DropdownMenuItem>
         )}
-        <DropdownMenuSeparator />
-        <DropdownMenuItem onClick={() => setAdding(true)}>
-          <Plus className="size-3.5" />
+        <DropdownMenuItem
+          onClick={() => setAdding(true)}
+          className="gap-2 rounded-md px-2 py-1 text-caption"
+        >
+          <Plus className="size-3.5 shrink-0 text-muted-foreground" />
           {t(($) => $.phases.templates.custom)}
         </DropdownMenuItem>
       </DropdownMenuContent>
@@ -225,6 +236,7 @@ export function PhaseTrack({
                   phaseState(phase) === "pending" ? enterPhase : completePhase;
                 mutation.mutate(phase.id, { onError: fail });
               }}
+              onDelete={() => setConfirmDelete(phase)}
             />
           </div>
         ))}
@@ -258,6 +270,44 @@ export function PhaseTrack({
           </Button>,
         )
       )}
+
+      <AlertDialog
+        open={confirmDelete !== null}
+        onOpenChange={(open) => !open && setConfirmDelete(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {t(($) => $.phases.delete_confirm_title, {
+                name: confirmDelete?.name ?? "",
+              })}
+            </AlertDialogTitle>
+            {/* Names the number, because "its comments" is abstract until you
+                know it is nine of them. */}
+            <AlertDialogDescription>
+              {t(($) => $.phases.delete_confirm_body, {
+                count: confirmDelete?.comment_count ?? 0,
+              })}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{t(($) => $.phases.cancel)}</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                const target = confirmDelete;
+                setConfirmDelete(null);
+                if (!target) return;
+                // Clear the filter first: leaving a deleted station selected
+                // would show an empty timeline with no way back but a reload.
+                if (target.id === selectedPhaseId) onSelect(null);
+                deletePhase.mutate(target.id, { onError: fail });
+              }}
+            >
+              {t(($) => $.phases.delete_action)}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
@@ -276,12 +326,14 @@ function PhaseChip({
   busy,
   onClick,
   onAdvance,
+  onDelete,
 }: {
   phase: IssuePhase;
   selected: boolean;
   busy: boolean;
   onClick: () => void;
   onAdvance: () => void;
+  onDelete: () => void;
 }) {
   const { t } = useT("issues");
   const state = phaseState(phase);
@@ -289,7 +341,7 @@ function PhaseChip({
   return (
     <div
       className={cn(
-        "inline-flex items-center rounded-full border text-caption transition-colors",
+        "group/chip relative inline-flex items-center rounded-full border text-caption transition-colors",
         // Selection is the loud state: it is the one that changes what the
         // rest of the page is showing. Progress is carried by the icon.
         selected
@@ -326,6 +378,25 @@ function PhaseChip({
             {phase.comment_count}
           </span>
         )}
+      </button>
+
+      {/* Removal sits on the corner, revealed on hover. Off the flow entirely
+          — an absolutely positioned target cannot widen the pill or shift the
+          row when it appears, which a chip that grows on hover would do to
+          every station after it. */}
+      <button
+        type="button"
+        onClick={(event) => {
+          // The chip body selects; this must not also select on its way out.
+          event.stopPropagation();
+          onDelete();
+        }}
+        disabled={busy}
+        title={t(($) => $.phases.delete, { name: phase.name })}
+        aria-label={t(($) => $.phases.delete, { name: phase.name })}
+        className="absolute -right-1 -top-1 hidden rounded-full border bg-background p-0.5 text-muted-foreground shadow-sm transition-colors hover:text-destructive group-hover/chip:block"
+      >
+        <X className="size-2.5" />
       </button>
 
       {/* Advancing appears only on the station being looked at. A finished one

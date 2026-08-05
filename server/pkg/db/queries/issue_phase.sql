@@ -56,15 +56,27 @@ WHERE id = sqlc.arg('id') AND workspace_id = sqlc.arg('workspace_id')
 RETURNING *;
 
 -- name: DeleteIssuePhase :exec
--- Comments pointing at it are detached in application code first; the column
--- is nullable precisely so a deleted phase loses its grouping rather than its
--- comments.
+-- Its comments are deleted first, in application code. A phase is a
+-- container: removing it removes what it held.
 DELETE FROM issue_phase
 WHERE id = $1 AND workspace_id = $2;
 
--- name: DetachCommentsFromPhase :exec
-UPDATE comment SET phase_id = NULL, updated_at = now()
-WHERE phase_id = $1 AND workspace_id = $2;
+-- name: DeleteCommentsInPhase :exec
+-- Deletes the comments filed under a phase AND their replies.
+--
+-- Replies are included because they carry no phase of their own — a thread is
+-- filed by its root — so leaving them would strand answers whose question is
+-- gone. Written as one statement rather than a read-then-delete so a reply
+-- arriving between the two cannot survive its root.
+DELETE FROM comment AS target
+WHERE target.workspace_id = $2
+  AND (
+    target.phase_id = $1
+    OR target.parent_id IN (
+      SELECT root.id FROM comment AS root
+      WHERE root.phase_id = $1 AND root.workspace_id = $2
+    )
+  );
 
 -- name: SetCommentPhase :one
 UPDATE comment

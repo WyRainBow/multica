@@ -668,10 +668,14 @@
     "composer_hint": "「{{name}}」에 작성합니다",
     "templates": {
       "requirement": "이슈 라이프사이클",
-      "requirement_desc": "시작 · 리뷰 · 동결",
       "custom": "사용자 지정…",
       "apply_failed": "노드 추가에 실패했습니다"
     },
-    "another_round": "한 번 더: {{name}}"
+    "another_round": "한 번 더: {{name}}",
+    "delete": "노드 삭제: {{name}}",
+    "delete_confirm_title": "「{{name}}」을(를) 삭제할까요?",
+    "delete_confirm_body_other": "이 노드의 댓글 {{count}}개도 함께 삭제됩니다. 되돌릴 수 없습니다.",
+    "delete_action": "삭제",
+    "cancel": "취소"
   }
 }

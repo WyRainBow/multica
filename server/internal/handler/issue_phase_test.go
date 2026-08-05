@@ -241,20 +241,29 @@ func TestIssuePhases_CommentCountsPerPhase(t *testing.T) {
 	}
 }
 
-// Deleting a station must not delete what was said there. The comments fall
-// back to ungrouped — where every comment written before phases existed
-// already sits.
-func TestIssuePhases_DeleteDetachesCommentsInsteadOfRemovingThem(t *testing.T) {
+// A phase is a container: deleting it deletes what it held. This reverses an
+// earlier decision to detach instead — detaching left orphaned remarks with no
+// context, and made the one destructive action quietly non-destructive.
+func TestIssuePhases_DeleteRemovesItsComments(t *testing.T) {
 	issueID := seedPhaseIssue(t)
 	phase := createPhase(t, issueID, "已冻结")
 
 	var commentID string
 	if err := testPool.QueryRow(context.Background(), `
 		INSERT INTO comment (workspace_id, issue_id, author_type, author_id, content, phase_id)
-		VALUES ($1, $2, 'member', $3, 'still worth keeping', $4)
+		VALUES ($1, $2, 'member', $3, 'filed under the station', $4)
 		RETURNING id
 	`, testWorkspaceID, issueID, testUserID, phase.ID).Scan(&commentID); err != nil {
 		t.Fatalf("create comment: %v", err)
+	}
+	// A reply carries no phase of its own — a thread is filed by its root.
+	var replyID string
+	if err := testPool.QueryRow(context.Background(), `
+		INSERT INTO comment (workspace_id, issue_id, author_type, author_id, content, parent_id)
+		VALUES ($1, $2, 'member', $3, 'an answer to it', $4)
+		RETURNING id
+	`, testWorkspaceID, issueID, testUserID, commentID).Scan(&replyID); err != nil {
+		t.Fatalf("create reply: %v", err)
 	}
 
 	recorder := phaseRequest(t, "DELETE", "/p", issueID, phase.ID, nil,
@@ -263,14 +272,56 @@ func TestIssuePhases_DeleteDetachesCommentsInsteadOfRemovingThem(t *testing.T) {
 		t.Fatalf("delete status = %d: %s", recorder.Code, recorder.Body.String())
 	}
 
-	var content string
-	var phaseID *string
-	if err := testPool.QueryRow(context.Background(),
-		`SELECT content, phase_id FROM comment WHERE id = $1`, commentID).
-		Scan(&content, &phaseID); err != nil {
-		t.Fatalf("comment was deleted along with its phase: %v", err)
+	for label, id := range map[string]string{"comment": commentID, "reply": replyID} {
+		var count int
+		if err := testPool.QueryRow(context.Background(),
+			`SELECT count(*) FROM comment WHERE id = $1`, id).Scan(&count); err != nil {
+			t.Fatalf("count %s: %v", label, err)
+		}
+		if count != 0 {
+			t.Fatalf("%s survived its phase being deleted", label)
+		}
 	}
-	if phaseID != nil {
-		t.Fatalf("comment still points at the deleted phase")
+}
+
+// Only that station's comments. Everything else on the issue — other
+// stations, and comments filed under none — is untouched.
+func TestIssuePhases_DeleteLeavesOtherCommentsAlone(t *testing.T) {
+	issueID := seedPhaseIssue(t)
+	doomed := createPhase(t, issueID, "已冻结")
+	kept := createPhase(t, issueID, "实施中")
+
+	insert := func(content string, phaseID *string) string {
+		var id string
+		if err := testPool.QueryRow(context.Background(), `
+			INSERT INTO comment (workspace_id, issue_id, author_type, author_id, content, phase_id)
+			VALUES ($1, $2, 'member', $3, $4, $5)
+			RETURNING id
+		`, testWorkspaceID, issueID, testUserID, content, phaseID).Scan(&id); err != nil {
+			t.Fatalf("create comment: %v", err)
+		}
+		return id
+	}
+	insert("goes with the station", &doomed.ID)
+	survivor := insert("belongs to another station", &kept.ID)
+	ungrouped := insert("belongs to no station", nil)
+
+	if recorder := phaseRequest(t, "DELETE", "/p", issueID, doomed.ID, nil,
+		testHandler.DeleteIssuePhase); recorder.Code != http.StatusNoContent {
+		t.Fatalf("delete status = %d", recorder.Code)
+	}
+
+	for label, id := range map[string]string{
+		"other station's comment": survivor,
+		"ungrouped comment":       ungrouped,
+	} {
+		var count int
+		if err := testPool.QueryRow(context.Background(),
+			`SELECT count(*) FROM comment WHERE id = $1`, id).Scan(&count); err != nil {
+			t.Fatalf("count %s: %v", label, err)
+		}
+		if count != 1 {
+			t.Fatalf("%s was deleted with an unrelated phase", label)
+		}
 	}
 }
