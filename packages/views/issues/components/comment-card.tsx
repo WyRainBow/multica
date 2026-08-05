@@ -564,6 +564,9 @@ function CommentRow({
   const timeAgo = useTimeAgo();
   const { getActorName } = useActorName();
 
+  const entryPhase =
+    phases?.find((phase) => phase.id === entry.phase_id) ?? null;
+
   const edit = useEditAttachmentState(issueId, entry, onEdit);
 
   const isOwn = entry.actor_type === "member" && entry.actor_id === currentUserId;
@@ -588,6 +591,17 @@ function CommentRow({
         <span className="cursor-pointer text-body font-medium">
           {getActorName(entry.actor_type, entry.actor_id)}
         </span>
+        {/* Which station this was said at. Shown on the comment itself, not
+            only on the track: the timeline is read top to bottom far more
+            often than it is filtered, and without this a reader scrolling the
+            whole thing cannot tell which stretch of work a remark belongs to
+            — which is the complaint the feature exists to answer. */}
+        {entryPhase && (
+          <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-muted px-1.5 py-0.5 text-caption text-muted-foreground">
+            <Milestone className="size-3 shrink-0" />
+            <span className="truncate">{entryPhase.name}</span>
+          </span>
+        )}
         <Tooltip>
           <TooltipTrigger
             render={

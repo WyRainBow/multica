@@ -665,6 +665,20 @@
     "clear": "노드에서 제거",
     "enter_action": "이 노드로 진입",
     "complete_action": "이 노드 완료",
-    "composer_hint": "「{{name}}」에 작성합니다"
+    "composer_hint": "「{{name}}」에 작성합니다",
+    "templates": {
+      "requirement": "요구사항 전달",
+      "requirement_desc": "시작 · 동결 · 구현 중 · 배포 대기 · 완료",
+      "stage_gate": "Stage-Gate",
+      "stage_gate_desc": "발견 · 기획 · 사업성 검토 · 개발 · 검증 · 출시",
+      "agent": "에이전트 파이프라인",
+      "agent_desc": "분류 · 계획 · 적대적 리뷰 · 반복 · 구현",
+      "bug": "버그 라이프사이클",
+      "bug_desc": "열림 · 확인됨 · 리뷰 중 · 수정됨 · 검증됨",
+      "devops": "DevOps",
+      "devops_desc": "계획 · 생성 · 검증 · 패키지 · 릴리스",
+      "custom": "사용자 지정…",
+      "apply_failed": "노드 추가에 실패했습니다"
+    }
   }
 }

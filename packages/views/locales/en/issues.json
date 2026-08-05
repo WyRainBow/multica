@@ -690,6 +690,20 @@
     "clear": "Remove from phase",
     "enter_action": "Enter this phase",
     "complete_action": "Complete this phase",
-    "composer_hint": "Writing in {{name}}"
+    "composer_hint": "Writing in {{name}}",
+    "templates": {
+      "requirement": "Requirement delivery",
+      "requirement_desc": "Start · Frozen · Building · Awaiting deploy · Done",
+      "stage_gate": "Stage-Gate",
+      "stage_gate_desc": "Discovery · Scoping · Business case · Development · Validation · Launch",
+      "agent": "Agent pipeline",
+      "agent_desc": "Triage · Plan · Adversarial review · Iterate · Implement",
+      "bug": "Bug lifecycle",
+      "bug_desc": "Open · Verified · Review · Fixed · Tested",
+      "devops": "DevOps",
+      "devops_desc": "Plan · Create · Verify · Package · Release",
+      "custom": "Custom…",
+      "apply_failed": "Failed to add the phases"
+    }
   }
 }

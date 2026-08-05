@@ -72,6 +72,8 @@ import { LocalDirectoryHint } from "../../projects/components/local-directory-hi
 import { CommentCard } from "./comment-card";
 import { IssueCardsSection } from "../../cards";
 import { PhaseTrack } from "./phase-track";
+import { phaseAtTime } from "./phase-window";
+import type { IssuePhase } from "@multica/core/types";
 import { DescriptionOutline } from "./description-outline";
 import type { OutlineHeading } from "../../editor/outline";
 import { CommentInput } from "./comment-input";
@@ -590,6 +592,7 @@ function ActivityBlock({
   showOlder,
   onToggleShowOlder,
   getActorName,
+  phases,
   t,
   timeAgo,
 }: {
@@ -603,6 +606,9 @@ function ActivityBlock({
   showOlder: boolean;
   onToggleShowOlder: () => void;
   getActorName: (type: string, id: string) => string;
+  /** The issue's route, used to place each activity at the station that was
+   *  current when it happened. */
+  phases: IssuePhase[];
   t: ActivityT;
   timeAgo: (dateStr: string) => string;
 }) {
@@ -689,6 +695,18 @@ function ActivityBlock({
                 )}
               </span>
               <span className="truncate">{formatActivity(entry, t, getActorName)}</span>
+              {/* Which station was current when this happened. Placed by time,
+                  since an activity carries no phase of its own. Absent for
+                  anything that predates the route — which is every activity on
+                  an issue that gained phases later. */}
+              {(() => {
+                const at = phaseAtTime(phases, entry.created_at);
+                return at ? (
+                  <span className="ml-1 shrink-0 rounded-full bg-muted px-1.5 text-caption text-muted-foreground">
+                    {at.name}
+                  </span>
+                ) : null;
+              })()}
               {(entry.coalesced_count ?? 1) > 1 &&
                 entry.action !== "task_completed" &&
                 entry.action !== "task_failed" && (
@@ -1425,6 +1443,14 @@ export function IssueDetail({ issueId, onDelete, onDone, defaultSidebarOpen = tr
   // unrelated thread) hands every card a brand-new prop reference and forces
   // every thread subtree to re-render in lockstep.
   const prevThreadRepliesRef = useRef<Map<string, TimelineEntry[]>>(new Map());
+  // The route this requirement takes. Rendered under the title as a header:
+  // it says where the work is, while what happened at each station hangs
+  // further down under that station's heading.
+  const { data: issuePhases = [] } = useQuery({
+    ...issuePhasesOptions(wsId, id),
+    enabled: !!issue,
+  });
+
   // Which station the page is currently reading. Null = the whole timeline.
   //
   // Component state, not persisted: a filter that survives a reload would
@@ -1450,19 +1476,24 @@ export function IssueDetail({ issueId, onDelete, onDone, defaultSidebarOpen = tr
     // bucketed under their parent's id and rendered nested inside CommentCard.
     // No orphan rescue needed: the timeline is fetched in full, so every
     // reply's parent is always in the same array.
-    // Narrowed to one station when the reader picked one. Activities drop out
-    // with it: they belong to the issue's whole life, and leaving them in
-    // would answer "what happened in this phase" with events from outside it.
+    // Narrowed to one station when the reader picked one.
     //
-    // Replies are not filtered — a thread is read as a unit, and a reply
-    // written before its root was filed under a station would otherwise
-    // vanish from a thread that is still shown.
+    // Comments go by the station they were filed under. Activities have no
+    // phase of their own and are placed by TIME — whichever station was
+    // current when the change happened. Dropping them instead would answer
+    // "what happened while this was frozen" without the half that says who
+    // changed what, which is most of what an activity feed is for.
+    //
+    // Replies are not filtered: a thread is read as a unit, and a reply
+    // written before its root was filed would otherwise vanish from a thread
+    // still on screen.
     const visible = selectedPhaseId
-      ? timeline.filter(
-          (e) =>
-            e.type === "comment" &&
-            (e.phase_id === selectedPhaseId || !!e.parent_id),
-        )
+      ? timeline.filter((e) => {
+          if (e.type === "comment") {
+            return e.phase_id === selectedPhaseId || !!e.parent_id;
+          }
+          return phaseAtTime(issuePhases, e.created_at)?.id === selectedPhaseId;
+        })
       : timeline;
     const topLevel = visible.filter(
       (e) => e.type === "activity" || !e.parent_id,
@@ -1539,7 +1570,7 @@ export function IssueDetail({ issueId, onDelete, onDone, defaultSidebarOpen = tr
     }
 
     return { threadReplies, groups };
-  }, [timeline, selectedPhaseId]);
+  }, [timeline, selectedPhaseId, issuePhases]);
 
   // Flat array consumed by <Virtuoso>. Recomputed when timelineView.groups
   // changes (timeline events) or expandedResolved flips (user toggles a
@@ -1755,14 +1786,6 @@ export function IssueDetail({ issueId, onDelete, onDone, defaultSidebarOpen = tr
   // of parking — so folding it into the child list would put it back in the
   // subtree the user just lifted it out of, and it would start counting toward
   // the "x/y done" progress it was removed from.
-  // The route this requirement takes. Rendered under the title as a header:
-  // it says where the work is, while what happened at each station hangs
-  // further down under that station's heading.
-  const { data: issuePhases = [] } = useQuery({
-    ...issuePhasesOptions(wsId, id),
-    enabled: !!issue,
-  });
-
   // Grouping a comment under a station. Invalidates rather than patches: the
   // phase's comment count is server-derived, so a local guess would be a guess
   // about a number this client does not own.
@@ -2503,6 +2526,7 @@ export function IssueDetail({ issueId, onDelete, onDone, defaultSidebarOpen = tr
     const showOlder = showOlderActivityIds.has(item.id);
     return (
       <ActivityBlock
+        phases={issuePhases}
         entries={item.entries}
         expanded={expanded}
         onToggle={() => toggleActivityBlock(item.id, expanded)}

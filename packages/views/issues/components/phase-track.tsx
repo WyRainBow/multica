@@ -9,6 +9,13 @@ import {
   useCompleteIssuePhase,
 } from "@multica/core/issues/mutations";
 import { Button } from "@multica/ui/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@multica/ui/components/ui/dropdown-menu";
 import { Input } from "@multica/ui/components/ui/input";
 import { cn } from "@multica/ui/lib/utils";
 import { toast } from "sonner";
@@ -27,6 +34,32 @@ export function phaseState(phase: IssuePhase): PhaseState {
   if (phase.entered_at) return "current";
   return "pending";
 }
+
+/**
+ * Ready-made routes, so the common case is one click rather than five.
+ *
+ * Every one is taken from a process that exists rather than invented here:
+ *
+ *  - `requirement` is the route this feature was asked for.
+ *  - `stage_gate` is the Stage-Gate methodology's own phases, the thing the
+ *    whole shape is named after.
+ *  - `agent` is Swamp's `@swamp/issue-lifecycle` — the only tracker found that
+ *    groups content inside one issue, built for an agent pipeline.
+ *  - `bug` is Fossil's ticket statuses, read out of its ticket docs.
+ *  - `devops` is GitLab's devops stage labels (`~"devops::plan"` and friends).
+ *
+ * Names are translated, not transliterated: a route nobody can read is a route
+ * nobody uses.
+ */
+const PHASE_TEMPLATES = [
+  { key: "requirement", names: ["开始", "已冻结", "实施中", "等待部署", "结束"] },
+  { key: "stage_gate", names: ["发现", "立项", "商业论证", "开发", "测试验证", "发布"] },
+  { key: "agent", names: ["分诊", "计划", "对抗评审", "迭代", "实施"] },
+  { key: "bug", names: ["待处理", "已确认", "评审中", "已修复", "已验证"] },
+  { key: "devops", names: ["规划", "开发", "验证", "打包", "发布"] },
+] as const;
+
+type TemplateKey = (typeof PHASE_TEMPLATES)[number]["key"];
 
 /**
  * The route a requirement takes, as a row of stations.
@@ -72,6 +105,24 @@ export function PhaseTrack({
         : t(($) => $.detail.update_failed),
     );
 
+  // Applying a template is several creates in a row, deliberately sequential:
+  // position is derived from the current maximum, so firing them in parallel
+  // would have every one read the same maximum and land on the same spot.
+  const applyTemplate = async (key: TemplateKey) => {
+    const template = PHASE_TEMPLATES.find((entry) => entry.key === key);
+    if (!template) return;
+    try {
+      for (const phaseName of template.names) {
+        await createPhase.mutateAsync(phaseName);
+      }
+    } catch (err) {
+      // Partial application is left in place rather than rolled back: half a
+      // route is still a route, and the stations already created are the ones
+      // the person will keep.
+      fail(err);
+    }
+  };
+
   const submitNew = () => {
     const trimmed = name.trim();
     if (!trimmed) {
@@ -89,18 +140,44 @@ export function PhaseTrack({
     });
   };
 
+  const addMenu = (trigger: React.ReactElement) => (
+    <DropdownMenu>
+      <DropdownMenuTrigger render={trigger} />
+      <DropdownMenuContent align="start" className="w-64">
+        {PHASE_TEMPLATES.map((template) => (
+          <DropdownMenuItem
+            key={template.key}
+            onClick={() => void applyTemplate(template.key)}
+            className="flex-col items-start gap-0.5"
+          >
+            <span className="font-medium">
+              {t(($) => $.phases.templates[template.key])}
+            </span>
+            {/* The station names, so the choice is made on content rather than
+                on a label nobody recognises. */}
+            <span className="text-caption text-muted-foreground">
+              {t(($) => $.phases.templates[`${template.key}_desc` as const])}
+            </span>
+          </DropdownMenuItem>
+        ))}
+        <DropdownMenuSeparator />
+        <DropdownMenuItem onClick={() => setAdding(true)}>
+          <Plus className="size-3.5" />
+          {t(($) => $.phases.templates.custom)}
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+
   if (phases.length === 0 && !adding) {
     return (
       <div className={className}>
-        <Button
-          size="sm"
-          variant="ghost"
-          className="text-muted-foreground"
-          onClick={() => setAdding(true)}
-        >
-          <Plus className="size-3.5" />
-          {t(($) => $.phases.add_first)}
-        </Button>
+        {addMenu(
+          <Button size="sm" variant="ghost" className="text-muted-foreground">
+            <Plus className="size-3.5" />
+            {t(($) => $.phases.add_first)}
+          </Button>,
+        )}
       </div>
     );
   }
