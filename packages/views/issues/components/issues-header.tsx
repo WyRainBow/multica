@@ -51,7 +51,7 @@ import { Calendar } from "@multica/ui/components/ui/calendar";
 import { Switch } from "@multica/ui/components/ui/switch";
 import {
   ALL_STATUSES,
-  PRIORITY_ORDER,
+  PRIORITY_DISPLAY_ORDER,
 } from "@multica/core/issues/config";
 import { StatusIcon, PriorityIcon } from ".";
 import { useQuery } from "@tanstack/react-query";
@@ -1311,7 +1311,7 @@ export function IssueDisplayControls({
                   mode={filterModes.priority}
                   onChange={act.setFilterMode}
                 />
-                {PRIORITY_ORDER.map((p) => {
+                {PRIORITY_DISPLAY_ORDER.map((p) => {
                   const checked = priorityFilters.includes(p);
                   const count = counts.priority.get(p) ?? 0;
                   return (

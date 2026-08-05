@@ -166,6 +166,12 @@ deleted_activity AS (
 deleted_cards AS (
     DELETE FROM card WHERE workspace_id = $1
 ),
+deleted_issue_phases AS (
+    -- comment.phase_id points here but carries no FK, and the comments go in
+    -- DeleteWorkspaceComments later in the same transaction, so the phases can
+    -- be swept with the other workspace-keyed leaves.
+    DELETE FROM issue_phase WHERE workspace_id = $1
+),
 deleted_inbox AS (
     DELETE FROM inbox_item WHERE workspace_id = $1
 ),

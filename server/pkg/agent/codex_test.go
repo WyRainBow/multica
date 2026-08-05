@@ -2411,7 +2411,8 @@ func TestCodexExecuteThreadStartTimeoutLifecycleIsFailClosed(t *testing.T) {
 	if failure["retry_safe"] != false || failure["retry_attempted"] != false {
 		t.Fatalf("thread/start timeout must remain fail-closed: %v", failure)
 	}
-	if failure["stderr_model_refresh_timeout_count"] != float64(1) ||
+	if failure["stderr_model_refresh_failure_count"] != float64(1) ||
+		failure["stderr_model_refresh_timeout_count"] != float64(1) ||
 		failure["stderr_mcp_init_transport_count"] != float64(1) ||
 		failure["stderr_bare_timeout_count"] != float64(0) {
 		t.Fatalf("unexpected stderr classification: %v", failure)
@@ -2745,7 +2746,12 @@ func TestClassifyCodexStartupStderr(t *testing.T) {
 		{
 			name:   "model refresh timeout",
 			stderr: "failed to refresh available models: timeout waiting for child process to exit",
-			want:   codexStderrClassification{modelRefreshTimeout: 1},
+			want:   codexStderrClassification{modelRefreshFailure: 1, modelRefreshTimeout: 1},
+		},
+		{
+			name:   "model refresh non-timeout failure",
+			stderr: "failed to refresh available models: stream disconnected before completion",
+			want:   codexStderrClassification{modelRefreshFailure: 1},
 		},
 		{
 			name:   "mcp init transport",
@@ -2953,6 +2959,136 @@ func TestCodexExecuteFirstTurnNoProgressSurfacesDiagnostics(t *testing.T) {
 	}
 }
 
+func TestCodexExecuteFirstItemWaitLifecycle(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("shell-script fixture is POSIX-only")
+	}
+	codexGracefulShutdownTimeoutNanos.Store(int64(100 * time.Millisecond))
+	t.Cleanup(func() { codexGracefulShutdownTimeoutNanos.Store(0) })
+	// The helper budget owns the complete subtest, including a possible
+	// two-attempt retry chain, while ExecOptions.Timeout applies per attempt.
+	// Keep the helper deadline away from race-instrumented subprocess jitter.
+	const firstItemWaitTestBudget = 20 * time.Second
+
+	t.Run("successful progress emits a latency sample", func(t *testing.T) {
+		fakePath := writeFakeCodexAppServer(t, ""+
+			`read line`+"\n"+
+			`echo '{"jsonrpc":"2.0","id":1,"result":{}}'`+"\n"+
+			`read line`+"\n"+
+			`read line`+"\n"+
+			`echo '{"jsonrpc":"2.0","id":2,"result":{"thread":{"id":"thr-first-item-ok"}}}'`+"\n"+
+			`read line`+"\n"+
+			`echo '{"jsonrpc":"2.0","id":3,"result":{}}'`+"\n"+
+			`echo '{"jsonrpc":"2.0","method":"turn/started","params":{"threadId":"thr-first-item-ok","turn":{"id":"turn-first-item-ok"}}}'`+"\n"+
+			`sleep 0.03`+"\n"+
+			`echo '{"jsonrpc":"2.0","method":"item/completed","params":{"threadId":"thr-first-item-ok","item":{"type":"agentMessage","id":"msg-1","text":"Done"}}}'`+"\n"+
+			`echo '{"jsonrpc":"2.0","method":"turn/completed","params":{"threadId":"thr-first-item-ok","turn":{"id":"turn-first-item-ok","status":"completed"}}}'`+"\n")
+
+		var logs bytes.Buffer
+		result, _ := executeFakeCodexCollectingMessagesWithConfig(t, fakePath, Config{
+			Logger:        slog.New(slog.NewJSONHandler(&logs, nil)),
+			TaskID:        "task-first-item-ok",
+			RuntimeID:     "runtime-first-item-ok",
+			DaemonVersion: "daemon-test",
+			CodexVersion:  "codex-test",
+		}, ExecOptions{
+			Timeout:                   5 * time.Second,
+			SemanticInactivityTimeout: 5 * time.Second,
+		}, firstItemWaitTestBudget)
+		if result.Status != "completed" {
+			t.Fatalf("expected completed, got %+v", result)
+		}
+
+		entry := findCodexLifecyclePhase(t, parseJSONLogEntries(t, logs.String()), "first_item_wait")
+		for key, want := range map[string]any{
+			"task_id":                     "task-first-item-ok",
+			"runtime_id":                  "runtime-first-item-ok",
+			"attempt":                     float64(1),
+			"active_launches":             float64(1),
+			"method":                      "turn/start",
+			"thread_id":                   "thr-first-item-ok",
+			"turn_id":                     "turn-first-item-ok",
+			"outcome":                     "progress",
+			"timeout":                     "4s",
+			"semantic_inactivity_timeout": "5s",
+			"codex_version":               "codex-test",
+			"daemon_version":              "daemon-test",
+			"cleanup_confirmed":           true,
+			"reaped":                      true,
+			"retry_safe":                  false,
+		} {
+			if got := entry[key]; got != want {
+				t.Fatalf("entry[%s]=%v, want %v; entry=%v", key, got, want, entry)
+			}
+		}
+		if latency, ok := entry["latency_ms"].(float64); !ok || latency <= 0 {
+			t.Fatalf("missing/invalid latency_ms: %v", entry)
+		}
+		if entry["stderr_model_refresh_failure_count"] != float64(0) ||
+			entry["stderr_model_refresh_timeout_count"] != float64(0) ||
+			entry["stderr_mcp_init_transport_count"] != float64(0) ||
+			entry["stderr_bare_timeout_count"] != float64(0) {
+			t.Fatalf("successful wait has unexpected stderr classification: %v", entry)
+		}
+	})
+
+	t.Run("catalog failure is classified on every timed-out attempt", func(t *testing.T) {
+		fakePath := writeFakeCodexAppServer(t, ""+
+			`DIR="$(dirname "$0")"`+"\n"+
+			`ATTEMPT=$(cat "$DIR/attempts" 2>/dev/null || echo 0)`+"\n"+
+			`ATTEMPT=$((ATTEMPT+1))`+"\n"+
+			`echo "$ATTEMPT" > "$DIR/attempts"`+"\n"+
+			`read line`+"\n"+
+			`echo '{"jsonrpc":"2.0","id":1,"result":{}}'`+"\n"+
+			`read line`+"\n"+
+			`read line`+"\n"+
+			`echo '{"jsonrpc":"2.0","id":2,"result":{"thread":{"id":"thr-first-item-timeout"}}}'`+"\n"+
+			`read line`+"\n"+
+			`echo '{"jsonrpc":"2.0","id":3,"result":{}}'`+"\n"+
+			`echo '{"jsonrpc":"2.0","method":"turn/started","params":{"threadId":"thr-first-item-timeout","turn":{"id":"turn-first-item-timeout"}}}'`+"\n"+
+			`echo 'ERROR codex_models_manager::manager: failed to refresh available models: stream disconnected before completion' >&2`+"\n"+
+			`sleep 2`+"\n")
+
+		var logs bytes.Buffer
+		result, _ := executeFakeCodexCollectingMessagesWithConfig(t, fakePath, Config{
+			Logger:        slog.New(slog.NewJSONHandler(&logs, nil)),
+			TaskID:        "task-first-item-timeout",
+			RuntimeID:     "runtime-first-item-timeout",
+			DaemonVersion: "daemon-test",
+			CodexVersion:  "codex-test",
+		}, ExecOptions{
+			Timeout:                   5 * time.Second,
+			SemanticInactivityTimeout: 100 * time.Millisecond,
+		}, firstItemWaitTestBudget)
+		if result.Status != "timeout" {
+			t.Fatalf("expected timeout after the bounded retry, got %+v", result)
+		}
+		assertCodexAttemptCount(t, fakePath, "2")
+
+		var waits []map[string]any
+		for _, entry := range parseJSONLogEntries(t, logs.String()) {
+			if entry["msg"] == "codex lifecycle" && entry["phase"] == "first_item_wait" {
+				waits = append(waits, entry)
+			}
+		}
+		if len(waits) != 2 {
+			t.Fatalf("expected one first-item sample per attempt, got %d: %v", len(waits), waits)
+		}
+		for i, entry := range waits {
+			if entry["attempt"] != float64(i+1) || entry["outcome"] != "no_progress_timeout" ||
+				entry["retry_safe"] != true || entry["cleanup_confirmed"] != true {
+				t.Fatalf("unexpected timeout lifecycle entry: %v", entry)
+			}
+			if entry["stderr_model_refresh_failure_count"] != float64(1) ||
+				entry["stderr_model_refresh_timeout_count"] != float64(0) ||
+				entry["stderr_mcp_init_transport_count"] != float64(0) ||
+				entry["stderr_bare_timeout_count"] != float64(0) {
+				t.Fatalf("catalog failure was misclassified: %v", entry)
+			}
+		}
+	})
+}
+
 func TestCodexExecuteFailsWhenProcessExitsDuringActiveTurn(t *testing.T) {
 	t.Parallel()
 	if runtime.GOOS == "windows" {
@@ -2997,8 +3133,8 @@ func TestCodexExecuteCleansUpWhenScannerOverflowsOnResume(t *testing.T) {
 	}
 
 	// Regression for GH#4520. On `thread/resume`, the fake codex emits a
-	// single stdout line larger than the daemon's bufio.Scanner cap (10 MB),
-	// which trips "bufio.Scanner: token too long" in the reader goroutine.
+	// single stdout line larger than agentStreamMaxLineBytes, which trips
+	// "bufio.Scanner: token too long" in the reader goroutine.
 	// Pre-fix, drainAndWait then hung forever on cmd.Wait(): the reader had
 	// stopped consuming the pipe, codex was blocked writing into a full
 	// stdout buffer, stdin.Close never unblocked codex, and the deferred
@@ -3019,12 +3155,13 @@ func TestCodexExecuteCleansUpWhenScannerOverflowsOnResume(t *testing.T) {
 		`read line`+"\n"+
 		`echo '{"jsonrpc":"2.0","id":1,"result":{}}'`+"\n"+
 		`read line`+"\n"+
-		// Emit a > 10 MB single line with no embedded newline. printf
+		// Emit a single line past the cap with no embedded newline. printf
 		// avoids the trailing newline echo would add; head + tr generates
-		// the bulk payload in pure POSIX shell. The scanner errors out at
-		// 10 MB even though we write 11 MB.
+		// the bulk payload in pure POSIX shell. The size is derived from
+		// the production constant so raising the cap cannot silently turn
+		// this regression test into a no-op.
 		`printf '{"jsonrpc":"2.0","id":2,"result":{"big":"'`+"\n"+
-		`head -c 11000000 /dev/zero | tr '\0' 'x'`+"\n"+
+		fmt.Sprintf(`head -c %d /dev/zero | tr '\0' 'x'`, agentStreamMaxLineBytes+1024*1024)+"\n"+
 		`printf '"}}\n'`+"\n"+
 		// Hold the process open without reading more stdin. Pre-fix this
 		// hangs cmd.Wait() because codex never sees stdin EOF (it isn't
@@ -3642,7 +3779,13 @@ func executeFakeCodex(t *testing.T, fakePath string, opts ExecOptions) Result {
 // the wait, so retry-exercising tests can ask for more than the default.
 func executeFakeCodexCollectingMessages(t *testing.T, fakePath string, opts ExecOptions, budget time.Duration) (Result, []Message) {
 	t.Helper()
-	backend, err := New("codex", Config{ExecutablePath: fakePath, Logger: slog.Default()})
+	return executeFakeCodexCollectingMessagesWithConfig(t, fakePath, Config{Logger: slog.Default()}, opts, budget)
+}
+
+func executeFakeCodexCollectingMessagesWithConfig(t *testing.T, fakePath string, cfg Config, opts ExecOptions, budget time.Duration) (Result, []Message) {
+	t.Helper()
+	cfg.ExecutablePath = fakePath
+	backend, err := New("codex", cfg)
 	if err != nil {
 		t.Fatalf("new codex backend: %v", err)
 	}
