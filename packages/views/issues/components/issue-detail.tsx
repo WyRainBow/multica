@@ -113,7 +113,7 @@ import { useIssueTimeline } from "../hooks/use-issue-timeline";
 import { useIssueReactions } from "../hooks/use-issue-reactions";
 import { useIssueSubscribers } from "../hooks/use-issue-subscribers";
 import { ReactionBar } from "@multica/ui/components/common/reaction-bar";
-import { useTimeAgo } from "../../i18n";
+import { useExactTime } from "../../i18n";
 import { useRestoredScrollOffset, useRestoredScrollRef } from "../../platform";
 import { cn } from "@multica/ui/lib/utils";
 
@@ -614,7 +614,7 @@ function ActivityBlock({
   getActorName,
   phases,
   t,
-  timeAgo,
+  exactTime,
 }: {
   entries: TimelineEntry[];
   expanded: boolean;
@@ -630,7 +630,7 @@ function ActivityBlock({
    *  current when it happened. */
   phases: IssuePhase[];
   t: ActivityT;
-  timeAgo: (dateStr: string) => string;
+  exactTime: (dateStr: string | null | undefined) => string;
 }) {
   if (!expanded) {
     const count = entries.length;
@@ -734,18 +734,9 @@ function ActivityBlock({
                     {t(($) => $.activity.coalesced_badge, { count: entry.coalesced_count ?? 1 })}
                   </span>
                 )}
-              <Tooltip>
-                <TooltipTrigger
-                  render={
-                    <span className="ml-auto shrink-0 cursor-default">
-                      {timeAgo(entry.created_at)}
-                    </span>
-                  }
-                />
-                <TooltipContent side="top">
-                  {new Date(entry.created_at).toLocaleString()}
-                </TooltipContent>
-              </Tooltip>
+              <span className="ml-auto shrink-0 tabular-nums">
+                {exactTime(entry.created_at)}
+              </span>
             </div>
           </div>
         );
@@ -1194,7 +1185,7 @@ export function IssueDetailSkeleton({ leading }: { leading?: ReactNode } = {}) {
 
 export function IssueDetail({ issueId, onDelete, onDone, defaultSidebarOpen = true, layoutId = "multica_issue_detail_layout", highlightCommentId, leadingAction }: IssueDetailProps) {
   const { t } = useT("issues");
-  const timeAgo = useTimeAgo();
+  const exactTime = useExactTime();
   const id = issueId;
   const user = useAuthStore((s) => s.user);
   const paths = useWorkspacePaths();
@@ -2502,10 +2493,10 @@ export function IssueDetail({ issueId, onDelete, onDone, defaultSidebarOpen = tr
             <span className="cursor-pointer truncate">{getActorName(issue.creator_type, issue.creator_id)}</span>
           </PropRow>
           <PropRow label={t(($) => $.detail.prop_created)}>
-            <span className="text-muted-foreground">{shortDate(issue.created_at)}</span>
+            <span className="text-muted-foreground tabular-nums">{exactTime(issue.created_at)}</span>
           </PropRow>
           <PropRow label={t(($) => $.detail.prop_updated)}>
-            <span className="text-muted-foreground">{shortDate(issue.updated_at)}</span>
+            <span className="text-muted-foreground tabular-nums">{exactTime(issue.updated_at)}</span>
           </PropRow>
         </div>}
       </div>
@@ -2637,7 +2628,7 @@ export function IssueDetail({ issueId, onDelete, onDone, defaultSidebarOpen = tr
         onToggleShowOlder={() => showOlderActivities(item.id)}
         getActorName={getActorName}
         t={t}
-        timeAgo={timeAgo}
+        exactTime={exactTime}
       />
     );
   };

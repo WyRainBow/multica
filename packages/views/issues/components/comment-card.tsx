@@ -32,7 +32,7 @@ import { ReactionBar } from "@multica/ui/components/common/reaction-bar";
 import { cn } from "@multica/ui/lib/utils";
 import { copyText } from "@multica/ui/lib/clipboard";
 import { useActorName } from "@multica/core/workspace/hooks";
-import { useTimeAgo } from "../../i18n";
+import { useExactTime } from "../../i18n";
 import { ContentEditor, type ContentEditorRef, ReadonlyContent, useFileDropZone, FileDropOverlay, Attachment as AttachmentRenderer, AttachmentDownloadProvider, useUploadGate, useComposerSubmit } from "../../editor";
 import { useCommentUploads } from "./use-comment-uploads";
 import { CommentAnchorQuote } from "./comment-anchor-quote";
@@ -241,6 +241,23 @@ function initialStandaloneAttachmentIds(entry: TimelineEntry): Set<string> {
       .filter((attachment) => !contentReferencesAttachment(content, attachment))
       .map((attachment) => attachment.id),
   );
+}
+
+// When a comment was actually rewritten, or null when it never was.
+//
+// Every comment carries an updated_at — it is set to created_at on insert, and
+// the two can also drift by sub-millisecond rounding through pgx. Treating any
+// difference as an edit would mark every comment in the workspace "edited", so
+// the gap has to clear a second before it means a person went back and changed
+// something.
+const EDIT_THRESHOLD_MS = 1000;
+
+function commentEditedAt(entry: TimelineEntry): string | null {
+  if (!entry.updated_at) return null;
+  const created = new Date(entry.created_at).getTime();
+  const updated = new Date(entry.updated_at).getTime();
+  if (Number.isNaN(created) || Number.isNaN(updated)) return null;
+  return updated - created >= EDIT_THRESHOLD_MS ? entry.updated_at : null;
 }
 
 function retryableAgentFailureComment(entry: TimelineEntry): entry is TimelineEntry & { source_task_id: string } {
@@ -545,7 +562,7 @@ function CommentRow({
   onResolveToggle?: (commentId: string, resolved: boolean) => void;
 }) {
   const { t } = useT("issues");
-  const timeAgo = useTimeAgo();
+  const exactTime = useExactTime();
   const { getActorName } = useActorName();
 
   const entryPhase =
@@ -588,13 +605,18 @@ function CommentRow({
         <Tooltip>
           <TooltipTrigger
             render={
-              <span className="text-caption text-muted-foreground cursor-default">
-                {timeAgo(entry.created_at)}
+              <span className="text-caption text-muted-foreground cursor-default tabular-nums">
+                {exactTime(entry.created_at)}
               </span>
             }
           />
+          {/* The tooltip carries the edit, not the creation time the row
+              already shows. A comment that was rewritten after an agent read
+              it is a different comment, and only this line says so. */}
           <TooltipContent side="top">
-            {new Date(entry.created_at).toLocaleString()}
+            {commentEditedAt(entry)
+              ? t(($) => $.detail.comment_edited_at, { time: exactTime(commentEditedAt(entry)) })
+              : t(($) => $.detail.comment_never_edited)}
           </TooltipContent>
         </Tooltip>
 
@@ -830,7 +852,7 @@ function CommentCardImpl({
   const { t } = useT("issues");
   const rootPhase =
     phases?.find((phase) => phase.id === entry.phase_id) ?? null;
-  const timeAgo = useTimeAgo();
+  const exactTime = useExactTime();
   const { getActorName } = useActorName();
   const isCollapsed = useCommentCollapseStore((s) => s.isCollapsed(issueId, entry.id));
   const toggleCollapse = useCommentCollapseStore((s) => s.toggle);
@@ -939,13 +961,15 @@ function CommentCardImpl({
               <Tooltip>
                 <TooltipTrigger
                   render={
-                    <span className="shrink-0 text-caption text-muted-foreground cursor-default">
-                      {timeAgo(entry.created_at)}
+                    <span className="shrink-0 text-caption text-muted-foreground cursor-default tabular-nums">
+                      {exactTime(entry.created_at)}
                     </span>
                   }
                 />
                 <TooltipContent side="top">
-                  {new Date(entry.created_at).toLocaleString()}
+                  {commentEditedAt(entry)
+                    ? t(($) => $.detail.comment_edited_at, { time: exactTime(commentEditedAt(entry)) })
+                    : t(($) => $.detail.comment_never_edited)}
                 </TooltipContent>
               </Tooltip>
 
