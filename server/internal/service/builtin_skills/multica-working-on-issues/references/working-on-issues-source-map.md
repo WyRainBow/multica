@@ -238,6 +238,29 @@ comment-triggered runs otherwise must not change status unless asked.
 | Per-type value validation (self-correcting errors) | `server/internal/handler/property.go` (`validatePropertyValue`) |
 | API routes (`/api/properties`, PUT/DELETE `/api/issues/{id}/properties/{propertyId}`) | `server/cmd/server/router.go` |
 
+## Phases CLI
+
+| Behavior | File:line |
+|---|---|
+| `multica issue phase list/add/enter/complete/rename/delete` | `server/cmd/multica/cmd_issue_phase.go:22,42,54,65,75,83` |
+| Name-first reference resolution (exact, then unique prefix, then UUID) | `server/cmd/multica/cmd_issue_phase.go:175` (`resolveIssuePhase`) |
+| State derived from the two timestamps, never stored | `server/cmd/multica/cmd_issue_phase.go:130` (`phaseState`) |
+| `--force` required before deleting a phase that holds comments | `server/cmd/multica/cmd_issue_phase.go:434` |
+| `issue comment add --phase` flag → resolved to `phase_id` | `server/cmd/multica/cmd_issue.go:606,2278` |
+| `issue comment list --phase` flag, rejected with the windowing flags | `server/cmd/multica/cmd_issue.go:573,2022` |
+| API routes (`/api/issues/{id}/phases`, `/enter`, `/complete`) | `server/cmd/server/router.go:1166-1174` |
+| Duplicate name rejected with 409 | `server/internal/handler/issue_phase.go:119` |
+| Complete without enter rejected with 409 | `server/internal/handler/issue_phase.go:216` |
+| Deleting a phase deletes its comments | `server/internal/handler/issue_phase.go:292` (`DeleteCommentsInPhase`) |
+| `phase_id` on comment create validated against the issue | `server/internal/handler/comment.go:1952` |
+| Unique index backing the 409 | `server/migrations/268_issue_phase_unique_name.up.sql:8` |
+| Enter keeps the first arrival and clears completion | `server/pkg/db/queries/issue_phase.sql:25` (`EnterIssuePhase`) |
+
+The CLI resolves a phase NAME to its UUID before every call — the API only
+takes UUIDs, and the name is what a person or an agent actually holds. Matching
+is exact-before-prefix so adding `评审 2` cannot make the existing `评审`
+ambiguous.
+
 ## Verification command
 
 Re-derive any line above before depending on it:

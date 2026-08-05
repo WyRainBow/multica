@@ -234,6 +234,52 @@ If the description is later edited so the passage no longer appears, the
 comment survives and simply stops highlighting. Nothing is lost, so prefer an
 anchored comment whenever the passage is what you are talking about.
 
+## Phases — filing what happened under the station it happened in
+
+A long issue's comments arrive in one flat run: comment 3 and comment 30 can
+belong to completely different stretches of work, and nothing in the thread
+says so. A PHASE is a container inside one issue that holds the comments
+written while the issue was in it.
+
+A phase is not a status. `status` answers "where is this now" and forgets the
+route; a phase stays. The usual route is 开始 → 评审 → 冻结, with review
+recurring as `评审 2`, `评审 3` — each round its own container.
+
+```bash
+multica issue phase list <id>                      # NAME, STATE, COMMENTS, ENTERED, COMPLETED
+multica issue phase add <id> 评审
+multica issue phase enter <id> 评审                # record arrival
+multica issue phase complete <id> 评审             # record departure
+multica issue comment add <id> --phase 评审 --content "..."
+multica issue comment list <id> --phase 评审
+```
+
+Rules that will bite you if you assume otherwise:
+
+- **`<phase>` is the NAME**, case-insensitive, unique prefix accepted; the full
+  UUID also works. Matching is exact-first, so `评审` still resolves once
+  `评审 2` exists.
+- **Names are unique per issue.** Adding a duplicate returns **409** rather
+  than leaving two stations that read the same. Applying a route template
+  twice is the case this protects.
+- **`complete` requires `enter` first** (**409** otherwise) — completing an
+  unentered phase would record a route the work never took. `enter` on an
+  already-entered phase keeps the FIRST arrival time and clears completion:
+  re-entering means the work came back, not that it started over.
+- **State is derived**, never stored: completed → `done`, entered → `current`,
+  neither → `pending`.
+- **Deleting a phase deletes its comments**, so the CLI requires `--force` once
+  the phase holds any. Read `multica issue phase list` first — that count is
+  the only warning you get.
+- **`comment list --phase` filters client-side**, so it is rejected together
+  with `--recent` / `--tail` / `--thread` / `--before`: those pick a window
+  before the filter could apply, and the result would read as "everything in
+  this phase" while being only a slice of it.
+
+Activities (status changes, description edits) carry no phase field. The UI
+places them by TIME, into whichever phase was current when they happened; the
+CLI does not group them at all.
+
 ## A finished issue's title and description are frozen
 
 Once an issue is `done` or `cancelled`, `PUT /api/issues/{id}` refuses any

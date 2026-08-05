@@ -570,6 +570,7 @@ func init() {
 	issueCommentListCmd.Flags().Bool("summary", false, "Clip each comment's content to a short preview (sets content_truncated) so you can scan a list without pulling full bodies. Composes with any mode.")
 	issueCommentListCmd.Flags().Bool("full", false, "Escape hatch: return every comment in resolved threads verbatim. By default the complete-thread reads (default list, --recent, --thread without --tail) are folded — a resolved thread collapses to its root + conclusion, with the dropped count reported on the root — so you do not pay tokens for settled discussion. Pass --full when you need the folded discussion. No effect on --since/--tail/--roots-only reads, which are never folded.")
 	issueCommentListCmd.Flags().String("before", "", "Cursor (RFC3339Nano timestamp). With --recent: thread cursor (last_activity_at). With --thread + --tail: reply cursor (reply created_at). Read from the X-Multica-Next-Before response header, printed on stderr as \"Next thread cursor\" / \"Next reply cursor\"; must be paired with --before-id.")
+	issueCommentListCmd.Flags().String("phase", "", "Only return comments filed under this phase — name (case-insensitive, unique prefix is enough) or UUID. Filtered client-side, so it cannot be combined with --recent / --tail / --thread / --before.")
 	issueCommentListCmd.Flags().String("before-id", "", "Cursor UUID. With --recent: thread root UUID. With --thread + --tail: oldest reply UUID. Read from the X-Multica-Next-Before-Id response header; must be paired with --before.")
 
 	// issue runs
@@ -602,6 +603,8 @@ func init() {
 			"is not there.")
 	issueCommentAddCmd.Flags().Int("anchor-occurrence", 1,
 		"Which occurrence of --anchor to attach to when the passage appears more than once (1-based)")
+	issueCommentAddCmd.Flags().String("phase", "",
+		"File this comment under a phase of the issue — name (case-insensitive, unique prefix is enough) or UUID. List them with `multica issue phase list <issue-id>`.")
 	issueCommentAddCmd.Flags().StringSlice("attachment", nil, "File path(s) to attach (can be specified multiple times)")
 	issueCommentAddCmd.Flags().String("output", "json", "Output format: table or json")
 
@@ -2007,6 +2010,19 @@ func runIssueCommentList(cmd *cobra.Command, args []string) error {
 	if before != "" && !recentSet && !(thread != "" && tailSet) {
 		return fmt.Errorf("--before / --before-id require --recent (thread cursor) or --thread + --tail (reply cursor)")
 	}
+	// --phase filters the returned comments client-side; the API has no phase
+	// parameter. That is exact against the default list (which returns every
+	// comment) but a lie next to the windowing flags: those pick a window
+	// first, so "the 10 most recent threads, of which the ones in 评审 2" would
+	// silently look like "everything in 评审 2". Reject rather than mislead.
+	phaseRef, _ := cmd.Flags().GetString("phase")
+	phaseRef = strings.TrimSpace(phaseRef)
+	if phaseRef != "" {
+		if recentSet || tailSet || thread != "" || before != "" {
+			return fmt.Errorf("--phase cannot be combined with --recent / --tail / --thread / --before " +
+				"(those pick a window before the phase filter could apply); use --phase with the default list, --since, --roots-only, or --summary")
+		}
+	}
 
 	params := url.Values{}
 	if since != "" {
@@ -2068,6 +2084,21 @@ func runIssueCommentList(cmd *cobra.Command, args []string) error {
 			}
 			fmt.Fprintf(os.Stderr, "%s: --before %s --before-id %s\n", label, nb, nbid)
 		}
+	}
+
+	if phaseRef != "" {
+		phase, resolveErr := resolveIssuePhase(ctx, client, issueRef.ID, phaseRef)
+		if resolveErr != nil {
+			return resolveErr
+		}
+		filtered := make([]map[string]any, 0, len(comments))
+		for _, c := range comments {
+			if strVal(c, "phase_id") == phase.ID {
+				filtered = append(filtered, c)
+			}
+		}
+		comments = filtered
+		fmt.Fprintf(os.Stderr, "Phase %q: %d comment(s).\n", phase.Name, len(comments))
 	}
 
 	output, _ := cmd.Flags().GetString("output")
@@ -2236,6 +2267,15 @@ func runIssueCommentAdd(cmd *cobra.Command, args []string) error {
 		}
 		body["anchor_text"] = strings.TrimSpace(anchor)
 		body["anchor_offset"] = offset
+	}
+	if phaseRef, _ := cmd.Flags().GetString("phase"); strings.TrimSpace(phaseRef) != "" {
+		// Resolved here rather than passed through: the server takes a phase
+		// UUID, and the name is what a person or an agent actually has.
+		phase, resolveErr := resolveIssuePhase(ctx, client, issueID, phaseRef)
+		if resolveErr != nil {
+			return resolveErr
+		}
+		body["phase_id"] = phase.ID
 	}
 	if len(attachmentIDs) > 0 {
 		body["attachment_ids"] = attachmentIDs
