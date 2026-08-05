@@ -5,7 +5,8 @@
     "new": "新しいカード",
     "search_placeholder": "カードを検索...",
     "empty": "まだ何もありません。後で見返したいことを書き留めておきましょう。",
-    "no_matches": "一致するカードはありません。"
+    "no_matches": "一致するカードはありません。",
+    "day_count_other": "{{count}} 件"
   },
   "card": {
     "edit": "編集",

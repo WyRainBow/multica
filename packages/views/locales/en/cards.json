@@ -5,7 +5,8 @@
     "new": "New card",
     "search_placeholder": "Search cards...",
     "empty": "Nothing written down yet. Keep whatever is worth coming back to.",
-    "no_matches": "No card matches that search."
+    "no_matches": "No card matches that search.",
+    "day_count_other": "{{count}} cards"
   },
   "card": {
     "edit": "Edit",

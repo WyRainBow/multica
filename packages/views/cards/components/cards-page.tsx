@@ -14,6 +14,7 @@ import { useT } from "../../i18n";
 import { useNavigation } from "../../navigation";
 import { CardEditorDialog } from "./card-editor-dialog";
 import { CardItem } from "./card-item";
+import { groupCardsByDay } from "../group-by-day";
 
 /**
  * Everything a workspace has learned, newest first.
@@ -54,6 +55,8 @@ export function CardsPage() {
     );
   }, [cards, search]);
 
+  const groups = useMemo(() => groupCardsByDay(filtered), [filtered]);
+
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       <div className="flex items-center gap-2 border-b px-4 py-3">
@@ -82,17 +85,28 @@ export function CardsPage() {
             onCreate={() => setCreating(true)}
           />
         ) : (
-          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-            {filtered.map((card) => (
-              <CardItem
-                key={card.id}
-                card={card}
-                issue={card.issue_id ? issuesById.get(card.issue_id) : undefined}
-                onEdit={() => setEditing(card)}
-                onOpenIssue={(identifier) =>
-                  navigation.push(paths.issueDetail(identifier))
-                }
-              />
+          // One column, not a grid. A card is prose read one at a time, and
+          // the day headings only mean anything if the reading order is a
+          // single line down the page.
+          <div className="mx-auto w-full max-w-3xl">
+            {groups.map((group) => (
+              <section key={group.day}>
+                <DayHeading date={group.date} count={group.cards.length} />
+                {group.cards.map((card) => (
+                  <TimelineRow key={card.id} at={card.created_at}>
+                    <CardItem
+                      card={card}
+                      issue={
+                        card.issue_id ? issuesById.get(card.issue_id) : undefined
+                      }
+                      onEdit={() => setEditing(card)}
+                      onOpenIssue={(identifier) =>
+                        navigation.push(paths.issueDetail(identifier))
+                      }
+                    />
+                  </TimelineRow>
+                ))}
+              </section>
             ))}
           </div>
         )}
@@ -107,6 +121,74 @@ export function CardsPage() {
           }}
         />
       )}
+    </div>
+  );
+}
+
+/**
+ * The day a run of cards belongs to, plus how many there were.
+ *
+ * Sticky so the day stays named while its cards scroll past — a long day
+ * otherwise leaves the reader looking at undated rows. `top-0` works because
+ * the scroll container is the ancestor, not the window.
+ */
+function DayHeading({ date, count }: { date: Date; count: number }) {
+  const { t, i18n } = useT("cards");
+  // Formatted with the UI language rather than the browser locale: the rest of
+  // the page is already translated, and a Chinese page with an English weekday
+  // reads as a bug.
+  const day = new Intl.DateTimeFormat(i18n.language, {
+    month: "long",
+    day: "numeric",
+  }).format(date);
+  const weekday = new Intl.DateTimeFormat(i18n.language, {
+    weekday: "long",
+  }).format(date);
+
+  return (
+    <div className="sticky top-0 z-10 -mx-1 flex items-baseline gap-2 bg-background/95 px-1 py-3 backdrop-blur">
+      <h2 className="text-title-sm font-semibold">{day}</h2>
+      <span className="text-caption text-muted-foreground">{weekday}</span>
+      <span className="text-caption text-muted-foreground">·</span>
+      <span className="text-caption text-muted-foreground">
+        {t(($) => $.page.day_count, { count })}
+      </span>
+    </div>
+  );
+}
+
+/**
+ * One row of the timeline: the time on the left, then the rail, then the card.
+ *
+ * The rail is drawn by the row rather than by a single line behind the list,
+ * so it cannot fall out of step with rows of different heights. It runs the
+ * row's full height and the dot is positioned against the card's first line,
+ * which is what makes a column of dots line up with a column of titles.
+ */
+function TimelineRow({
+  at,
+  children,
+}: {
+  at: string;
+  children: React.ReactNode;
+}) {
+  const { i18n } = useT("cards");
+  const time = new Intl.DateTimeFormat(i18n.language, {
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  }).format(new Date(at));
+
+  return (
+    <div className="flex gap-3 pb-4">
+      <time className="w-12 shrink-0 pt-5 text-right text-caption tabular-nums text-muted-foreground">
+        {time}
+      </time>
+      <div className="relative w-3 shrink-0" aria-hidden>
+        <span className="absolute left-1/2 top-0 h-full w-px -translate-x-1/2 bg-border" />
+        <span className="absolute left-1/2 top-5 size-1.5 -translate-x-1/2 rounded-full bg-muted-foreground/60 ring-4 ring-background" />
+      </div>
+      <div className="min-w-0 flex-1">{children}</div>
     </div>
   );
 }
