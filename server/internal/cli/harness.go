@@ -34,6 +34,14 @@ func DetectHarness() string {
 		// the binary was installed rather than that a session is running, and
 		// over CODEX_CI, which describes the environment.
 		{"CODEX_THREAD_ID", "codex"},
+		// opencode sets OPENCODE_PID per running session. Chosen over
+		// OPENCODE=1, which is present for anything opencode ever spawned, and
+		// over OPENCODE_CONFIG_DIR, which points at a shared directory rather
+		// than at a session. Ranked with codex — both are dispatched workers,
+		// and neither nests inside the other — and above claude-code for the
+		// same reason codex is: when a coordinator's variables are also in the
+		// environment, the command still came from the worker.
+		{"OPENCODE_PID", "opencode"},
 		// Set by Claude Code for every child process; CLAUDE_CODE_ENTRYPOINT
 		// and CLAUDE_CODE_SESSION_ID travel with it, but this one is the flag.
 		{"CLAUDECODE", "claude-code"},

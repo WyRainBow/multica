@@ -6,6 +6,7 @@ import "testing"
 // than taken from documentation — the whole mechanism rests on this name.
 func TestDetectHarness_RecognisesClaudeCode(t *testing.T) {
 	t.Setenv("CODEX_THREAD_ID", "")
+	t.Setenv("OPENCODE_PID", "")
 	t.Setenv("CLAUDECODE", "1")
 	if got := DetectHarness(); got != "claude-code" {
 		t.Fatalf("DetectHarness() = %q, want %q", got, "claude-code")
@@ -20,6 +21,7 @@ func TestDetectHarness_RecognisesCodex(t *testing.T) {
 	// leaves CLAUDECODE in the environment and would otherwise decide the
 	// answer for us.
 	t.Setenv("CLAUDECODE", "")
+	t.Setenv("OPENCODE_PID", "")
 	t.Setenv("CODEX_THREAD_ID", "thread_abc123")
 	if got := DetectHarness(); got != "codex" {
 		t.Fatalf("DetectHarness() = %q, want %q", got, "codex")
@@ -32,6 +34,7 @@ func TestDetectHarness_RecognisesCodex(t *testing.T) {
 // work flows here.
 func TestDetectHarness_PrefersCodexWhenNested(t *testing.T) {
 	t.Setenv("CLAUDECODE", "1")
+	t.Setenv("OPENCODE_PID", "")
 	t.Setenv("CODEX_THREAD_ID", "thread_abc123")
 	if got := DetectHarness(); got != "codex" {
 		t.Fatalf("DetectHarness() = %q, want codex", got)
@@ -44,7 +47,31 @@ func TestDetectHarness_PrefersCodexWhenNested(t *testing.T) {
 func TestDetectHarness_EmptyForAPerson(t *testing.T) {
 	t.Setenv("CLAUDECODE", "")
 	t.Setenv("CODEX_THREAD_ID", "")
+	t.Setenv("OPENCODE_PID", "")
 	if got := DetectHarness(); got != "" {
 		t.Fatalf("DetectHarness() = %q, want empty", got)
+	}
+}
+
+// Read out of a live opencode session dispatched through Orca. Picked over
+// OPENCODE=1, which survives in anything opencode ever spawned, and over
+// OPENCODE_CONFIG_DIR, which names a shared directory rather than a session.
+func TestDetectHarness_RecognisesOpencode(t *testing.T) {
+	t.Setenv("CLAUDECODE", "")
+	t.Setenv("CODEX_THREAD_ID", "")
+	t.Setenv("OPENCODE_PID", "20923")
+	if got := DetectHarness(); got != "opencode" {
+		t.Fatalf("DetectHarness() = %q, want %q", got, "opencode")
+	}
+}
+
+// Same rule that puts Codex above Claude Code: when a coordinator's variables
+// are still in the environment, the command came from the worker it dispatched.
+func TestDetectHarness_PrefersOpencodeOverClaudeCode(t *testing.T) {
+	t.Setenv("CODEX_THREAD_ID", "")
+	t.Setenv("CLAUDECODE", "1")
+	t.Setenv("OPENCODE_PID", "20923")
+	if got := DetectHarness(); got != "opencode" {
+		t.Fatalf("DetectHarness() = %q, want opencode", got)
 	}
 }

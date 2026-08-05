@@ -637,6 +637,15 @@ func harnessAgentName(harness string) string {
 		return "Claude"
 	case "codex":
 		return "Codex"
+	// The only entry named after a model rather than after the harness, and
+	// the only one that can go stale: Claude Code always runs Claude and Codex
+	// always runs Codex, but opencode is a shell whose model is chosen at
+	// session start and nothing it puts in the environment says which one. So
+	// this records the model that shell is run with here, not a fact the
+	// server can check. Change it — or point it at a harness-named agent — if
+	// that stops being true.
+	case "opencode":
+		return "DeepSeek"
 	default:
 		return ""
 	}
