@@ -5,7 +5,8 @@
     "new": "새 카드",
     "search_placeholder": "카드 검색...",
     "empty": "아직 아무것도 없습니다. 나중에 다시 볼 만한 것을 적어 두세요.",
-    "no_matches": "일치하는 카드가 없습니다."
+    "no_matches": "일치하는 카드가 없습니다.",
+    "day_count_other": "{{count}}개"
   },
   "card": {
     "edit": "편집",

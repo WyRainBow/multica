@@ -5,7 +5,8 @@
     "new": "新建卡片",
     "search_placeholder": "搜索卡片...",
     "empty": "还没有卡片。值得以后回头看的，随手记在这里。",
-    "no_matches": "没有匹配的卡片。"
+    "no_matches": "没有匹配的卡片。",
+    "day_count_other": "{{count}} 条"
   },
   "card": {
     "edit": "编辑",
