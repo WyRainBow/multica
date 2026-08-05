@@ -7,6 +7,7 @@ import { useWorkspaceId } from "@multica/core/hooks";
 import { cardsForIssueOptions } from "@multica/core/cards/queries";
 import type { Card } from "@multica/core/types";
 import { Button } from "@multica/ui/components/ui/button";
+import { ReadonlyContent } from "../../editor";
 import { useT, useTimeAgo } from "../../i18n";
 import { CardEditorDialog } from "./card-editor-dialog";
 
@@ -69,9 +70,20 @@ export function IssueCardsSection({ issueId }: { issueId: string }) {
                   </span>
                 </div>
                 {card.content.trim() && (
-                  <p className="line-clamp-3 whitespace-pre-wrap text-caption text-muted-foreground">
-                    {card.content}
-                  </p>
+                  // Rendered Markdown, same as the cards page — showing the
+                  // source would put `**bold**` and link syntax on screen.
+                  // Shallower cap here: this is a secondary section on someone
+                  // else's page, so it teases rather than shows.
+                  <div className="relative max-h-20 overflow-hidden">
+                    <ReadonlyContent
+                      content={card.content}
+                      className="text-caption"
+                    />
+                    <span
+                      aria-hidden
+                      className="pointer-events-none absolute inset-x-0 bottom-0 h-6 bg-gradient-to-t from-card to-transparent"
+                    />
+                  </div>
                 )}
               </button>
             </li>
