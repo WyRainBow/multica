@@ -667,18 +667,11 @@
     "complete_action": "完成这个节点",
     "composer_hint": "将写入「{{name}}」",
     "templates": {
-      "requirement": "需求交付",
-      "requirement_desc": "开始 · 已冻结 · 实施中 · 等待部署 · 结束",
-      "stage_gate": "Stage-Gate",
-      "stage_gate_desc": "发现 · 立项 · 商业论证 · 开发 · 测试验证 · 发布",
-      "agent": "Agent 流水线",
-      "agent_desc": "分诊 · 计划 · 对抗评审 · 迭代 · 实施",
-      "bug": "缺陷流转",
-      "bug_desc": "待处理 · 已确认 · 评审中 · 已修复 · 已验证",
-      "devops": "DevOps",
-      "devops_desc": "规划 · 开发 · 验证 · 打包 · 发布",
+      "requirement": "issue 生命周期",
+      "requirement_desc": "开始 · 评审 · 冻结",
       "custom": "自定义…",
       "apply_failed": "添加节点失败"
-    }
+    },
+    "another_round": "再来一轮：{{name}}"
   }
 }

@@ -667,6 +667,7 @@ type Issue struct {
 	ArchivedAt         pgtype.Timestamptz `json:"archived_at"`
 	ArchivedBy         pgtype.UUID        `json:"archived_by"`
 	ParkedFromIssueID  pgtype.UUID        `json:"parked_from_issue_id"`
+	StatusChangedAt    pgtype.Timestamptz `json:"status_changed_at"`
 }
 
 type IssueDependency struct {

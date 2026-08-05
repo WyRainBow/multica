@@ -82,13 +82,19 @@ export const TABLE_SYSTEM_COLUMNS: readonly TableSystemColumnKey[] = [
   "creator",
 ];
 
+// The columns a new view opens with. Everything else stays one click away in
+// the column picker — this is a starting point, not a limit.
+//
+// Priority, assignee and due date are out of the default set: on a personal
+// board they are the same value on every row (no priority, one owner, no date),
+// so they cost width to say nothing. Project and created-at earn their place
+// instead — they are what actually differs between two rows.
 export const DEFAULT_TABLE_COLUMNS: readonly TableColumnConfig[] = [
-  { key: "title", width: 360 },
+  { key: "title", width: 420 },
   { key: "status", width: 150 },
-  { key: "priority", width: 130 },
-  { key: "assignee", width: 180 },
-  { key: "due_date", width: 140 },
-  { key: "labels", width: 220 },
+  { key: "labels", width: 200 },
+  { key: "project", width: 180 },
+  { key: "created_at", width: 170 },
 ];
 
 export interface IssueDateFilter {

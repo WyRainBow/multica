@@ -109,6 +109,16 @@ UPDATE issue SET
     parent_issue_id = sqlc.narg('parent_issue_id'),
     project_id = sqlc.narg('project_id'),
     stage = sqlc.narg('stage'),
+    -- Only moves when the value actually changes. Comparing against the
+    -- column in the same statement means a caller that passes the current
+    -- status — which every full-object update does — leaves the timestamp
+    -- alone, and no caller has to remember to say whether this counts as a
+    -- transition.
+    status_changed_at = CASE
+        WHEN sqlc.narg('status')::text IS NOT NULL
+         AND sqlc.narg('status')::text IS DISTINCT FROM status
+        THEN now() ELSE status_changed_at
+    END,
     updated_at = now()
 WHERE id = $1
 RETURNING *;
@@ -117,6 +127,9 @@ RETURNING *;
 -- Workspace_id in the WHERE clause is a SQL-layer tenant guard; see DeleteIssue.
 UPDATE issue SET
     status = $2,
+    status_changed_at = CASE
+        WHEN $2::text IS DISTINCT FROM status THEN now() ELSE status_changed_at
+    END,
     updated_at = now()
 WHERE id = $1 AND workspace_id = $3
 RETURNING *;

@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { Plus, Check, Circle, CircleDot, Play } from "lucide-react";
+import { Plus, Check, Circle, CircleDot, Play, RotateCw } from "lucide-react";
+import { nextRoundName } from "./phase-round";
 import type { IssuePhase } from "@multica/core/types";
 import {
   useCreateIssuePhase,
@@ -36,27 +37,25 @@ export function phaseState(phase: IssuePhase): PhaseState {
 }
 
 /**
- * Ready-made routes, so the common case is one click rather than five.
+ * The one ready-made route: what a single issue passes through.
  *
- * Every one is taken from a process that exists rather than invented here:
+ * Three stations, and the same three whatever the issue is about — a
+ * requirement, a design, an implementation all get written, reviewed, and
+ * frozen. That sameness is what makes it a property of an issue rather than a
+ * process for one kind of work, and properties are what belong in a tool.
  *
- *  - `requirement` is the route this feature was asked for.
- *  - `stage_gate` is the Stage-Gate methodology's own phases, the thing the
- *    whole shape is named after.
- *  - `agent` is Swamp's `@swamp/issue-lifecycle` — the only tracker found that
- *    groups content inside one issue, built for an agent pipeline.
- *  - `bug` is Fossil's ticket statuses, read out of its ticket docs.
- *  - `devops` is GitLab's devops stage labels (`~"devops::plan"` and friends).
+ * An earlier version listed nine: 需求 → 技术方案 → 方案评审 → Spec → Task →
+ * Plan → 实施 → 测试验证 → 合并 MR. That is a chain of separate ISSUES, each
+ * with its own owner and its own comments, not the life of one — the two were
+ * conflated.
  *
- * Names are translated, not transliterated: a route nobody can read is a route
- * nobody uses.
+ * These three do overlap with `status` (开始 ≈ in_progress, 评审 ≈ in_review,
+ * 冻结 ≈ done), and on their own they would add nothing. What they add is
+ * rounds: review happens more than once, status forgets every round but the
+ * current one, and a station per round keeps what each asked for.
  */
 const PHASE_TEMPLATES = [
-  { key: "requirement", names: ["开始", "已冻结", "实施中", "等待部署", "结束"] },
-  { key: "stage_gate", names: ["发现", "立项", "商业论证", "开发", "测试验证", "发布"] },
-  { key: "agent", names: ["分诊", "计划", "对抗评审", "迭代", "实施"] },
-  { key: "bug", names: ["待处理", "已确认", "评审中", "已修复", "已验证"] },
-  { key: "devops", names: ["规划", "开发", "验证", "打包", "发布"] },
+  { key: "requirement", names: ["开始", "评审", "冻结"] },
 ] as const;
 
 type TemplateKey = (typeof PHASE_TEMPLATES)[number]["key"];
@@ -123,6 +122,8 @@ export function PhaseTrack({
     }
   };
 
+  const selected = phases.find((phase) => phase.id === selectedPhaseId) ?? null;
+
   const submitNew = () => {
     const trimmed = name.trim();
     if (!trimmed) {
@@ -160,6 +161,27 @@ export function PhaseTrack({
             </span>
           </DropdownMenuItem>
         ))}
+        {/* Another round of whatever is being looked at. Placed here rather
+            than on the chip because it is a third action, and a chip with
+            three targets stops being readable. Hidden with nothing selected:
+            "another round" has no meaning without a station to repeat. */}
+        {selected && (
+          <>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem
+              onClick={() =>
+                createPhase.mutate(nextRoundName(phases, selected.name), {
+                  onError: fail,
+                })
+              }
+            >
+              <RotateCw className="size-3.5" />
+              {t(($) => $.phases.another_round, {
+                name: nextRoundName(phases, selected.name),
+              })}
+            </DropdownMenuItem>
+          </>
+        )}
         <DropdownMenuSeparator />
         <DropdownMenuItem onClick={() => setAdding(true)}>
           <Plus className="size-3.5" />
@@ -223,17 +245,18 @@ export function PhaseTrack({
             placeholder={t(($) => $.phases.name_placeholder)}
             className="h-7 w-32 text-caption"
           />
-        ) : (
+      ) : (
+        addMenu(
           <Button
             size="icon-xs"
             variant="ghost"
             className="ml-1 text-muted-foreground"
-            onClick={() => setAdding(true)}
             aria-label={t(($) => $.phases.add)}
             disabled={pending}
           >
             <Plus className="size-3.5" />
-          </Button>
+          </Button>,
+        )
       )}
     </div>
   );

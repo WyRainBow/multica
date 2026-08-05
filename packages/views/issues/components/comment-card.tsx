@@ -597,9 +597,8 @@ function CommentRow({
             whole thing cannot tell which stretch of work a remark belongs to
             — which is the complaint the feature exists to answer. */}
         {entryPhase && (
-          <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-muted px-1.5 py-0.5 text-caption text-muted-foreground">
-            <Milestone className="size-3 shrink-0" />
-            <span className="truncate">{entryPhase.name}</span>
+          <span className="shrink-0 truncate rounded-full bg-muted px-1.5 py-0.5 text-caption text-muted-foreground">
+            {entryPhase.name}
           </span>
         )}
         <Tooltip>
@@ -845,6 +844,8 @@ function CommentCardImpl({
   highlightedCommentId,
 }: CommentCardProps) {
   const { t } = useT("issues");
+  const rootPhase =
+    phases?.find((phase) => phase.id === entry.phase_id) ?? null;
   const timeAgo = useTimeAgo();
   const { getActorName } = useActorName();
   const isCollapsed = useCommentCollapseStore((s) => s.isCollapsed(issueId, entry.id));
@@ -941,6 +942,16 @@ function CommentCardImpl({
               <span className="shrink-0 cursor-pointer text-body font-medium">
                 {getActorName(entry.actor_type, entry.actor_id)}
               </span>
+              {/* Which station this was said at. On the ROOT comment's own
+                  header — CommentCardImpl draws that itself and does not go
+                  through CommentRow, which renders replies. Putting it only in
+                  CommentRow left every top-level comment unlabelled, which is
+                  every comment most readers ever see. */}
+              {rootPhase && (
+                <span className="shrink-0 truncate rounded-full bg-muted px-1.5 py-0.5 text-caption text-muted-foreground">
+                  {rootPhase.name}
+                </span>
+              )}
               <Tooltip>
                 <TooltipTrigger
                   render={

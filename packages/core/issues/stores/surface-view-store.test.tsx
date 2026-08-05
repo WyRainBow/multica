@@ -1,3 +1,4 @@
+import { DEFAULT_TABLE_COLUMNS } from "./view-store";
 // @vitest-environment jsdom
 import { beforeAll, beforeEach, afterEach, describe, expect, it } from "vitest";
 import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
@@ -101,13 +102,12 @@ describe("issue surface view store registry", () => {
     expect(projectA.getState().viewMode).toBe("table");
     expect(
       projectA.getState().tableColumns.map((column) => column.key),
+    // Derived from the constant rather than spelled out: this test is about
+    // persistence per surface, not about which columns a view opens with.
+    // Restating the default here made a copy that a change to the default
+    // silently broke, which is a failure that teaches nothing.
     ).toEqual([
-      "title",
-      "status",
-      "priority",
-      "assignee",
-      "due_date",
-      "labels",
+      ...DEFAULT_TABLE_COLUMNS.map((column) => column.key),
       "property:estimate",
       "identifier",
     ]);

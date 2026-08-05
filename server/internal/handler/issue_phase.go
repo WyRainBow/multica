@@ -104,6 +104,24 @@ func (h *Handler) CreateIssuePhase(w http.ResponseWriter, r *http.Request) {
 		position = max + phasePositionStep
 	}
 
+	// One station per name. A route with two stations called 实施中 cannot say
+	// which one a comment belongs to, and the count on each stops meaning
+	// anything. Checked here for a readable refusal; a unique index backs it
+	// up so two concurrent creates cannot both slip through.
+	existing, err := h.Queries.ListIssuePhases(r.Context(), db.ListIssuePhasesParams{
+		WorkspaceID: issue.WorkspaceID,
+		IssueID:     issue.ID,
+	})
+	if err == nil {
+		for _, phase := range existing {
+			if strings.EqualFold(strings.TrimSpace(phase.Name), name) {
+				writeError(w, http.StatusConflict,
+					"this issue already has a phase named "+phase.Name)
+				return
+			}
+		}
+	}
+
 	phase, err := h.Queries.CreateIssuePhase(r.Context(), db.CreateIssuePhaseParams{
 		WorkspaceID: issue.WorkspaceID,
 		IssueID:     issue.ID,
@@ -111,6 +129,11 @@ func (h *Handler) CreateIssuePhase(w http.ResponseWriter, r *http.Request) {
 		Position:    position,
 	})
 	if err != nil {
+		// The unique index caught what the check above raced past.
+		if strings.Contains(err.Error(), "idx_issue_phase_unique_name") {
+			writeError(w, http.StatusConflict, "this issue already has a phase with that name")
+			return
+		}
 		slog.Warn("create issue phase failed", append(logger.RequestAttrs(r), "error", err)...)
 		writeError(w, http.StatusInternalServerError, "failed to create phase")
 		return

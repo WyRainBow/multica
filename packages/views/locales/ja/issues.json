@@ -667,18 +667,11 @@
     "complete_action": "このフェーズを完了",
     "composer_hint": "「{{name}}」に書き込みます",
     "templates": {
-      "requirement": "要件デリバリー",
-      "requirement_desc": "開始 · 凍結 · 実装中 · デプロイ待ち · 完了",
-      "stage_gate": "Stage-Gate",
-      "stage_gate_desc": "発見 · 立案 · 事業性評価 · 開発 · 検証 · リリース",
-      "agent": "Agent パイプライン",
-      "agent_desc": "トリアージ · 計画 · 敵対的レビュー · 反復 · 実装",
-      "bug": "バグのライフサイクル",
-      "bug_desc": "未対応 · 確認済み · レビュー中 · 修正済み · 検証済み",
-      "devops": "DevOps",
-      "devops_desc": "計画 · 作成 · 検証 · パッケージ · リリース",
+      "requirement": "issue のライフサイクル",
+      "requirement_desc": "開始 · レビュー · 凍結",
       "custom": "カスタム…",
       "apply_failed": "フェーズの追加に失敗しました"
-    }
+    },
+    "another_round": "もう一巡：{{name}}"
   }
 }
