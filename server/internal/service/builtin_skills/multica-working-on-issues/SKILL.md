@@ -234,6 +234,28 @@ If the description is later edited so the passage no longer appears, the
 comment survives and simply stops highlighting. Nothing is lost, so prefer an
 anchored comment whenever the passage is what you are talking about.
 
+## Reading one comment you were handed
+
+When someone gives you a comment id — copied off a comment card in the app, or
+from the ID column of `multica issue comment list` — read that comment
+directly:
+
+```bash
+multica issue comment get <comment-id>
+```
+
+Do NOT reach it by listing the issue's comments and filtering. The list
+endpoint returns the whole thread; this returns one comment. On an issue with
+a long discussion that difference is most of your context budget.
+
+It takes the FULL UUID. A truncated id (the 8-character form the list table
+and the app's card chip show) is rejected locally with a message pointing at
+where the full one lives — the short form is a handle for humans, never a
+value to retype.
+
+The response carries `issue_id` and `parent_id`, so from one comment you can
+reach the issue it is on and the thread root above it without a search.
+
 ## Phases — filing what happened under the station it happened in
 
 A long issue's comments arrive in one flat run: comment 3 and comment 30 can
@@ -303,6 +325,39 @@ and rewrites is still refused; do it in two.
 Found a mistake in a finished issue? Ask the user first, then either reopen →
 correct → close again, or file the correction as a new issue. Do not reopen on
 your own initiative.
+
+### Reading one: it is a record, not the current state
+
+The freeze is a rule about writing. Reading a finished issue has its own rule,
+and it is the one that actually costs you if you get it wrong.
+
+A finished issue describes **what was true when it finished**. That makes it
+accurate about the past and silent about the present. A design it describes may
+have been replaced last month; the issue neither knows that nor says so.
+
+So when `status` is `done` or `cancelled`:
+
+- **Do not treat the description as the current state of anything.** Verify
+  against the code, the config, or a live check before acting on it. `multica
+  issue get` prints this reminder on stderr so it is hard to miss.
+- **Do not discount it either.** Why a decision was made, what was tried, what
+  was rejected — that is usually written down nowhere else and is still true.
+  "Finished" is not "wrong", and an agent that skims past a closed issue
+  re-litigates decisions that were already settled.
+- **There is no automatic pointer to whatever replaced it.** Issue relations
+  are only `blocks` / `blocked_by` / `related` plus parent/child; none of them
+  means "superseded by". If a successor was recorded, it is a metadata key:
+
+  ```bash
+  multica issue metadata list <id>        # look for superseded_by
+  ```
+
+  If you finish an issue that replaces an older one, record it, or the next
+  reader has no way to find the current version:
+
+  ```bash
+  multica issue metadata set <old-id> --key superseded_by --value COC-99
+  ```
 
 ## Archiving is not a status
 

@@ -1876,6 +1876,21 @@ describe("IssueDetail (shared)", () => {
     ).toBeInTheDocument();
   });
 
+  // The freeze notice alone only says "you cannot edit this". A reader who
+  // learns that and nothing else still treats a three-month-old design as the
+  // current one — which is the mistake that actually costs something.
+  it("says a finished issue's body may no longer describe the present", async () => {
+    mockApiObj.getIssue.mockResolvedValue({ ...mockIssue, status: "done" });
+
+    renderIssueDetail();
+
+    expect(
+      await screen.findByText(
+        "It records what was true when the work finished — accurate about the past, not necessarily about now. Check the current state before acting on it.",
+      ),
+    ).toBeInTheDocument();
+  });
+
   it("leaves an unfinished issue editable", async () => {
     renderIssueDetail();
 

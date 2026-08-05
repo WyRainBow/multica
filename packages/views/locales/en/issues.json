@@ -348,7 +348,8 @@
     "workdir_path_copy_failed": "Failed to copy workdir path",
     "workdir_path_unavailable": "No local workdir yet — issue has not been run by a local agent",
     "comment_edited_at": "Edited {{time}}",
-    "comment_never_edited": "Never edited"
+    "comment_never_edited": "Never edited",
+    "frozen_stale_hint": "It records what was true when the work finished — accurate about the past, not necessarily about now. Check the current state before acting on it."
   },
   "outline": {
     "collapse": "Collapse outline",
@@ -464,7 +465,9 @@
       "unresolve_failed": "Failed to unresolve thread"
     },
     "anchor_jump": "Jump to the highlighted text",
-    "anchor_missing": "The highlighted text has been edited"
+    "anchor_missing": "The highlighted text has been edited",
+    "copy_id_action": "Copy comment ID",
+    "copied_id_toast": "Comment ID copied"
   },
   "reply": {
     "placeholder": "Leave a reply..."

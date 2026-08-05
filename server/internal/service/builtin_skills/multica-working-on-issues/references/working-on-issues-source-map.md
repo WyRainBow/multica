@@ -238,6 +238,47 @@ comment-triggered runs otherwise must not change status unless asked.
 | Per-type value validation (self-correcting errors) | `server/internal/handler/property.go` (`validatePropertyValue`) |
 | API routes (`/api/properties`, PUT/DELETE `/api/issues/{id}/properties/{propertyId}`) | `server/cmd/server/router.go` |
 
+## A finished issue: frozen body, and a record on read
+
+| Behavior | File:line |
+|---|---|
+| Terminal statuses (`done`, `cancelled`) | `server/internal/handler/issue.go:2828` (`isTerminalIssueStatus`) |
+| Fields the freeze covers | `server/internal/handler/issue.go:2822` (`issueBodyFields` — title, description) |
+| 409 on a body write, judged on the CURRENT status | `server/internal/handler/issue.go:2849` (`allowIssueBodyWrite`) |
+| Enforced at the update entry point | `server/internal/handler/issue.go:2894` |
+| Handler tests (7 cases) | `server/internal/handler/issue_freeze_test.go` |
+| `issue get` prints the record notice on stderr | `server/cmd/multica/cmd_issue.go:894,948` (`warnTerminalIssueIsARecord`) |
+| CLI mirror of the terminal status set | `server/cmd/multica/cmd_issue.go:929` (`terminalIssueStatuses`) |
+| Notice tests, incl. the "do not call it expired" guard | `server/cmd/multica/cmd_issue_terminal_notice_test.go` |
+| Read-only body + both hints in the app | `packages/views/issues/components/issue-detail.tsx:1990,2923` |
+
+The freeze is a WRITE rule; the notice is the READ rule, and they say different
+things. The write rule is "you cannot change this". The read rule is "this
+describes what was true when the work finished" — accurate about the past,
+silent about the present. The notice deliberately avoids the words expired /
+outdated / obsolete / stale (a test enforces this): why a decision was made and
+what was rejected are usually recorded nowhere else and are still true, and an
+agent told the issue is stale skips exactly that.
+
+Nothing links a finished issue to whatever replaced it — relations are only
+`blocks` / `blocked_by` / `related` (`server/migrations/001_init.up.sql:93`)
+plus parent/child. A successor has to be recorded by hand as the
+`superseded_by` metadata key, which is where the notice points.
+
+## `multica issue comment get` — read one comment by id
+
+| Behavior | File:line |
+|---|---|
+| CLI command `comment get <comment-id>` | `server/cmd/multica/cmd_issue.go:295` |
+| Full-UUID check before any request | `server/cmd/multica/cmd_issue.go:2311` (`runIssueCommentGet`) |
+| API route `GET /api/comments/{commentId}` | `server/cmd/server/router.go:1328` |
+| Handler, workspace-scoped load | `server/internal/handler/comment.go:3417` (`GetComment`) |
+| Copyable id chip on the comment card | `packages/views/issues/components/comment-card.tsx` (`CommentIdChip`) |
+
+The chip displays 8 characters and copies 36: the CLI takes nothing shorter,
+so the short form is a handle, not a value. An id from another workspace reads
+as 404 rather than 403 — a permission error would confirm the comment exists.
+
 ## Phases CLI
 
 | Behavior | File:line |

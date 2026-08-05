@@ -2910,10 +2910,18 @@ export function IssueDetail({ issueId, onDelete, onDone, defaultSidebarOpen = tr
                 content={issue.description || ""}
                 attachments={descEditorAttachments}
               />
-              <p className="mt-4 flex items-center gap-1.5 text-caption text-muted-foreground">
-                <Lock className="size-3.5 shrink-0" />
-                {t(($) => $.detail.frozen_hint)}
-              </p>
+              {/* Two separate facts, and the second is the one a reader can
+                  act on wrongly: the body is closed, AND it describes what was
+                  true when the work finished. Saying only "you cannot edit
+                  this" leaves someone reading a three-month-old design as if
+                  it were the current one. */}
+              <div className="mt-4 flex items-start gap-1.5 text-caption text-muted-foreground">
+                <Lock className="mt-0.5 size-3.5 shrink-0" />
+                <div className="space-y-0.5">
+                  <p>{t(($) => $.detail.frozen_hint)}</p>
+                  <p>{t(($) => $.detail.frozen_stale_hint)}</p>
+                </div>
+              </div>
             </div>
           ) : (
           <div {...descDropZoneProps} className="relative mt-5 rounded-lg">

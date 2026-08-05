@@ -1322,6 +1322,10 @@ func NewRouterWithOptions(pool *pgxpool.Pool, hub *realtime.Hub, bus *events.Bus
 
 			// Comments
 			r.Route("/api/comments/{commentId}", func(r chi.Router) {
+				// Read one comment by id. The id is copyable off a comment
+				// card, so handing it to an agent has to cost one read rather
+				// than the issue's whole thread.
+				r.Get("/", h.GetComment)
 				r.Put("/", h.UpdateComment)
 				r.Delete("/", h.DeleteComment)
 				// Which phase this comment belongs to. A separate endpoint

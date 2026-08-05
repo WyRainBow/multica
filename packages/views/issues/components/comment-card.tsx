@@ -260,6 +260,44 @@ function commentEditedAt(entry: TimelineEntry): string | null {
   return updated - created >= EDIT_THRESHOLD_MS ? entry.updated_at : null;
 }
 
+// The comment's id, as something you can hand to an agent.
+//
+// Shown truncated to 8 characters — the same clip `multica issue comment list`
+// uses for its ID column — because a 36-character UUID on every card would
+// crowd out the author and the time. Clicking copies the FULL id: the CLI
+// takes nothing shorter, so the visible text is a handle, never the value to
+// retype. The tooltip carries the full id for the cases where reading beats
+// copying.
+function CommentIdChip({ id }: { id: string }) {
+  const { t } = useT("issues");
+  return (
+    <Tooltip>
+      <TooltipTrigger
+        render={
+          <button
+            type="button"
+            aria-label={t(($) => $.comment.copy_id_action)}
+            className="shrink-0 rounded bg-muted/60 px-1 font-mono text-caption text-muted-foreground tabular-nums transition-colors hover:bg-muted hover:text-foreground"
+            onClick={(event) => {
+              // The card itself is clickable in some contexts; copying an id
+              // must not also open or collapse the thread underneath.
+              event.stopPropagation();
+              void copyText(id).then((ok) => {
+                if (ok) toast.success(t(($) => $.comment.copied_id_toast));
+              });
+            }}
+          >
+            {id.slice(0, 8)}
+          </button>
+        }
+      />
+      <TooltipContent side="top">
+        <span className="font-mono">{id}</span>
+      </TooltipContent>
+    </Tooltip>
+  );
+}
+
 function retryableAgentFailureComment(entry: TimelineEntry): entry is TimelineEntry & { source_task_id: string } {
   return (
     entry.actor_type === "agent" &&
@@ -619,6 +657,7 @@ function CommentRow({
               : t(($) => $.detail.comment_never_edited)}
           </TooltipContent>
         </Tooltip>
+        <CommentIdChip id={entry.id} />
 
         {isResolution && (
           <span className="text-caption font-medium text-success">
@@ -972,6 +1011,7 @@ function CommentCardImpl({
                     : t(($) => $.detail.comment_never_edited)}
                 </TooltipContent>
               </Tooltip>
+              <CommentIdChip id={entry.id} />
 
               {!open && contentPreview && (
                 <span className="min-w-0 flex-1 truncate text-caption text-muted-foreground">

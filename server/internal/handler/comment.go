@@ -3404,6 +3404,48 @@ func (h *Handler) UpdateComment(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, resp)
 }
 
+// GetComment handles GET /api/comments/{commentId} — one comment by id.
+//
+// The list endpoint could always reach a comment, but only by pulling the
+// issue's whole thread and filtering. That is the cost this avoids: handing an
+// agent a comment id is only useful if reading it costs one comment, not the
+// discussion around it.
+//
+// Membership is the gate, same as every other comment route: the query is
+// scoped to the caller's workspace, so an id from another tenant reads as 404
+// rather than a permission error that would confirm the comment exists.
+func (h *Handler) GetComment(w http.ResponseWriter, r *http.Request) {
+	if _, ok := requireUserID(w, r); !ok {
+		return
+	}
+	commentUUID, ok := parseUUIDOrBadRequest(w, chi.URLParam(r, "commentId"), "comment id")
+	if !ok {
+		return
+	}
+	workspaceID := h.resolveWorkspaceID(r)
+	wsUUID, ok := parseUUIDOrBadRequest(w, workspaceID, "workspace id")
+	if !ok {
+		return
+	}
+	if _, ok := h.workspaceMember(w, r, workspaceID); !ok {
+		return
+	}
+
+	comment, err := h.Queries.GetCommentInWorkspace(r.Context(), db.GetCommentInWorkspaceParams{
+		ID:          commentUUID,
+		WorkspaceID: wsUUID,
+	})
+	if err != nil {
+		writeError(w, http.StatusNotFound, "comment not found")
+		return
+	}
+
+	grouped := h.groupReactions(r, []pgtype.UUID{comment.ID})
+	groupedAtt := h.groupAttachments(r, []pgtype.UUID{comment.ID})
+	cid := uuidToString(comment.ID)
+	writeJSON(w, http.StatusOK, commentToResponse(comment, grouped[cid], groupedAtt[cid]))
+}
+
 func (h *Handler) DeleteComment(w http.ResponseWriter, r *http.Request) {
 	commentId := chi.URLParam(r, "commentId")
 

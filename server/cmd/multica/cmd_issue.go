@@ -292,6 +292,18 @@ var issueCommentAddCmd = &cobra.Command{
 	RunE:  runIssueCommentAdd,
 }
 
+var issueCommentGetCmd = &cobra.Command{
+	Use:   "get <comment-id>",
+	Short: "Read one comment by id",
+	Long: `Read one comment by id.
+
+Takes the full comment UUID — the one copied off a comment card in the app, or
+shown in the ID column of ` + "`multica issue comment list`" + `. Reaching the same comment
+through ` + "`comment list`" + ` costs the issue's whole thread; this costs one comment.`,
+	Args: exactArgs(1),
+	RunE: runIssueCommentGet,
+}
+
 var issueCommentDeleteCmd = &cobra.Command{
 	Use:   "delete <comment-id>",
 	Short: "Delete a comment",
@@ -468,6 +480,7 @@ func init() {
 	issueCmd.AddCommand(issueSearchCmd)
 
 	issueCommentCmd.AddCommand(issueCommentListCmd)
+	issueCommentCmd.AddCommand(issueCommentGetCmd)
 	issueCommentCmd.AddCommand(issueCommentAddCmd)
 	issueCommentCmd.AddCommand(issueCommentDeleteCmd)
 	issueCommentCmd.AddCommand(issueCommentResolveCmd)
@@ -591,6 +604,7 @@ func init() {
 	issueRunMessagesCmd.Flags().String("issue", "", "Issue ID/key to scope short task ID prefix resolution")
 
 	// issue comment add
+	issueCommentGetCmd.Flags().String("output", "json", "Output format: table or json")
 	issueCommentAddCmd.Flags().String("content", "", "Comment content (decodes \\n, \\r, \\t, \\\\; pipe via --content-stdin for multi-line bodies or to preserve literal backslashes)")
 	issueCommentAddCmd.Flags().Bool("content-stdin", false, "Read comment content from stdin (preserves multi-line content verbatim)")
 	issueCommentAddCmd.Flags().String("content-file", "", "Read comment content from a UTF-8 file (preserves multi-line content verbatim; use this on Windows when stdin piping mangles non-ASCII bytes). The path must be inside the current working directory unless --allow-external-file is set.")
@@ -874,6 +888,11 @@ func runIssueGet(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("get issue: %w", err)
 	}
 
+	// Emitted before the payload and on stderr, so it reaches the reader in
+	// both output modes without becoming a field a JSON consumer has to parse
+	// around.
+	warnTerminalIssueIsARecord(issue)
+
 	output, _ := cmd.Flags().GetString("output")
 	if output == "table" {
 		actors := loadActorDisplayLookup(ctx, client)
@@ -902,6 +921,43 @@ func runIssueGet(cmd *cobra.Command, args []string) error {
 	}
 
 	return cli.PrintJSON(os.Stdout, issue)
+}
+
+// terminalIssueStatuses are the statuses that close an issue's body: the
+// server refuses title/description writes on them (409). Mirrors
+// isTerminalIssueStatus in server/internal/handler/issue.go.
+var terminalIssueStatuses = map[string]bool{"done": true, "cancelled": true}
+
+// warnTerminalIssueIsARecord tells the reader what a finished issue is, before
+// they act on it.
+//
+// The response carries `status: "done"` and nothing else — a reader has to
+// already know what that implies. What it implies is two separate things, and
+// only one of them is about writing:
+//
+//   - The body is closed. Rewriting it is a 409, so anything read here is
+//     final, not a draft that might still move.
+//   - The body is a record of what was true when the work finished. That makes
+//     it accurate about the past and silent about the present: a design
+//     described here may have been replaced since, and the issue carries no
+//     pointer to whatever replaced it.
+//
+// Deliberately NOT phrased as "expired". Why a decision was made and what was
+// rejected are usually only written down here and are still true; an agent
+// told the issue is stale discounts exactly the part that is worth reading.
+func warnTerminalIssueIsARecord(issue map[string]any) {
+	status := strVal(issue, "status")
+	if !terminalIssueStatuses[status] {
+		return
+	}
+	key := issueDisplayKey(issue)
+	fmt.Fprintf(os.Stderr,
+		"Note: %s is %s — a closed record. Its title and description are read-only (409 on write), "+
+			"and they describe what was true when it finished, not necessarily what is true now. "+
+			"Accurate about the past; not authoritative about the present. "+
+			"Check the current state before acting on anything here, and look for a `superseded_by` "+
+			"key in `multica issue metadata list %s` if a newer issue replaced it.\n",
+		key, status, key)
 }
 
 // childStage extracts the integer stage from a child issue response map.
@@ -2292,6 +2348,51 @@ func runIssueCommentAdd(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 	return cli.PrintJSON(os.Stdout, result)
+}
+
+func runIssueCommentGet(cmd *cobra.Command, args []string) error {
+	commentID := strings.TrimSpace(args[0])
+	// Rejected here rather than sent: the server would answer 400 for a
+	// truncated id, but the message that matters is WHICH id to use, and only
+	// the CLI knows the caller probably copied a shortened one out of a table.
+	if !uuidRegexp.MatchString(commentID) {
+		return fmt.Errorf(
+			"comment id %q is not a full UUID; copy it from a comment card in the app, "+
+				"or from the ID column of `multica issue comment list <issue-id>`", args[0])
+	}
+
+	client, err := newAPIClient(cmd)
+	if err != nil {
+		return err
+	}
+
+	ctx, cancel := cli.APIContext(context.Background())
+	defer cancel()
+
+	var comment map[string]any
+	if err := client.GetJSON(ctx, "/api/comments/"+commentID, &comment); err != nil {
+		return fmt.Errorf("get comment: %w", err)
+	}
+
+	output, _ := cmd.Flags().GetString("output")
+	if output == "json" {
+		return cli.PrintJSON(os.Stdout, comment)
+	}
+
+	actors := loadActorDisplayLookup(ctx, client)
+	fmt.Fprintf(os.Stdout, "ID:      %s\n", strVal(comment, "id"))
+	fmt.Fprintf(os.Stdout, "Issue:   %s\n", strVal(comment, "issue_id"))
+	fmt.Fprintf(os.Stdout, "Author:  %s\n",
+		actors.actor(strVal(comment, "author_type"), strVal(comment, "author_id")))
+	fmt.Fprintf(os.Stdout, "Created: %s\n", strVal(comment, "created_at"))
+	if parent := strVal(comment, "parent_id"); parent != "" {
+		fmt.Fprintf(os.Stdout, "Parent:  %s\n", parent)
+	}
+	if resolved := strVal(comment, "resolved_at"); resolved != "" {
+		fmt.Fprintf(os.Stdout, "Resolved: %s\n", resolved)
+	}
+	fmt.Fprintf(os.Stdout, "\n%s\n", strVal(comment, "content"))
+	return nil
 }
 
 func runIssueCommentDelete(cmd *cobra.Command, args []string) error {
