@@ -663,12 +663,8 @@
     "assign": "归到节点",
     "ungrouped": "未归属节点",
     "clear": "移出节点",
-    "viewing": "正在看「{{name}}」",
-    "comment_count_other": "{{count}} 条评论",
     "enter_action": "进入这个节点",
     "complete_action": "完成这个节点",
-    "show_all": "显示全部",
-    "empty": "这个节点下还没有内容。",
     "composer_hint": "将写入「{{name}}」"
   }
 }

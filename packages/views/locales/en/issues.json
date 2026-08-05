@@ -688,12 +688,8 @@
     "assign": "Move to phase",
     "ungrouped": "No phase",
     "clear": "Remove from phase",
-    "viewing": "Viewing {{name}}",
-    "comment_count_other": "{{count}} comments",
     "enter_action": "Enter this phase",
     "complete_action": "Complete this phase",
-    "show_all": "Show all",
-    "empty": "Nothing was written in this phase yet.",
     "composer_hint": "Writing in {{name}}"
   }
 }

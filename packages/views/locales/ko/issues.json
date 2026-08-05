@@ -663,12 +663,8 @@
     "assign": "노드로 이동",
     "ungrouped": "노드 없음",
     "clear": "노드에서 제거",
-    "viewing": "「{{name}}」 보는 중",
-    "comment_count_other": "댓글 {{count}}개",
     "enter_action": "이 노드로 진입",
     "complete_action": "이 노드 완료",
-    "show_all": "전체 보기",
-    "empty": "이 노드에는 아직 내용이 없습니다.",
     "composer_hint": "「{{name}}」에 작성합니다"
   }
 }

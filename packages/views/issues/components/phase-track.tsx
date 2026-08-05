@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Plus, Check, Circle, CircleDot, X } from "lucide-react";
+import { Plus, Check, Circle, CircleDot, Play } from "lucide-react";
 import type { IssuePhase } from "@multica/core/types";
 import {
   useCreateIssuePhase,
@@ -89,8 +89,6 @@ export function PhaseTrack({
     });
   };
 
-  const selected = phases.find((phase) => phase.id === selectedPhaseId) ?? null;
-
   if (phases.length === 0 && !adding) {
     return (
       <div className={className}>
@@ -108,19 +106,26 @@ export function PhaseTrack({
   }
 
   return (
-    <div className={cn("flex flex-col gap-2", className)}>
-      <div className="flex flex-wrap items-center gap-1">
+    <div className={cn("flex flex-wrap items-center gap-1", className)}>
         {phases.map((phase, index) => (
           <div key={phase.id} className="flex items-center gap-1">
             {index > 0 && <span aria-hidden className="w-4 border-t" />}
             <PhaseChip
               phase={phase}
               selected={phase.id === selectedPhaseId}
+              busy={pending}
               // Clicking the selected one clears the filter, so the way back
-              // to "everything" is the same gesture that got you here.
+              // to "everything" is the same gesture that got you here — no
+              // separate "show all" control is needed, and one that existed
+              // would only restate what the highlight already says.
               onClick={() =>
                 onSelect(phase.id === selectedPhaseId ? null : phase.id)
               }
+              onAdvance={() => {
+                const mutation =
+                  phaseState(phase) === "pending" ? enterPhase : completePhase;
+                mutation.mutate(phase.id, { onError: fail });
+              }}
             />
           </div>
         ))}
@@ -152,99 +157,103 @@ export function PhaseTrack({
           >
             <Plus className="size-3.5" />
           </Button>
-        )}
-      </div>
-
-      {/* The selected station's own bar. Advancing lives here rather than on
-          the chip because it is a write, and a write should not share a target
-          with the gesture used to browse. */}
-      {selected && (
-        <div className="flex flex-wrap items-center gap-2 rounded-md bg-muted/50 px-3 py-1.5 text-caption">
-          <span className="text-muted-foreground">
-            {t(($) => $.phases.viewing, { name: selected.name })}
-          </span>
-          <span className="text-muted-foreground tabular-nums">
-            {t(($) => $.phases.comment_count, { count: selected.comment_count })}
-          </span>
-
-          <div className="ml-auto flex items-center gap-1">
-            {phaseState(selected) === "pending" && (
-              <Button
-                size="sm"
-                variant="ghost"
-                disabled={pending}
-                onClick={() =>
-                  enterPhase.mutate(selected.id, { onError: fail })
-                }
-              >
-                {t(($) => $.phases.enter_action)}
-              </Button>
-            )}
-            {phaseState(selected) === "current" && (
-              <Button
-                size="sm"
-                variant="ghost"
-                disabled={pending}
-                onClick={() =>
-                  completePhase.mutate(selected.id, { onError: fail })
-                }
-              >
-                {t(($) => $.phases.complete_action)}
-              </Button>
-            )}
-            <Button size="sm" variant="ghost" onClick={() => onSelect(null)}>
-              <X className="size-3.5" />
-              {t(($) => $.phases.show_all)}
-            </Button>
-          </div>
-        </div>
       )}
     </div>
   );
 }
 
+/**
+ * One station.
+ *
+ * A div wrapping two buttons rather than one button doing both jobs: the label
+ * selects, and — only while selected — a trailing control advances the work.
+ * Nesting a button inside a button is invalid markup, and one target doing
+ * both would put a write behind the gesture used to browse.
+ */
 function PhaseChip({
   phase,
   selected,
+  busy,
   onClick,
+  onAdvance,
 }: {
   phase: IssuePhase;
   selected: boolean;
+  busy: boolean;
   onClick: () => void;
+  onAdvance: () => void;
 }) {
+  const { t } = useT("issues");
   const state = phaseState(phase);
 
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      aria-pressed={selected}
+    <div
       className={cn(
-        "inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-caption transition-colors",
-        // Selection is the loud state, because it is the one that changes what
-        // the rest of the page is showing. Progress is carried by the icon.
+        "inline-flex items-center rounded-full border text-caption transition-colors",
+        // Selection is the loud state: it is the one that changes what the
+        // rest of the page is showing. Progress is carried by the icon.
         selected
-          ? "border-primary bg-primary/10 font-medium text-foreground"
+          ? "border-primary bg-primary/10 text-foreground"
           : "text-muted-foreground hover:border-foreground/30 hover:text-foreground",
         !selected && state === "done" && "border-transparent bg-muted",
       )}
     >
-      {state === "done" ? (
-        <Check className="size-3 shrink-0" />
-      ) : state === "current" ? (
-        <CircleDot className="size-3 shrink-0 text-primary" />
-      ) : (
-        <Circle className="size-3 shrink-0" />
+      <button
+        type="button"
+        onClick={onClick}
+        aria-pressed={selected}
+        className={cn(
+          "inline-flex items-center gap-1.5 py-1 pl-3",
+          selected ? "font-medium" : "",
+          // The label keeps the full pill's padding until the action appears
+          // beside it, so an unselected row does not shift when one is picked.
+          selected && state !== "done" ? "pr-1.5" : "pr-3",
+        )}
+      >
+        {state === "done" ? (
+          <Check className="size-3 shrink-0" />
+        ) : state === "current" ? (
+          <CircleDot className="size-3 shrink-0 text-primary" />
+        ) : (
+          <Circle className="size-3 shrink-0" />
+        )}
+        <span className="truncate">{phase.name}</span>
+        {/* The count is the point of the feature — it says where the discussion
+            actually happened. Hidden at zero so an empty route is not a row of
+            noughts. */}
+        {phase.comment_count > 0 && (
+          <span className="shrink-0 tabular-nums opacity-60">
+            {phase.comment_count}
+          </span>
+        )}
+      </button>
+
+      {/* Advancing appears only on the station being looked at. A finished one
+          has nowhere left to go, so it gets nothing. */}
+      {selected && state !== "done" && (
+        <button
+          type="button"
+          onClick={onAdvance}
+          disabled={busy}
+          title={
+            state === "pending"
+              ? t(($) => $.phases.enter_action)
+              : t(($) => $.phases.complete_action)
+          }
+          aria-label={
+            state === "pending"
+              ? t(($) => $.phases.enter_action)
+              : t(($) => $.phases.complete_action)
+          }
+          className="mr-1 rounded-full p-1 text-muted-foreground transition-colors hover:bg-primary/20 hover:text-foreground disabled:opacity-50"
+        >
+          {state === "pending" ? (
+            <Play className="size-3" />
+          ) : (
+            <Check className="size-3" />
+          )}
+        </button>
       )}
-      <span className="truncate">{phase.name}</span>
-      {/* The count is the point of the feature — it says where the discussion
-          actually happened. Hidden at zero so an empty route is not a row of
-          noughts. */}
-      {phase.comment_count > 0 && (
-        <span className="shrink-0 tabular-nums opacity-60">
-          {phase.comment_count}
-        </span>
-      )}
-    </button>
+    </div>
   );
 }
