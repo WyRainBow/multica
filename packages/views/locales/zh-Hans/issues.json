@@ -654,5 +654,28 @@
     "row_backlog_hint": "智能体保持暂停",
     "row_todo_label": "Todo",
     "row_todo_hint": "启动智能体"
+  },
+  "phases": {
+    "add_first": "添加节点",
+    "add": "添加节点",
+    "name_placeholder": "节点名",
+    "section": "节点",
+    "assign": "归到节点",
+    "ungrouped": "未归属节点",
+    "clear": "移出节点",
+    "enter_action": "进入这个节点",
+    "complete_action": "完成这个节点",
+    "composer_hint": "将写入「{{name}}」",
+    "templates": {
+      "requirement": "issue 生命周期",
+      "custom": "自定义…",
+      "apply_failed": "添加节点失败"
+    },
+    "another_round": "再来一轮：{{name}}",
+    "delete": "删除节点：{{name}}",
+    "delete_confirm_title": "删除「{{name}}」？",
+    "delete_confirm_body_other": "这个节点下的 {{count}} 条评论会一并删除、无法恢复。",
+    "delete_action": "删除",
+    "cancel": "取消"
   }
 }

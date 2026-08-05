@@ -43,6 +43,11 @@ type TimelineEntry struct {
 	// gone simply reads as an ordinary comment.
 	AnchorText   *string `json:"anchor_text,omitempty"`
 	AnchorOffset *int32  `json:"anchor_offset,omitempty"`
+	// The station of the issue's route this comment is filed under. The client
+	// filters the timeline by it, so omitting it here makes selecting a phase
+	// match nothing — the list empties and the feature looks broken rather
+	// than absent.
+	PhaseID *string `json:"phase_id,omitempty"`
 }
 
 // timelineHardCap bounds the per-issue timeline payload. Sized as a defensive
@@ -301,6 +306,7 @@ func (h *Handler) commentsToEntries(r *http.Request, comments []db.Comment) []Ti
 			SourceTaskID:   uuidToPtr(c.SourceTaskID),
 			AnchorText:     textToPtr(c.AnchorText),
 			AnchorOffset:   int4ToPtr(c.AnchorOffset),
+			PhaseID:        uuidToPtr(c.PhaseID),
 		}
 	}
 	return out

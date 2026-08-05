@@ -1590,3 +1590,15 @@ SET status = CASE WHEN EXISTS (
     updated_at = now()
 WHERE a.id = $1
 RETURNING *;
+
+-- name: GetAgentByNameInWorkspace :one
+-- Case-insensitive so "Claude" and "claude" name the same identity — the
+-- harness reports a slug and a person types a display name.
+--
+-- Archived agents are excluded: retiring the identity has to turn the
+-- attribution off, otherwise the only way to stop it would be deletion.
+SELECT * FROM agent
+WHERE workspace_id = $1
+  AND lower(name) = lower($2)
+  AND archived_at IS NULL
+LIMIT 1;

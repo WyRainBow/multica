@@ -1,3 +1,7 @@
+// The default view mode, read from the store rather than restated: these
+// assertions are about isolation between surfaces, not about which mode is
+// the default, and a copy of it here breaks whenever that default changes.
+import { DEFAULT_VIEW_MODE } from "../issues/stores/view-store";
 /**
  * @vitest-environment jsdom
  */
@@ -56,6 +60,6 @@ describe("useDeleteProject", () => {
     });
 
     expect(deleteProject).toHaveBeenCalledWith("p1");
-    expect(store.getState().viewMode).toBe("board");
+    expect(store.getState().viewMode).toBe(DEFAULT_VIEW_MODE);
   });
 });

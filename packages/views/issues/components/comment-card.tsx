@@ -1,7 +1,8 @@
 "use client";
 
 import { memo, useCallback, useEffect, useRef, useState, type ReactNode } from "react";
-import { CheckCircle2, ChevronRight, ListChevronsDownUp, Copy, Loader2, MoreHorizontal, Pencil, RotateCcw, Trash2 } from "lucide-react";
+import type { IssuePhase } from "@multica/core/types";
+import { CheckCircle2, ChevronRight, ListChevronsDownUp, Copy, Loader2, Milestone, MoreHorizontal, Pencil, RotateCcw, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { Card } from "@multica/ui/components/ui/card";
 import { Button } from "@multica/ui/components/ui/button";
@@ -11,6 +12,9 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubTrigger,
+  DropdownMenuSubContent,
 } from "@multica/ui/components/ui/dropdown-menu";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@multica/ui/components/ui/tooltip";
 import {
@@ -109,6 +113,10 @@ interface CommentCardProps {
   onReply: (parentId: string, content: string, attachmentIds?: string[], suppressAgentIds?: string[]) => Promise<boolean>;
   onEdit: (commentId: string, content: string, attachmentIds: string[], suppressAgentIds?: string[]) => Promise<void>;
   onDelete: (commentId: string) => void;
+  /** Stations available on this issue, for the "move to phase" submenu. */
+  phases?: IssuePhase[];
+  /** Group a comment under a phase, or null to ungroup it. */
+  onSetPhase?: (commentId: string, phaseId: string | null) => void;
   onToggleReaction: (commentId: string, emoji: string) => void;
   /** Resolve/unresolve any comment in this thread (commentId = the target row). */
   onResolveToggle?: (commentId: string, resolved: boolean) => void;
@@ -530,6 +538,8 @@ function CommentRow({
   isHighlighted = false,
   onEdit,
   onDelete,
+  phases,
+  onSetPhase,
   onToggleReaction,
   onResolveToggle,
 }: {
@@ -543,12 +553,19 @@ function CommentRow({
   isHighlighted?: boolean;
   onEdit: (commentId: string, content: string, attachmentIds: string[], suppressAgentIds?: string[]) => Promise<void>;
   onDelete: (commentId: string) => void;
+  /** Stations available on this issue, for the "move to phase" submenu. */
+  phases?: IssuePhase[];
+  /** Group a comment under a phase, or null to ungroup it. */
+  onSetPhase?: (commentId: string, phaseId: string | null) => void;
   onToggleReaction: (commentId: string, emoji: string) => void;
   onResolveToggle?: (commentId: string, resolved: boolean) => void;
 }) {
   const { t } = useT("issues");
   const timeAgo = useTimeAgo();
   const { getActorName } = useActorName();
+
+  const entryPhase =
+    phases?.find((phase) => phase.id === entry.phase_id) ?? null;
 
   const edit = useEditAttachmentState(issueId, entry, onEdit);
 
@@ -574,6 +591,16 @@ function CommentRow({
         <span className="cursor-pointer text-body font-medium">
           {getActorName(entry.actor_type, entry.actor_id)}
         </span>
+        {/* Which station this was said at. Shown on the comment itself, not
+            only on the track: the timeline is read top to bottom far more
+            often than it is filtered, and without this a reader scrolling the
+            whole thing cannot tell which stretch of work a remark belongs to
+            — which is the complaint the feature exists to answer. */}
+        {entryPhase && (
+          <span className="shrink-0 truncate rounded-full bg-muted px-1.5 py-0.5 text-caption text-muted-foreground">
+            {entryPhase.name}
+          </span>
+        )}
         <Tooltip>
           <TooltipTrigger
             render={
@@ -611,6 +638,43 @@ function CommentRow({
                 <Copy className="h-3.5 w-3.5" />
                 {t(($) => $.comment.copy_action)}
               </DropdownMenuItem>
+              {/* Which station this comment belongs to. A submenu rather than
+                  a field on the comment body: grouping is something you do TO
+                  a comment afterwards — usually while tidying up — not part
+                  of writing it. */}
+              {phases && phases.length > 0 && onSetPhase && (
+                <>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuSub>
+                    <DropdownMenuSubTrigger>
+                      <Milestone className="h-3.5 w-3.5" />
+                      {t(($) => $.phases.assign)}
+                    </DropdownMenuSubTrigger>
+                    <DropdownMenuSubContent>
+                      {phases.map((phase: IssuePhase) => (
+                        <DropdownMenuItem
+                          key={phase.id}
+                          onClick={() => onSetPhase(entry.id, phase.id)}
+                        >
+                          {phase.id === entry.phase_id && (
+                            <CheckCircle2 className="h-3.5 w-3.5" />
+                          )}
+                          {phase.name}
+                        </DropdownMenuItem>
+                      ))}
+                      {entry.phase_id && (
+                        <>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem onClick={() => onSetPhase(entry.id, null)}>
+                            <RotateCcw className="h-3.5 w-3.5" />
+                            {t(($) => $.phases.clear)}
+                          </DropdownMenuItem>
+                        </>
+                      )}
+                    </DropdownMenuSubContent>
+                  </DropdownMenuSub>
+                </>
+              )}
               {onResolveToggle && (
                 <>
                   <DropdownMenuSeparator />
@@ -770,6 +834,8 @@ function CommentCardImpl({
   onReply,
   onEdit,
   onDelete,
+  phases,
+  onSetPhase,
   onToggleReaction,
   onResolveToggle,
   onCollapseResolved,
@@ -778,6 +844,8 @@ function CommentCardImpl({
   highlightedCommentId,
 }: CommentCardProps) {
   const { t } = useT("issues");
+  const rootPhase =
+    phases?.find((phase) => phase.id === entry.phase_id) ?? null;
   const timeAgo = useTimeAgo();
   const { getActorName } = useActorName();
   const isCollapsed = useCommentCollapseStore((s) => s.isCollapsed(issueId, entry.id));
@@ -874,6 +942,16 @@ function CommentCardImpl({
               <span className="shrink-0 cursor-pointer text-body font-medium">
                 {getActorName(entry.actor_type, entry.actor_id)}
               </span>
+              {/* Which station this was said at. On the ROOT comment's own
+                  header — CommentCardImpl draws that itself and does not go
+                  through CommentRow, which renders replies. Putting it only in
+                  CommentRow left every top-level comment unlabelled, which is
+                  every comment most readers ever see. */}
+              {rootPhase && (
+                <span className="shrink-0 truncate rounded-full bg-muted px-1.5 py-0.5 text-caption text-muted-foreground">
+                  {rootPhase.name}
+                </span>
+              )}
               <Tooltip>
                 <TooltipTrigger
                   render={
@@ -1106,6 +1184,8 @@ function CommentCardImpl({
                     isHighlighted={highlightedCommentId === resolutionReply.id}
                     onEdit={onEdit}
                     onDelete={onDelete}
+                    phases={phases}
+                    onSetPhase={onSetPhase}
                     onToggleReaction={onToggleReaction}
                     onResolveToggle={onResolveToggle}
                   />
@@ -1145,6 +1225,8 @@ function CommentCardImpl({
                     isHighlighted={highlightedCommentId === reply.id}
                     onEdit={onEdit}
                     onDelete={onDelete}
+                    phases={phases}
+                    onSetPhase={onSetPhase}
                     onToggleReaction={onToggleReaction}
                     onResolveToggle={onResolveToggle}
                   />

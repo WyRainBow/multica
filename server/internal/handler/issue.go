@@ -80,6 +80,10 @@ type IssueResponse struct {
 	// requirement's status or archiving. May point at an issue that has since
 	// been deleted, so readers must tolerate it resolving to nothing.
 	ParkedFromIssueID *string `json:"parked_from_issue_id"`
+	// When the CURRENT status was set. Distinct from UpdatedAt, which moves
+	// for a label or a comment and so cannot answer "how long has this been
+	// in review".
+	StatusChangedAt *string `json:"status_changed_at"`
 }
 
 // validIssueStatuses / validIssuePriorities mirror the CHECK constraints on
@@ -128,6 +132,7 @@ func issueToResponse(i db.Issue, issuePrefix string) IssueResponse {
 		ArchivedBy:    uuidToPtr(i.ArchivedBy),
 
 		ParkedFromIssueID: uuidToPtr(i.ParkedFromIssueID),
+		StatusChangedAt:   timestampToPtr(i.StatusChangedAt),
 	}
 }
 

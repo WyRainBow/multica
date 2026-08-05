@@ -51,6 +51,11 @@ type CommentResponse struct {
 	// comment whose text no longer appears simply stops highlighting.
 	AnchorText    *string              `json:"anchor_text"`
 	AnchorOffset  *int32               `json:"anchor_offset"`
+	// The station of the issue's route this comment is filed under, when one
+	// was chosen. Echoed on every read AND on create — the client filters the
+	// timeline by it, so a freshly written comment that came back without it
+	// would vanish from the very phase it was just written into.
+	PhaseID *string `json:"phase_id"`
 	Reactions     []ReactionResponse   `json:"reactions"`
 	Attachments   []AttachmentResponse `json:"attachments"`
 	// Orientation stats — populated only on the roots_only path and omitted in
@@ -119,6 +124,7 @@ func commentToResponse(c db.Comment, reactions []ReactionResponse, attachments [
 		SourceTaskID:   uuidToPtr(c.SourceTaskID),
 		QuickActionID:  uuidToPtr(c.QuickActionID),
 		AnchorText:     textToPtr(c.AnchorText),
+		PhaseID:        uuidToPtr(c.PhaseID),
 		AnchorOffset:   int4ToPtr(c.AnchorOffset),
 		Reactions:      reactions,
 		Attachments:    attachments,
@@ -1514,6 +1520,11 @@ type CreateCommentRequest struct {
 	// issue description. Omitted for an ordinary comment.
 	AnchorText   *string `json:"anchor_text"`
 	AnchorOffset *int32  `json:"anchor_offset"`
+	// PhaseID files the comment under a station of the issue's route as it is
+	// written. Set in one request rather than create-then-patch: writing
+	// inside a phase is the normal case once an issue has a route, and a
+	// two-step would leave a window where the comment exists ungrouped.
+	PhaseID *string `json:"phase_id"`
 }
 
 type CommentTriggerPreviewRequest struct {
@@ -1925,6 +1936,25 @@ func (h *Handler) CreateComment(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// A phase from another workspace, or from another issue, must not be able
+	// to claim this comment.
+	var phaseID pgtype.UUID
+	if req.PhaseID != nil && strings.TrimSpace(*req.PhaseID) != "" {
+		parsed, ok := parseUUIDOrBadRequest(w, strings.TrimSpace(*req.PhaseID), "phase_id")
+		if !ok {
+			return
+		}
+		phase, err := h.Queries.GetIssuePhase(r.Context(), db.GetIssuePhaseParams{
+			ID:          parsed,
+			WorkspaceID: issue.WorkspaceID,
+		})
+		if err != nil || phase.IssueID != issue.ID {
+			writeError(w, http.StatusBadRequest, "phase not found on this issue")
+			return
+		}
+		phaseID = parsed
+	}
+
 	comment, err := h.Queries.CreateComment(r.Context(), db.CreateCommentParams{
 		IssueID:      issue.ID,
 		WorkspaceID:  issue.WorkspaceID,
@@ -1936,6 +1966,7 @@ func (h *Handler) CreateComment(w http.ResponseWriter, r *http.Request) {
 		SourceTaskID: sourceTaskID,
 		AnchorText:   anchorText,
 		AnchorOffset: anchorOffset,
+		PhaseID:      phaseID,
 	})
 	if err != nil {
 		slog.Warn("create comment failed", append(logger.RequestAttrs(r), "error", err, "issue_id", issueID)...)

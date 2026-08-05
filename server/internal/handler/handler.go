@@ -598,12 +598,76 @@ func requestUserID(r *http.Request) string {
 // no effect on legitimate agent callers but closes the impersonation path.
 //
 // Returns ("agent", agentID) on success, ("member", userID) otherwise.
+// resolveHarnessActor maps the reported agent shell to an agent of the same
+// name in this workspace. Returns ok=false whenever anything is missing, so
+// every failure path lands back on the member.
+func (h *Handler) resolveHarnessActor(
+	r *http.Request,
+	workspaceID string,
+) (string, string, bool) {
+	harness := middleware.ClientHarnessFromContext(r.Context())
+	if harness == "" {
+		return "", "", false
+	}
+	name := harnessAgentName(harness)
+	if name == "" {
+		return "", "", false
+	}
+	wsUUID, err := util.ParseUUID(workspaceID)
+	if err != nil {
+		return "", "", false
+	}
+	agent, err := h.Queries.GetAgentByNameInWorkspace(r.Context(),
+		db.GetAgentByNameInWorkspaceParams{WorkspaceID: wsUUID, Lower: name})
+	if err != nil {
+		// No agent by that name means the workspace has not opted in.
+		return "", "", false
+	}
+	return "agent", uuidToString(agent.ID), true
+}
+
+// harnessAgentName is the display name a harness looks for.
+//
+// A closed map rather than the raw header: the value is client-controlled, and
+// an unknown one must find nothing rather than go looking for an agent named
+// after whatever arrived.
+func harnessAgentName(harness string) string {
+	switch harness {
+	case "claude-code":
+		return "Claude"
+	case "codex":
+		return "Codex"
+	default:
+		return ""
+	}
+}
+
 func (h *Handler) resolveActor(r *http.Request, userID, workspaceID string) (actorType, actorID string) {
 	if r.Header.Get("X-Actor-Source") == "task_token" {
 		// Server-set header — auth middleware also forced X-Agent-ID
 		// from the token row. Trust it directly without re-querying.
 		return "agent", r.Header.Get("X-Agent-ID")
 	}
+	// Harness identity: a comment or edit made through the CLI by an agent
+	// shell is authored by that shell, when the workspace has chosen to give
+	// it a name.
+	//
+	// The CLI already reports which shell it is running inside; this turns
+	// that report into authorship by looking for an agent of the same name.
+	// Creating the agent is the opt-in and deleting it is the opt-out — a
+	// workspace with no "Claude" agent behaves exactly as before, so nothing
+	// changes for anyone who has not asked for this.
+	//
+	// Attribution only. Permission still belongs to the member whose token
+	// signed the request: the middleware authenticated them, and every check
+	// downstream reads the user, not this. The header is client-controlled,
+	// so a caller could name a different agent — they would be relabelling
+	// their own writes inside their own workspace, which buys them nothing
+	// they could not already do by typing a different name.
+	if actorType, actorID, ok := h.resolveHarnessActor(r, workspaceID); ok {
+		return actorType, actorID
+	}
+
 	agentID := r.Header.Get("X-Agent-ID")
 	if agentID == "" {
 		return "member", userID

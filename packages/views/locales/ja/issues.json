@@ -654,5 +654,28 @@
     "row_backlog_hint": "エージェントを一時停止のままにします",
     "row_todo_label": "未着手",
     "row_todo_hint": "エージェントを開始します"
+  },
+  "phases": {
+    "add_first": "フェーズを追加",
+    "add": "フェーズを追加",
+    "name_placeholder": "フェーズ名",
+    "section": "フェーズ",
+    "assign": "フェーズに移動",
+    "ungrouped": "フェーズなし",
+    "clear": "フェーズから外す",
+    "enter_action": "このフェーズに入る",
+    "complete_action": "このフェーズを完了",
+    "composer_hint": "「{{name}}」に書き込みます",
+    "templates": {
+      "requirement": "issue のライフサイクル",
+      "custom": "カスタム…",
+      "apply_failed": "フェーズの追加に失敗しました"
+    },
+    "another_round": "もう一巡：{{name}}",
+    "delete": "フェーズを削除：{{name}}",
+    "delete_confirm_title": "「{{name}}」を削除しますか？",
+    "delete_confirm_body_other": "このフェーズの {{count}} 件のコメントも削除されます。元に戻せません。",
+    "delete_action": "削除",
+    "cancel": "キャンセル"
   }
 }

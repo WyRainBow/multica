@@ -1160,6 +1160,19 @@ func NewRouterWithOptions(pool *pgxpool.Pool, hub *realtime.Hub, bus *events.Bus
 					r.Post("/park", h.ParkIssue)
 					r.Get("/parked", h.ListParkedFromIssue)
 					r.Get("/cards", h.ListCardsForIssue)
+					// Phases — the stations a requirement passes through.
+					// Containers, not statuses: what happened during a
+					// stretch hangs underneath it.
+					r.Route("/phases", func(r chi.Router) {
+						r.Get("/", h.ListIssuePhases)
+						r.Post("/", h.CreateIssuePhase)
+						r.Route("/{phaseId}", func(r chi.Router) {
+							r.Put("/", h.UpdateIssuePhase)
+							r.Delete("/", h.DeleteIssuePhase)
+							r.Post("/enter", h.EnterIssuePhase)
+							r.Post("/complete", h.CompleteIssuePhase)
+						})
+					})
 					r.Delete("/", h.DeleteIssue)
 					r.Post("/comments/trigger-preview", h.PreviewCommentTriggers)
 					r.Post("/comments", h.CreateComment)
@@ -1311,6 +1324,10 @@ func NewRouterWithOptions(pool *pgxpool.Pool, hub *realtime.Hub, bus *events.Bus
 			r.Route("/api/comments/{commentId}", func(r chi.Router) {
 				r.Put("/", h.UpdateComment)
 				r.Delete("/", h.DeleteComment)
+				// Which phase this comment belongs to. A separate endpoint
+				// from UpdateComment: grouping a comment is not editing it,
+				// and the two carry different permissions in the UI.
+				r.Put("/phase", h.SetCommentPhase)
 				r.Post("/resolve", h.ResolveComment)
 				r.Delete("/resolve", h.UnresolveComment)
 				r.Post("/reactions", h.AddReaction)

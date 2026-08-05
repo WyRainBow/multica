@@ -115,6 +115,8 @@ export const issueKeys = {
   /** Prefix for every per-parent children query in a workspace. */
   childrenAll: (wsId: string) =>
     [...issueKeys.all(wsId), "children"] as const,
+  phases: (wsId: string, id: string) =>
+    [...issueKeys.all(wsId), "phases", id] as const,
   parkedFrom: (wsId: string, id: string) =>
     [...issueKeys.all(wsId), "parked-from", id] as const,
   children: (wsId: string, id: string) =>
@@ -791,6 +793,22 @@ export function parentIssuesOptions(wsId: string) {
   return queryOptions({
     queryKey: issueKeys.parents(wsId),
     queryFn: () => api.listParentIssues().then((r) => r.issues),
+  });
+}
+
+/**
+ * The stations this requirement passes through.
+ *
+ * Refetched on mount like the child list: phases change from other surfaces
+ * (an agent entering one, a teammate adding one) and the count of comments
+ * under each is only true as of the last read.
+ */
+export function issuePhasesOptions(wsId: string, id: string) {
+  return queryOptions({
+    queryKey: issueKeys.phases(wsId, id),
+    queryFn: () => api.listIssuePhases(id).then((r) => r.phases),
+    enabled: !!id,
+    refetchOnMount: "always",
   });
 }
 

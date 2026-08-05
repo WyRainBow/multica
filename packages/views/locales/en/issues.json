@@ -679,5 +679,28 @@
     "row_backlog_hint": "keeps the agent paused",
     "row_todo_label": "Todo",
     "row_todo_hint": "starts the agent"
+  },
+  "phases": {
+    "add_first": "Add phases",
+    "add": "Add phase",
+    "name_placeholder": "Phase name",
+    "section": "Phases",
+    "assign": "Move to phase",
+    "ungrouped": "No phase",
+    "clear": "Remove from phase",
+    "enter_action": "Enter this phase",
+    "complete_action": "Complete this phase",
+    "composer_hint": "Writing in {{name}}",
+    "templates": {
+      "requirement": "Issue lifecycle",
+      "custom": "Custom…",
+      "apply_failed": "Failed to add the phases"
+    },
+    "another_round": "Another round: {{name}}",
+    "delete": "Delete phase: {{name}}",
+    "delete_confirm_title": "Delete {{name}}?",
+    "delete_confirm_body_other": "Its {{count}} comments are deleted with it. This cannot be undone.",
+    "delete_action": "Delete",
+    "cancel": "Cancel"
   }
 }

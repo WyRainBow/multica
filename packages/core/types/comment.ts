@@ -36,6 +36,9 @@ export interface Comment {
   // comment simply stops highlighting and reads as an ordinary comment.
   anchor_text?: string | null;
   anchor_offset?: number | null;
+  /** The phase this comment is grouped under, when one was assigned.
+   *  Null for every comment written before the issue had phases. */
+  phase_id?: string | null;
   source_task_id?: string | null;
   // The quick action that produced this comment (MUL-5465). A quick action
   // posts an ORDINARY comment and marks it with this id; the collapsed card

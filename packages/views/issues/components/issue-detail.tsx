@@ -57,7 +57,7 @@ import type { Attachment, Issue, IssueProperty, IssueStatus, IssuePriority, Time
 import { contentReferencesAttachment } from "@multica/core/types";
 import { STATUS_CONFIG, PRIORITY_CONFIG } from "@multica/core/issues/config";
 import { formatDateOnly, isPastDateOnly } from "@multica/core/issues/date";
-import { useUpdateIssue } from "@multica/core/issues/mutations";
+import { useUpdateIssue, useSetCommentPhase } from "@multica/core/issues/mutations";
 import { toast } from "sonner";
 import { StatusIcon, PriorityIcon, StatusPicker, PriorityPicker, StagePicker, StartDatePicker, DueDatePicker, AssigneePicker, LabelPicker } from ".";
 import { maxSiblingStage } from "./pickers/stage-picker";
@@ -71,6 +71,9 @@ import { ProjectPicker } from "../../projects/components/project-picker";
 import { LocalDirectoryHint } from "../../projects/components/local-directory-hint";
 import { CommentCard } from "./comment-card";
 import { IssueCardsSection } from "../../cards";
+import { PhaseTrack } from "./phase-track";
+import { phaseAtTime } from "./phase-window";
+import type { IssuePhase } from "@multica/core/types";
 import { DescriptionOutline } from "./description-outline";
 import type { OutlineHeading } from "../../editor/outline";
 import { CommentInput } from "./comment-input";
@@ -88,7 +91,7 @@ import { useWorkspacePaths } from "@multica/core/paths";
 import { useActorName } from "@multica/core/workspace/hooks";
 import { useWorkspaceId } from "@multica/core/hooks";
 import { useRecentContextStore } from "@multica/core/chat";
-import { issueListOptions, issueDetailOptions, childIssuesOptions, parkedFromIssueOptions, childIssueProgressOptions, issueUsageOptions, issueAttachmentsOptions } from "@multica/core/issues/queries";
+import { issueListOptions, issueDetailOptions, childIssuesOptions, parkedFromIssueOptions, issuePhasesOptions, childIssueProgressOptions, issueUsageOptions, issueAttachmentsOptions } from "@multica/core/issues/queries";
 import { projectDetailOptions } from "@multica/core/projects/queries";
 import { ProjectIcon } from "../../projects/components/project-icon";
 import { issueLabelsOptions } from "@multica/core/labels";
@@ -589,6 +592,7 @@ function ActivityBlock({
   showOlder,
   onToggleShowOlder,
   getActorName,
+  phases,
   t,
   timeAgo,
 }: {
@@ -602,6 +606,9 @@ function ActivityBlock({
   showOlder: boolean;
   onToggleShowOlder: () => void;
   getActorName: (type: string, id: string) => string;
+  /** The issue's route, used to place each activity at the station that was
+   *  current when it happened. */
+  phases: IssuePhase[];
   t: ActivityT;
   timeAgo: (dateStr: string) => string;
 }) {
@@ -688,6 +695,18 @@ function ActivityBlock({
                 )}
               </span>
               <span className="truncate">{formatActivity(entry, t, getActorName)}</span>
+              {/* Which station was current when this happened. Placed by time,
+                  since an activity carries no phase of its own. Absent for
+                  anything that predates the route — which is every activity on
+                  an issue that gained phases later. */}
+              {(() => {
+                const at = phaseAtTime(phases, entry.created_at);
+                return at ? (
+                  <span className="ml-1 shrink-0 rounded-full bg-muted px-1.5 text-caption text-muted-foreground">
+                    {at.name}
+                  </span>
+                ) : null;
+              })()}
               {(entry.coalesced_count ?? 1) > 1 &&
                 entry.action !== "task_completed" &&
                 entry.action !== "task_failed" && (
@@ -1424,16 +1443,63 @@ export function IssueDetail({ issueId, onDelete, onDone, defaultSidebarOpen = tr
   // unrelated thread) hands every card a brand-new prop reference and forces
   // every thread subtree to re-render in lockstep.
   const prevThreadRepliesRef = useRef<Map<string, TimelineEntry[]>>(new Map());
+  // The route this requirement takes. Rendered under the title as a header:
+  // it says where the work is, while what happened at each station hangs
+  // further down under that station's heading.
+  const { data: issuePhases = [] } = useQuery({
+    ...issuePhasesOptions(wsId, id),
+    enabled: !!issue,
+  });
+
+  // Which station the page is currently reading. Null = the whole timeline.
+  //
+  // Component state, not persisted: a filter that survives a reload would
+  // leave someone staring at an issue that looks empty with no memory of
+  // having narrowed it.
+  const [selectedPhaseId, setSelectedPhaseId] = useState<string | null>(null);
+
+  // The composer writes into whichever station is selected — one request, no
+  // reassign step.
+  const handleSubmitComment = useCallback(
+    (content: string, attachmentIds?: string[], suppressAgentIds?: string[]) =>
+      submitComment(
+        content,
+        attachmentIds,
+        suppressAgentIds,
+        selectedPhaseId ?? undefined,
+      ),
+    [submitComment, selectedPhaseId],
+  );
+
   const timelineView = useMemo(() => {
     // Group entries: top-level = activities + root comments; replies are
     // bucketed under their parent's id and rendered nested inside CommentCard.
     // No orphan rescue needed: the timeline is fetched in full, so every
     // reply's parent is always in the same array.
-    const topLevel = timeline.filter(
+    // Narrowed to one station when the reader picked one.
+    //
+    // Comments go by the station they were filed under. Activities have no
+    // phase of their own and are placed by TIME — whichever station was
+    // current when the change happened. Dropping them instead would answer
+    // "what happened while this was frozen" without the half that says who
+    // changed what, which is most of what an activity feed is for.
+    //
+    // Replies are not filtered: a thread is read as a unit, and a reply
+    // written before its root was filed would otherwise vanish from a thread
+    // still on screen.
+    const visible = selectedPhaseId
+      ? timeline.filter((e) => {
+          if (e.type === "comment") {
+            return e.phase_id === selectedPhaseId || !!e.parent_id;
+          }
+          return phaseAtTime(issuePhases, e.created_at)?.id === selectedPhaseId;
+        })
+      : timeline;
+    const topLevel = visible.filter(
       (e) => e.type === "activity" || !e.parent_id,
     );
     const repliesByParent = new Map<string, TimelineEntry[]>();
-    for (const e of timeline) {
+    for (const e of visible) {
       if (e.type === "comment" && e.parent_id) {
         const list = repliesByParent.get(e.parent_id) ?? [];
         list.push(e);
@@ -1504,7 +1570,7 @@ export function IssueDetail({ issueId, onDelete, onDone, defaultSidebarOpen = tr
     }
 
     return { threadReplies, groups };
-  }, [timeline]);
+  }, [timeline, selectedPhaseId, issuePhases]);
 
   // Flat array consumed by <Virtuoso>. Recomputed when timelineView.groups
   // changes (timeline events) or expandedResolved flips (user toggles a
@@ -1720,6 +1786,30 @@ export function IssueDetail({ issueId, onDelete, onDone, defaultSidebarOpen = tr
   // of parking — so folding it into the child list would put it back in the
   // subtree the user just lifted it out of, and it would start counting toward
   // the "x/y done" progress it was removed from.
+  // Grouping a comment under a station. Invalidates rather than patches: the
+  // phase's comment count is server-derived, so a local guess would be a guess
+  // about a number this client does not own.
+  const setCommentPhase = useSetCommentPhase(id);
+  const handleSetCommentPhase = useCallback(
+    (commentId: string, phaseId: string | null) => {
+      setCommentPhase.mutate(
+        { commentId, phaseId },
+        {
+          onError: (err) =>
+            toast.error(
+              err instanceof Error && err.message
+                ? err.message
+                : t(($) => $.detail.update_failed),
+            ),
+        },
+      );
+    },
+    [setCommentPhase, t],
+  );
+
+  const selectedPhase =
+    issuePhases.find((phase) => phase.id === selectedPhaseId) ?? null;
+
   const { data: parkedIssues = [] } = useQuery({
     ...parkedFromIssueOptions(wsId, id),
     enabled: !!issue,
@@ -2414,6 +2504,8 @@ export function IssueDetail({ issueId, onDelete, onDone, defaultSidebarOpen = tr
             onReply={submitReply}
             onEdit={editComment}
             onDelete={deleteComment}
+            phases={issuePhases}
+            onSetPhase={handleSetCommentPhase}
             onToggleReaction={handleToggleReaction}
             onResolveToggle={handleResolveToggle}
             onCollapseResolved={isResolved ? () => toggleResolvedExpand(item.id, false) : undefined}
@@ -2434,6 +2526,7 @@ export function IssueDetail({ issueId, onDelete, onDone, defaultSidebarOpen = tr
     const showOlder = showOlderActivityIds.has(item.id);
     return (
       <ActivityBlock
+        phases={issuePhases}
         entries={item.entries}
         expanded={expanded}
         onToggle={() => toggleActivityBlock(item.id, expanded)}
@@ -2685,6 +2778,23 @@ export function IssueDetail({ issueId, onDelete, onDone, defaultSidebarOpen = tr
               </span>
             </AppLink>
           )}
+
+          {/* The route this requirement takes. Sits between the title block
+              and the description: it answers "where is this" before the
+              reader starts on "what is this", and the stations it names are
+              the headings the comments below are grouped under.
+
+              Shown on a finished issue too — the record of which route the
+              work took is exactly what a finished issue is for — but the
+              track's own controls no-op there, since every transition it
+              offers is a write. */}
+          <PhaseTrack
+            issueId={id}
+            phases={issuePhases}
+            selectedPhaseId={selectedPhaseId}
+            onSelect={setSelectedPhaseId}
+            className="mt-4"
+          />
 
           {frozen ? (
             // ReadonlyContent rather than a disabled editor: content-editor.tsx
@@ -3119,7 +3229,20 @@ export function IssueDetail({ issueId, onDelete, onDone, defaultSidebarOpen = tr
                 keeps the previous issue's in-memory content and the
                 next keystroke would flush it into the new issue's
                 draft key. */}
-            <CommentInput key={id} issueId={id} onSubmit={submitComment} />
+            {/* Writing while a station is selected files the comment there in
+                the same request. The alternative — write, then reassign — is
+                the two-step this feature exists to remove, and it is exactly
+                the friction that would leave the route unused. */}
+            {selectedPhase && (
+              <p className="mb-1 text-caption text-muted-foreground">
+                {t(($) => $.phases.composer_hint, { name: selectedPhase.name })}
+              </p>
+            )}
+            <CommentInput
+              key={`${id}:${selectedPhaseId ?? "all"}`}
+              issueId={id}
+              onSubmit={handleSubmitComment}
+            />
           </div>
         </div>
         </div>

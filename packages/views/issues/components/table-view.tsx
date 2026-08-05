@@ -1507,11 +1507,18 @@ function IssueTableBodyCell({
     case "created_at":
     case "updated_at":
       return (
-        <span className="text-caption text-muted-foreground">
+        // Down to the minute, and 24-hour: a day alone cannot separate two
+        // issues filed in the same afternoon, which is most of a working
+        // list. Seconds are dropped — they never settle an ordering question
+        // a minute leaves open, and they cost width on every row.
+        <span className="text-caption text-muted-foreground tabular-nums">
           {new Intl.DateTimeFormat(i18n.language, {
             month: "short",
             day: "numeric",
             year: "numeric",
+            hour: "2-digit",
+            minute: "2-digit",
+            hour12: false,
           }).format(new Date(issue[key]))}
         </span>
       );

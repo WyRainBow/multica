@@ -654,5 +654,28 @@
     "row_backlog_hint": "에이전트를 대기 상태로 유지",
     "row_todo_label": "할 일",
     "row_todo_hint": "에이전트 시작"
+  },
+  "phases": {
+    "add_first": "노드 추가",
+    "add": "노드 추가",
+    "name_placeholder": "노드 이름",
+    "section": "노드",
+    "assign": "노드로 이동",
+    "ungrouped": "노드 없음",
+    "clear": "노드에서 제거",
+    "enter_action": "이 노드로 진입",
+    "complete_action": "이 노드 완료",
+    "composer_hint": "「{{name}}」에 작성합니다",
+    "templates": {
+      "requirement": "이슈 라이프사이클",
+      "custom": "사용자 지정…",
+      "apply_failed": "노드 추가에 실패했습니다"
+    },
+    "another_round": "한 번 더: {{name}}",
+    "delete": "노드 삭제: {{name}}",
+    "delete_confirm_title": "「{{name}}」을(를) 삭제할까요?",
+    "delete_confirm_body_other": "이 노드의 댓글 {{count}}개도 함께 삭제됩니다. 되돌릴 수 없습니다.",
+    "delete_action": "삭제",
+    "cancel": "취소"
   }
 }

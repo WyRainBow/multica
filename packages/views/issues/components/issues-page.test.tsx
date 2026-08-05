@@ -345,6 +345,9 @@ vi.mock("@multica/core/issues/stores/view-store", () => ({
   propertyIdFromViewKey: (key: string) =>
     key.startsWith("property:") ? key.slice("property:".length) : null,
   viewStorePersistOptions: () => ({ name: "test", storage: undefined, partialize: (s: any) => s }),
+  VIEW_STORE_VERSION: 2,
+  DEFAULT_VIEW_MODE: "table",
+  DEFAULT_TABLE_COLUMNS: [],
   mergeViewStatePersisted: (_p: unknown, c: any) => c,
   viewStoreSlice: vi.fn(),
   useIssueViewStore: Object.assign(
