@@ -1425,16 +1425,50 @@ export function IssueDetail({ issueId, onDelete, onDone, defaultSidebarOpen = tr
   // unrelated thread) hands every card a brand-new prop reference and forces
   // every thread subtree to re-render in lockstep.
   const prevThreadRepliesRef = useRef<Map<string, TimelineEntry[]>>(new Map());
+  // Which station the page is currently reading. Null = the whole timeline.
+  //
+  // Component state, not persisted: a filter that survives a reload would
+  // leave someone staring at an issue that looks empty with no memory of
+  // having narrowed it.
+  const [selectedPhaseId, setSelectedPhaseId] = useState<string | null>(null);
+
+  // The composer writes into whichever station is selected — one request, no
+  // reassign step.
+  const handleSubmitComment = useCallback(
+    (content: string, attachmentIds?: string[], suppressAgentIds?: string[]) =>
+      submitComment(
+        content,
+        attachmentIds,
+        suppressAgentIds,
+        selectedPhaseId ?? undefined,
+      ),
+    [submitComment, selectedPhaseId],
+  );
+
   const timelineView = useMemo(() => {
     // Group entries: top-level = activities + root comments; replies are
     // bucketed under their parent's id and rendered nested inside CommentCard.
     // No orphan rescue needed: the timeline is fetched in full, so every
     // reply's parent is always in the same array.
-    const topLevel = timeline.filter(
+    // Narrowed to one station when the reader picked one. Activities drop out
+    // with it: they belong to the issue's whole life, and leaving them in
+    // would answer "what happened in this phase" with events from outside it.
+    //
+    // Replies are not filtered — a thread is read as a unit, and a reply
+    // written before its root was filed under a station would otherwise
+    // vanish from a thread that is still shown.
+    const visible = selectedPhaseId
+      ? timeline.filter(
+          (e) =>
+            e.type === "comment" &&
+            (e.phase_id === selectedPhaseId || !!e.parent_id),
+        )
+      : timeline;
+    const topLevel = visible.filter(
       (e) => e.type === "activity" || !e.parent_id,
     );
     const repliesByParent = new Map<string, TimelineEntry[]>();
-    for (const e of timeline) {
+    for (const e of visible) {
       if (e.type === "comment" && e.parent_id) {
         const list = repliesByParent.get(e.parent_id) ?? [];
         list.push(e);
@@ -1505,7 +1539,7 @@ export function IssueDetail({ issueId, onDelete, onDone, defaultSidebarOpen = tr
     }
 
     return { threadReplies, groups };
-  }, [timeline]);
+  }, [timeline, selectedPhaseId]);
 
   // Flat array consumed by <Virtuoso>. Recomputed when timelineView.groups
   // changes (timeline events) or expandedResolved flips (user toggles a
@@ -1749,6 +1783,9 @@ export function IssueDetail({ issueId, onDelete, onDone, defaultSidebarOpen = tr
     },
     [setCommentPhase, t],
   );
+
+  const selectedPhase =
+    issuePhases.find((phase) => phase.id === selectedPhaseId) ?? null;
 
   const { data: parkedIssues = [] } = useQuery({
     ...parkedFromIssueOptions(wsId, id),
@@ -2727,7 +2764,13 @@ export function IssueDetail({ issueId, onDelete, onDone, defaultSidebarOpen = tr
               work took is exactly what a finished issue is for — but the
               track's own controls no-op there, since every transition it
               offers is a write. */}
-          <PhaseTrack issueId={id} phases={issuePhases} className="mt-4" />
+          <PhaseTrack
+            issueId={id}
+            phases={issuePhases}
+            selectedPhaseId={selectedPhaseId}
+            onSelect={setSelectedPhaseId}
+            className="mt-4"
+          />
 
           {frozen ? (
             // ReadonlyContent rather than a disabled editor: content-editor.tsx
@@ -3162,7 +3205,20 @@ export function IssueDetail({ issueId, onDelete, onDone, defaultSidebarOpen = tr
                 keeps the previous issue's in-memory content and the
                 next keystroke would flush it into the new issue's
                 draft key. */}
-            <CommentInput key={id} issueId={id} onSubmit={submitComment} />
+            {/* Writing while a station is selected files the comment there in
+                the same request. The alternative — write, then reassign — is
+                the two-step this feature exists to remove, and it is exactly
+                the friction that would leave the route unused. */}
+            {selectedPhase && (
+              <p className="mb-1 text-caption text-muted-foreground">
+                {t(($) => $.phases.composer_hint, { name: selectedPhase.name })}
+              </p>
+            )}
+            <CommentInput
+              key={`${id}:${selectedPhaseId ?? "all"}`}
+              issueId={id}
+              onSubmit={handleSubmitComment}
+            />
           </div>
         </div>
         </div>

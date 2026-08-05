@@ -1109,6 +1109,9 @@ export class ApiClient {
     suppressAgentIds?: string[],
     /** Makes this an inline comment on a span of the issue description. */
     anchor?: { text: string; offset?: number },
+    /** Files the comment under a station of the issue's route as it is
+     *  written, rather than create-then-patch. */
+    phaseId?: string,
   ): Promise<Comment> {
     return this.fetch(`/api/issues/${issueId}/comments`, {
       method: "POST",
@@ -1120,6 +1123,7 @@ export class ApiClient {
         ...(suppressAgentIds?.length ? { suppress_agent_ids: suppressAgentIds } : {}),
         ...(anchor ? { anchor_text: anchor.text } : {}),
         ...(anchor?.offset !== undefined ? { anchor_offset: anchor.offset } : {}),
+        ...(phaseId ? { phase_id: phaseId } : {}),
       }),
     });
   }

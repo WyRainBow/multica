@@ -161,11 +161,11 @@ func (q *Queries) CountNewCommentsSince(ctx context.Context, arg CountNewComment
 const createComment = `-- name: CreateComment :one
 WITH touched_issue AS (
     UPDATE issue SET updated_at = now()
-    WHERE issue.id = $10 AND issue.workspace_id = $11
+    WHERE issue.id = $11 AND issue.workspace_id = $12
     RETURNING issue.id, issue.workspace_id
 )
-INSERT INTO comment (issue_id, workspace_id, author_type, author_id, content, type, parent_id, source_task_id, quick_action_id, anchor_text, anchor_offset)
-SELECT ti.id, ti.workspace_id, $1, $2, $3, $4, $5, $6, $7, $8, $9
+INSERT INTO comment (issue_id, workspace_id, author_type, author_id, content, type, parent_id, source_task_id, quick_action_id, anchor_text, anchor_offset, phase_id)
+SELECT ti.id, ti.workspace_id, $1, $2, $3, $4, $5, $6, $7, $8, $9, $10
 FROM touched_issue ti
 RETURNING id, issue_id, author_type, author_id, content, type, created_at, updated_at, parent_id, workspace_id, resolved_at, resolved_by_type, resolved_by_id, source_task_id, quick_action_id, anchor_text, anchor_offset, phase_id
 `
@@ -180,6 +180,7 @@ type CreateCommentParams struct {
 	QuickActionID pgtype.UUID `json:"quick_action_id"`
 	AnchorText    pgtype.Text `json:"anchor_text"`
 	AnchorOffset  pgtype.Int4 `json:"anchor_offset"`
+	PhaseID       pgtype.UUID `json:"phase_id"`
 	IssueID       pgtype.UUID `json:"issue_id"`
 	WorkspaceID   pgtype.UUID `json:"workspace_id"`
 }
@@ -211,6 +212,7 @@ func (q *Queries) CreateComment(ctx context.Context, arg CreateCommentParams) (C
 		arg.QuickActionID,
 		arg.AnchorText,
 		arg.AnchorOffset,
+		arg.PhaseID,
 		arg.IssueID,
 		arg.WorkspaceID,
 	)

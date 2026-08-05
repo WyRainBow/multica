@@ -656,14 +656,19 @@
     "row_todo_hint": "에이전트 시작"
   },
   "phases": {
-    "add_first": "단계 추가",
-    "add": "단계 추가",
-    "name_placeholder": "단계 이름",
-    "enter_hint": "클릭하여 이 단계로 진입",
-    "complete_hint": "클릭하여 이 단계 완료",
-    "section": "단계",
-    "assign": "단계로 이동",
-    "ungrouped": "단계 없음",
-    "clear": "단계에서 제거"
+    "add_first": "노드 추가",
+    "add": "노드 추가",
+    "name_placeholder": "노드 이름",
+    "section": "노드",
+    "assign": "노드로 이동",
+    "ungrouped": "노드 없음",
+    "clear": "노드에서 제거",
+    "viewing": "「{{name}}」 보는 중",
+    "comment_count_other": "댓글 {{count}}개",
+    "enter_action": "이 노드로 진입",
+    "complete_action": "이 노드 완료",
+    "show_all": "전체 보기",
+    "empty": "이 노드에는 아직 내용이 없습니다.",
+    "composer_hint": "「{{name}}」에 작성합니다"
   }
 }

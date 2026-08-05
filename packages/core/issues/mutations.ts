@@ -805,6 +805,7 @@ export function useCreateComment(issueId: string) {
       attachmentIds,
       suppressAgentIds,
       anchor,
+      phaseId,
     }: {
       content: string;
       type?: string;
@@ -813,6 +814,8 @@ export function useCreateComment(issueId: string) {
       suppressAgentIds?: string[];
       /** Makes this an inline comment on a span of the issue description. */
       anchor?: { text: string; offset?: number };
+      /** Files the comment under a phase of this issue as it is written. */
+      phaseId?: string;
     }) =>
       api.createComment(
         issueId,
@@ -822,6 +825,7 @@ export function useCreateComment(issueId: string) {
         attachmentIds,
         suppressAgentIds,
         anchor,
+        phaseId,
       ),
     onSuccess: (comment) => {
       const entry: TimelineEntry = {

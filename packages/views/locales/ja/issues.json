@@ -659,11 +659,16 @@
     "add_first": "フェーズを追加",
     "add": "フェーズを追加",
     "name_placeholder": "フェーズ名",
-    "enter_hint": "クリックしてこのフェーズに入る",
-    "complete_hint": "クリックしてこのフェーズを完了",
     "section": "フェーズ",
     "assign": "フェーズに移動",
     "ungrouped": "フェーズなし",
-    "clear": "フェーズから外す"
+    "clear": "フェーズから外す",
+    "viewing": "「{{name}}」を表示中",
+    "comment_count_other": "コメント {{count}} 件",
+    "enter_action": "このフェーズに入る",
+    "complete_action": "このフェーズを完了",
+    "show_all": "すべて表示",
+    "empty": "このフェーズにはまだ何もありません。",
+    "composer_hint": "「{{name}}」に書き込みます"
   }
 }

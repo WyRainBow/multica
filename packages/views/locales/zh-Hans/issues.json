@@ -656,14 +656,19 @@
     "row_todo_hint": "启动智能体"
   },
   "phases": {
-    "add_first": "添加阶段",
-    "add": "添加阶段",
-    "name_placeholder": "阶段名",
-    "enter_hint": "点击进入这个阶段",
-    "complete_hint": "点击完成这个阶段",
-    "section": "阶段",
-    "assign": "归到阶段",
-    "ungrouped": "未归属阶段",
-    "clear": "移出阶段"
+    "add_first": "添加节点",
+    "add": "添加节点",
+    "name_placeholder": "节点名",
+    "section": "节点",
+    "assign": "归到节点",
+    "ungrouped": "未归属节点",
+    "clear": "移出节点",
+    "viewing": "正在看「{{name}}」",
+    "comment_count_other": "{{count}} 条评论",
+    "enter_action": "进入这个节点",
+    "complete_action": "完成这个节点",
+    "show_all": "显示全部",
+    "empty": "这个节点下还没有内容。",
+    "composer_hint": "将写入「{{name}}」"
   }
 }
