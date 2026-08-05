@@ -15,7 +15,7 @@ at the bottom before relying on an exact line.
 | Fetches the description and resolves the offset | `server/cmd/multica/cmd_issue.go:2088` (`locateAnchorInDescription`) |
 | Character-based search + occurrence selection | `server/cmd/multica/cmd_issue.go:2121` (`anchorOffsetInText`) |
 | Server-side validation of the anchor | `server/internal/handler/comment.go:1473` (`parseCommentAnchor`) |
-| Columns | `server/migrations/254_comment_anchor.up.sql` |
+| Columns | `server/migrations/270_comment_anchor.up.sql` |
 
 The offset is in CHARACTERS, not bytes — the editor re-locates anchors in the
 same coordinate system, and a byte offset lands mid-character on any CJK
