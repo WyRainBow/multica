@@ -21,6 +21,7 @@ const (
 	ctxKeyClientPlatform clientMetadataKey = iota
 	ctxKeyClientVersion
 	ctxKeyClientOS
+	ctxKeyClientHarness
 )
 
 // Header names — exported so other packages (request logger, realtime hub)
@@ -29,6 +30,10 @@ const (
 	HeaderClientPlatform = "X-Client-Platform"
 	HeaderClientVersion  = "X-Client-Version"
 	HeaderClientOS       = "X-Client-OS"
+	// Which agent shell ran the command, when one did. The CLI authenticates
+	// with the user's token either way, so this is the only signal that
+	// separates "the user typed it" from "an agent typed it for them".
+	HeaderClientHarness = "X-Client-Harness"
 )
 
 // ClientMetadata extracts X-Client-Platform / X-Client-Version / X-Client-OS
@@ -49,6 +54,9 @@ func ClientMetadata(next http.Handler) http.Handler {
 		if v := r.Header.Get(HeaderClientOS); v != "" {
 			ctx = context.WithValue(ctx, ctxKeyClientOS, v)
 		}
+		if v := r.Header.Get(HeaderClientHarness); v != "" {
+			ctx = context.WithValue(ctx, ctxKeyClientHarness, v)
+		}
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})
 }
@@ -61,6 +69,13 @@ func ClientMetadataFromContext(ctx context.Context) (platform, version, os strin
 	version, _ = ctx.Value(ctxKeyClientVersion).(string)
 	os, _ = ctx.Value(ctxKeyClientOS).(string)
 	return platform, version, os
+}
+
+// ClientHarnessFromContext returns the agent shell that ran the request, or ""
+// when a person did. Display only — the value is client-controlled.
+func ClientHarnessFromContext(ctx context.Context) string {
+	harness, _ := ctx.Value(ctxKeyClientHarness).(string)
+	return harness
 }
 
 // SetClientMetadata explicitly attaches client metadata to a context. Used

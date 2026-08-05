@@ -1,0 +1,46 @@
+package cli
+
+import "os"
+
+// DetectHarness names the agent shell this CLI process is running inside, or
+// "" when it is a person at a terminal.
+//
+// The CLI authenticates with the user's own token whichever way it is invoked,
+// so the server sees "cocoyu" for an edit a person made and for one Claude
+// made on their behalf. Both are true, and neither answers "who actually typed
+// this". This is the missing half, self-reported by the only party that knows.
+//
+// Environment variables rather than a flag: the point is that nobody has to
+// remember to pass anything. Every entry here is a variable the harness sets
+// for its own child processes, verified by reading it inside a live session
+// rather than taken from documentation.
+//
+// Display only. `middleware/client.go` says it of the sibling X-Client-*
+// headers and it is just as true here: this is client-controlled and trivial
+// to spoof, so it may label an activity row and must never gate anything.
+func DetectHarness() string {
+	// Ordered, and the order matters: harnesses nest, and every one in the
+	// chain leaves its variables in the environment. Nothing in an env var
+	// says which is inner, so this is a fixed precedence rather than a
+	// detection — Codex first, because here Claude coordinates and Codex is
+	// the one dispatched to do the work, so when both are present the command
+	// came from Codex.
+	for _, candidate := range []struct {
+		env  string
+		name string
+	}{
+		// Codex sets CODEX_THREAD_ID per session. Chosen over its siblings
+		// CODEX_MANAGED_BY_NPM and CODEX_MANAGED_PACKAGE_ROOT, which say how
+		// the binary was installed rather than that a session is running, and
+		// over CODEX_CI, which describes the environment.
+		{"CODEX_THREAD_ID", "codex"},
+		// Set by Claude Code for every child process; CLAUDE_CODE_ENTRYPOINT
+		// and CLAUDE_CODE_SESSION_ID travel with it, but this one is the flag.
+		{"CLAUDECODE", "claude-code"},
+	} {
+		if os.Getenv(candidate.env) != "" {
+			return candidate.name
+		}
+	}
+	return ""
+}

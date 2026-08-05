@@ -3100,6 +3100,10 @@ func (h *Handler) UpdateIssue(w http.ResponseWriter, r *http.Request) {
 		"prev_start_date":     prevStartDate,
 		"prev_due_date":       prevDueDate,
 		"prev_description":    textToPtr(prevIssue.Description),
+		// Which agent shell ran the write, when one did. Travels on the event
+		// because the activity listener runs off the bus and has no request
+		// context to read the header from. Empty for a person.
+		"harness":             middleware.ClientHarnessFromContext(r.Context()),
 		"creator_type":        prevIssue.CreatorType,
 		"creator_id":          uuidToString(prevIssue.CreatorID),
 	})

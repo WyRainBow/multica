@@ -66,6 +66,7 @@ var corsAllowedHeaders = []string{
 	"X-Client-Platform",
 	"X-Client-Version",
 	"X-Client-OS",
+	"X-Client-Harness",
 	"X-Client-Capabilities",
 }
 
