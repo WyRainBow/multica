@@ -242,6 +242,7 @@
     "desc_placeholder": "説明を追加...",
     "sub_issues_label": "サブイシュー",
     "sub_issue_of": "親イシュー",
+    "frozen_hint": "完了済み — タイトルと本文は凍結されています。未完了に戻すと編集できます。",
     "description_length_other": "{{count}} 文字",
     "parked_from": "保留元",
     "section_parked": "ここから保留したもの",

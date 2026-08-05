@@ -1800,6 +1800,41 @@ describe("IssueDetail (shared)", () => {
     expect(screen.queryByText(/characters$/)).not.toBeInTheDocument();
   });
 
+  // The server refuses to rewrite a finished issue's body (409). The page has
+  // to say so up front rather than offering an editor whose save fails.
+  it("shows a finished issue as a read-only record", async () => {
+    mockApiObj.getIssue.mockResolvedValue({ ...mockIssue, status: "done" });
+
+    renderIssueDetail();
+
+    expect(
+      await screen.findByText(
+        "Finished — the title and description are frozen. Move it out of Done or Cancelled to edit.",
+      ),
+    ).toBeInTheDocument();
+  });
+
+  // Cancelled is terminal for the same reason done is: it records a decision
+  // about how the work ended.
+  it("freezes a cancelled issue too", async () => {
+    mockApiObj.getIssue.mockResolvedValue({ ...mockIssue, status: "cancelled" });
+
+    renderIssueDetail();
+
+    expect(
+      await screen.findByText(
+        "Finished — the title and description are frozen. Move it out of Done or Cancelled to edit.",
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it("leaves an unfinished issue editable", async () => {
+    renderIssueDetail();
+
+    await screen.findByText("Implement authentication");
+    expect(screen.queryByText(/frozen/)).not.toBeInTheDocument();
+  });
+
 });
 
 describe("groupSubIssuesByStage", () => {

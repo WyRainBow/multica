@@ -204,6 +204,7 @@ away, so no task is left orphaned.
 | `issue.stage` column (nullable, `>= 1`) | `server/migrations/123_issue_stage.up.sql` |
 | Stage barrier: notify+wake fire only when the lowest unfinished stage is all-terminal; unstaged set = one implicit stage | `server/internal/handler/issue_child_done.go:231` (`stageBarrierClosed`) |
 | Per-stage summary + next stage for the wake comment | `server/internal/handler/issue_child_done.go:254` (`stageProgressSummary`) |
+| Terminal issues (`done` / `cancelled`) reject `title` / `description` writes with 409; judged on the issue's current status so leaving the status unlocks it | `server/internal/handler/issue.go` (`allowIssueBodyWrite`, `isTerminalIssueStatus`) |
 | `--stage` on `issue create` / `issue update` | `server/cmd/multica/cmd_issue.go:328,350` |
 | `issue create` defaults the assignee to the caller's member id (`/api/me`); `--no-assignee` opts out. Agent tokens have no member identity, so the lookup returns nothing and the issue stays unassigned | `server/cmd/multica/cmd_issue.go` (`currentMemberID`) |
 | `multica issue children <id>` (sub-issues grouped by stage) | `server/cmd/multica/cmd_issue.go:114,678`; route `GET /api/issues/{id}/children` → `ListChildIssues` |

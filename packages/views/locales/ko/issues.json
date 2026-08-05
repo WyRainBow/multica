@@ -242,6 +242,7 @@
     "desc_placeholder": "설명 추가...",
     "sub_issues_label": "하위 이슈",
     "sub_issue_of": "상위 이슈",
+    "frozen_hint": "완료됨 — 제목과 본문이 잠겼습니다. 미완료 상태로 되돌리면 편집할 수 있습니다.",
     "description_length_other": "{{count}}자",
     "parked_from": "보류 출처",
     "section_parked": "여기서 보류한 항목",

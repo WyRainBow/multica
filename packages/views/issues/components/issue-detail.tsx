@@ -24,6 +24,7 @@ import {
   Unlink,
   Users,
   PauseCircle,
+  Lock,
 } from "lucide-react";
 import { BreadcrumbHeader, type BreadcrumbSegment } from "../../layout/breadcrumb-header";
 import { Skeleton } from "@multica/ui/components/ui/skeleton";
@@ -31,7 +32,7 @@ import { Button } from "@multica/ui/components/ui/button";
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@multica/ui/components/ui/resizable";
 import { Sheet, SheetContent } from "@multica/ui/components/ui/sheet";
 import { useIsMobile } from "@multica/ui/hooks/use-mobile";
-import { ContentEditor, type ContentEditorRef, TitleEditor, type TitleEditorRef, useFileDropZone, FileDropOverlay, useLazyEditor, useEditorUpload } from "../../editor";
+import { ContentEditor, ReadonlyContent, type ContentEditorRef, TitleEditor, type TitleEditorRef, useFileDropZone, FileDropOverlay, useLazyEditor, useEditorUpload } from "../../editor";
 import { FileUploadButton } from "@multica/ui/components/common/file-upload-button";
 import {
   Tooltip,
@@ -1801,6 +1802,11 @@ export function IssueDetail({ issueId, onDelete, onDone, defaultSidebarOpen = tr
   // update, so it is correct on open and settles a moment after typing stops.
   // A per-keystroke count would mean serializing the document on every key.
   const [descLength, setDescLength] = useState(0);
+  // A finished issue's title and description are frozen — the server refuses
+  // to rewrite them (409). Reflected here so the page shows a read-only
+  // record instead of an editor that silently fails on save.
+  const frozen =
+    issue?.status === "done" || issue?.status === "cancelled";
   useEffect(() => {
     setDescLength((issue?.description ?? "").length);
   }, [issue?.description]);
@@ -2562,7 +2568,11 @@ export function IssueDetail({ issueId, onDelete, onDone, defaultSidebarOpen = tr
           className="relative flex-1 overflow-y-auto [scrollbar-gutter:stable_both-edges]"
         >
         <div className="mx-auto w-full max-w-4xl px-8 py-8">
-          {titleLazy.active && (
+          {frozen ? (
+            <h1 className="w-full text-display-sm font-bold leading-snug tracking-tight">
+              {issue.title}
+            </h1>
+          ) : titleLazy.active && (
             <div className={titleLazy.ready ? undefined : "hidden"}>
               <TitleEditor
                 key={`title-${id}`}
@@ -2642,6 +2652,22 @@ export function IssueDetail({ issueId, onDelete, onDone, defaultSidebarOpen = tr
             </AppLink>
           )}
 
+          {frozen ? (
+            // ReadonlyContent rather than a disabled editor: content-editor.tsx
+            // documents that Tiptap reads `editable` once at mount, so a
+            // toggled prop fails silently. This is also the renderer comments
+            // use, so a frozen description formats identically to a live one.
+            <div className="relative mt-5">
+              <ReadonlyContent
+                content={issue.description || ""}
+                attachments={descEditorAttachments}
+              />
+              <p className="mt-4 flex items-center gap-1.5 text-caption text-muted-foreground">
+                <Lock className="size-3.5 shrink-0" />
+                {t(($) => $.detail.frozen_hint)}
+              </p>
+            </div>
+          ) : (
           <div {...descDropZoneProps} className="relative mt-5 rounded-lg">
             <ContentEditor
               ref={descEditorRef}
@@ -2710,6 +2736,7 @@ export function IssueDetail({ issueId, onDelete, onDone, defaultSidebarOpen = tr
             </div>
             {descDragOver && <FileDropOverlay />}
           </div>
+          )}
 
           {/* Notes kept about this requirement. Sits below the description and
               above the sub-issues: it is about THIS issue, not about the tree
