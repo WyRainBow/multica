@@ -253,9 +253,12 @@ func registerActivityListeners(bus *events.Bus, queries *db.Queries) {
 			if issue.Description != nil {
 				nextDescription = *issue.Description
 			}
-			details, err := json.Marshal(
-				service.SummarizeDescriptionChange(prevDescription, nextDescription),
-			)
+			summary := service.SummarizeDescriptionChange(prevDescription, nextDescription)
+			// Who actually typed it. The actor stays the member whose token
+			// was used — permissions, notifications and mentions all key off
+			// that — and this only changes the name the row displays.
+			summary.Harness = stringFromPayload(payload["harness"])
+			details, err := json.Marshal(summary)
 			if err != nil {
 				// A summary is an enrichment, not the record. Losing it must
 				// not lose the activity itself.

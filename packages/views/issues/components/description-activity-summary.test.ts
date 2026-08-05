@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import {
+  activityAuthorName,
   formatDescriptionUpdate,
   mergeCoalescedDetails,
 } from "./issue-detail";
@@ -111,5 +112,38 @@ describe("mergeCoalescedDetails", () => {
     const previous = { ...activity({ from: "todo" }), action: "status_changed" } as TimelineEntry;
     const next = { ...activity({ from: "in_progress" }), action: "status_changed" } as TimelineEntry;
     expect(mergeCoalescedDetails(previous, next)).toEqual({ from: "in_progress" });
+  });
+});
+
+describe("activityAuthorName", () => {
+  // The row Claude wrote used the member's token, so its actor is the member —
+  // right for permissions, wrong for reading it back a week later.
+  it("names the harness when the row records one", () => {
+    expect(activityAuthorName(activity({ harness: "claude-code" }), "cocoyu")).toBe(
+      "Claude",
+    );
+  });
+
+  it("names Codex too", () => {
+    expect(activityAuthorName(activity({ harness: "codex" }), "cocoyu")).toBe(
+      "Codex",
+    );
+  });
+
+  it("names the member when a person made the edit", () => {
+    expect(activityAuthorName(activity({}), "cocoyu")).toBe("cocoyu");
+  });
+
+  // The header is client-controlled, so an unrecognised value must not print
+  // itself into the timeline.
+  it("falls back to the member for an unknown harness", () => {
+    expect(
+      activityAuthorName(activity({ harness: "definitely-not-real" }), "cocoyu"),
+    ).toBe("cocoyu");
+  });
+
+  it("falls back when details are missing entirely", () => {
+    const entry = { ...activity({}), details: undefined } as never;
+    expect(activityAuthorName(entry, "cocoyu")).toBe("cocoyu");
   });
 });

@@ -23,6 +23,14 @@ type DescriptionChangeSummary struct {
 	// time anyone wrote anything).
 	Created bool `json:"created,omitempty"`
 	Cleared bool `json:"cleared,omitempty"`
+	// The agent shell that ran the write, when one did — "claude-code" and so
+	// on; empty when a person made the edit directly.
+	//
+	// Display only. The activity row's actor stays the member whose token was
+	// used, because permissions, notifications and mentions all key off it;
+	// this only changes the name the row shows. It is also self-reported by
+	// the client and trivially spoofable, so it must never gate anything.
+	Harness string `json:"harness,omitempty"`
 }
 
 // maxDiffCells bounds the LCS table. Beyond it the exact diff is abandoned for

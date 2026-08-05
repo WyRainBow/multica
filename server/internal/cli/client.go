@@ -191,6 +191,10 @@ func (c *APIClient) setHeaders(req *http.Request) {
 		req.Header.Set("X-Task-ID", c.TaskID)
 	}
 
+	if harness := DetectHarness(); harness != "" {
+		req.Header.Set("X-Client-Harness", harness)
+	}
+
 	platform := c.Platform
 	if platform == "" {
 		platform = ClientPlatform

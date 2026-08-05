@@ -278,6 +278,35 @@ const DESCRIPTION_SECTION_LIMIT = 2;
  * Older activities carry an empty `details` — those still render the plain
  * sentence rather than "+0 −0", which would claim an edit changed nothing.
  */
+/**
+ * Display names for the agent shells the CLI can report running inside.
+ *
+ * A closed map rather than the raw string: the header is client-controlled, so
+ * an unknown value falls back to the member name instead of printing whatever
+ * arrived into the timeline.
+ */
+const HARNESS_NAMES: Record<string, string> = {
+  "claude-code": "Claude",
+  codex: "Codex",
+};
+
+/**
+ * Who to show as the author of an activity row.
+ *
+ * The CLI authenticates with the user's own token whichever way it is invoked,
+ * so the actor on a row Claude wrote is still the member — which is correct for
+ * permissions and wrong for reading. When the row records a harness, that is
+ * the name shown; the member is still the actor underneath.
+ */
+export function activityAuthorName(
+  entry: TimelineEntry,
+  fallback: string,
+): string {
+  const harness = (entry.details as { harness?: string } | undefined)?.harness;
+  if (!harness) return fallback;
+  return HARNESS_NAMES[harness] ?? fallback;
+}
+
 export function formatDescriptionUpdate(entry: TimelineEntry, t: ActivityT): string {
   const details = (entry.details ?? {}) as {
     added_lines?: number;
@@ -652,7 +681,12 @@ function ActivityBlock({
               {leadIcon}
             </div>
             <div className="flex min-w-0 flex-1 items-center gap-1">
-              <span className="shrink-0 font-medium">{getActorName(entry.actor_type, entry.actor_id)}</span>
+              <span className="shrink-0 font-medium">
+                {activityAuthorName(
+                  entry,
+                  getActorName(entry.actor_type, entry.actor_id),
+                )}
+              </span>
               <span className="truncate">{formatActivity(entry, t, getActorName)}</span>
               {(entry.coalesced_count ?? 1) > 1 &&
                 entry.action !== "task_completed" &&
