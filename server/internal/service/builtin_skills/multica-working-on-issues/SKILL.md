@@ -241,6 +241,30 @@ If the description is later edited so the passage no longer appears, the
 comment survives and simply stops highlighting. Nothing is lost, so prefer an
 anchored comment whenever the passage is what you are talking about.
 
+## A finished issue's title and description are frozen
+
+Once an issue is `done` or `cancelled`, `PUT /api/issues/{id}` refuses any
+request carrying `title` or `description` and returns **409**. That covers
+`multica issue update --title/--description` too — the CLI goes through the
+same endpoint.
+
+A finished issue records what was true when it finished. The description is a
+single current value, not a history, so a later edit leaves no way to tell
+which version anyone acted on.
+
+Everything else still works on a finished issue, and deliberately so: comments,
+status, archiving, labels, metadata, reactions and relationships. A late
+sibling finishing still posts its system comment on a done parent.
+
+The lock opens by leaving the terminal status — the check reads the issue's
+CURRENT status, so `done → in_progress` carries no body field and passes, and
+the body is writable from the next request on. One request that both reopens
+and rewrites is still refused; do it in two.
+
+Found a mistake in a finished issue? Ask the user first, then either reopen →
+correct → close again, or file the correction as a new issue. Do not reopen on
+your own initiative.
+
 ## Archiving is not a status
 
 `archived` is a separate dimension from `status`, and the two answer different

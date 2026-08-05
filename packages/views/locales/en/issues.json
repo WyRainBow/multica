@@ -244,6 +244,7 @@
     "desc_placeholder": "Add description...",
     "sub_issues_label": "Sub-issues",
     "sub_issue_of": "Sub-issue of",
+    "frozen_hint": "Finished — the title and description are frozen. Move it out of Done or Cancelled to edit.",
     "description_length_other": "{{count}} characters",
     "parked_from": "Parked out of",
     "section_parked": "Parked out of this",

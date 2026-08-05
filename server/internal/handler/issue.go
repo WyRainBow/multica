@@ -2812,6 +2812,54 @@ type UpdateIssueRequest struct {
 	HandoffNote string `json:"handoff_note,omitempty"`
 }
 
+// issueBodyFields are the two the record is made of. Everything else about a
+// finished issue still moves — see allowIssueBodyWrite.
+var issueBodyFields = []string{"title", "description"}
+
+// isTerminalIssueStatus reports whether an issue has stopped being worked on.
+//
+// `cancelled` counts with `done`: both are decisions about how the work ended,
+// and a record of a decision is exactly the thing that should not drift.
+func isTerminalIssueStatus(status string) bool {
+	return status == "done" || status == "cancelled"
+}
+
+// allowIssueBodyWrite refuses to rewrite the title or description of an issue
+// that has already ended.
+//
+// A finished issue records what was true when it finished. Editing it later
+// leaves no way to tell which version anyone acted on, and nothing marks that
+// it changed — the description is a single current value, not a history.
+//
+// Judged on the issue's CURRENT status, not the one in the request, and that
+// is what makes the lock openable: `done → in_progress` carries no body field,
+// so it passes, and the issue is editable from the next request on. A single
+// request that reopens AND rewrites is still refused, because at the moment it
+// arrives the issue is still finished.
+//
+// Deliberately narrow. Comments, status, archiving, labels, metadata,
+// reactions and relationships all keep working: a late sibling finishing still
+// posts a system comment on a done parent, and freezing that would break the
+// notification rather than protect the record.
+func allowIssueBodyWrite(
+	w http.ResponseWriter,
+	currentStatus string,
+	rawFields map[string]json.RawMessage,
+) bool {
+	if !isTerminalIssueStatus(currentStatus) {
+		return true
+	}
+	for _, field := range issueBodyFields {
+		if _, ok := rawFields[field]; ok {
+			writeError(w, http.StatusConflict,
+				"issue is "+currentStatus+"; its title and description are frozen. "+
+					"Move it out of a terminal status first, or record the correction in a new issue.")
+			return false
+		}
+	}
+	return true
+}
+
 func (h *Handler) UpdateIssue(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	prevIssue, ok := h.loadIssueForUser(w, r, id)
@@ -2837,6 +2885,10 @@ func (h *Handler) UpdateIssue(w http.ResponseWriter, r *http.Request) {
 	// Track which fields were explicitly present in JSON (even if null)
 	var rawFields map[string]json.RawMessage
 	json.Unmarshal(bodyBytes, &rawFields)
+
+	if !allowIssueBodyWrite(w, prevIssue.Status, rawFields) {
+		return
+	}
 
 	// Pre-fill nullable fields (bare sqlc.narg) with current values
 	params := db.UpdateIssueParams{
