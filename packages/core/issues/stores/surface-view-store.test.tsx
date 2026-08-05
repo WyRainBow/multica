@@ -1,3 +1,7 @@
+// The default view mode, read from the store rather than restated: these
+// assertions are about isolation between surfaces, not about which mode is
+// the default, and a copy of it here breaks whenever that default changes.
+import { DEFAULT_VIEW_MODE } from "./view-store";
 import { DEFAULT_TABLE_COLUMNS } from "./view-store";
 // @vitest-environment jsdom
 import { beforeAll, beforeEach, afterEach, describe, expect, it } from "vitest";
@@ -70,7 +74,7 @@ describe("issue surface view store registry", () => {
     projectA.getState().togglePriorityFilter("high");
 
     expect(projectA.getState().viewMode).toBe("list");
-    expect(projectB.getState().viewMode).toBe("board");
+    expect(projectB.getState().viewMode).toBe(DEFAULT_VIEW_MODE);
     expect(projectB.getState().priorityFilters).toEqual([]);
 
     const raw = localStorage.getItem(`${ISSUE_SURFACE_VIEW_STORAGE_KEY}:acme`);
@@ -120,7 +124,7 @@ describe("issue surface view store registry", () => {
     expect(projectA.getState().tableGrouping).toBe("status");
     expect(projectA.getState().tableCalculation).toBe("average");
 
-    expect(projectB.getState().viewMode).toBe("board");
+    expect(projectB.getState().viewMode).toBe(DEFAULT_VIEW_MODE);
     expect(
       projectB.getState().tableColumns.some((column) =>
         column.key.startsWith("property:"),
@@ -142,7 +146,7 @@ describe("issue surface view store registry", () => {
 
     setCurrentWorkspace("beta", "ws_b");
     await flush();
-    expect(projectA.getState().viewMode).toBe("board");
+    expect(projectA.getState().viewMode).toBe(DEFAULT_VIEW_MODE);
     projectA.getState().setViewMode("swimlane");
 
     setCurrentWorkspace("acme", "ws_a");
@@ -164,7 +168,7 @@ describe("issue surface view store registry", () => {
 
     clearIssueSurfaceViewState("project:a");
 
-    expect(projectA.getState().viewMode).toBe("board");
+    expect(projectA.getState().viewMode).toBe(DEFAULT_VIEW_MODE);
     expect(projectB.getState().viewMode).toBe("gantt");
     expect(getIssueSurfaceViewStateRegistrySnapshot()["project:a"]).toBeUndefined();
     expect(getIssueSurfaceViewStateRegistrySnapshot()["project:b"]?.state.viewMode).toBe(
@@ -183,7 +187,7 @@ describe("issue surface view store registry", () => {
     pruneIssueSurfaceViewStates(["project:a"]);
 
     expect(projectA.getState().viewMode).toBe("list");
-    expect(projectB.getState().viewMode).toBe("board");
+    expect(projectB.getState().viewMode).toBe(DEFAULT_VIEW_MODE);
     expect(getIssueSurfaceViewStateRegistrySnapshot()["project:a"]?.state.viewMode).toBe(
       "list",
     );
@@ -211,9 +215,12 @@ describe("issue surface view store registry", () => {
       </ViewStoreProvider>,
     );
 
-    expect(screen.getByRole("button", { name: "board" })).toBeTruthy();
+    // The label IS the current mode, so it starts at whatever the default is.
+    expect(
+      screen.getByRole("button", { name: DEFAULT_VIEW_MODE }),
+    ).toBeTruthy();
     act(() => {
-      fireEvent.click(screen.getByRole("button", { name: "board" }));
+      fireEvent.click(screen.getByRole("button", { name: DEFAULT_VIEW_MODE }));
     });
     expect(screen.getByRole("button", { name: "list" })).toBeTruthy();
   });

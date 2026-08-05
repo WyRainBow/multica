@@ -269,7 +269,7 @@ export interface IssueViewState {
 }
 
 export const viewStoreSlice = (set: StoreApi<IssueViewState>["setState"]): IssueViewState => ({
-  viewMode: "board",
+  viewMode: DEFAULT_VIEW_MODE,
   grouping: "status",
   statusFilters: [],
   priorityFilters: [],
@@ -515,8 +515,36 @@ export const viewStoreSlice = (set: StoreApi<IssueViewState>["setState"]): Issue
   setTableCalculation: (tableCalculation) => set({ tableCalculation }),
 });
 
+/**
+ * Bumped when a change to the DEFAULTS has to reach people who already have a
+ * stored view.
+ *
+ * Persisted state wins over defaults by design — that is what persistence is —
+ * so editing DEFAULT_TABLE_COLUMNS alone changes nothing for anyone who has
+ * opened the page before. Version 2 is the first default table layout and the
+ * switch to opening on the table rather than the board.
+ *
+ * Only the fields the version is about are reset. A migration that dropped the
+ * whole snapshot would take filters, sort and collapsed groups with it, which
+ * is a much bigger loss than the layout it was trying to fix.
+ */
+export const VIEW_STORE_VERSION = 2;
+
+/** The view a surface opens on before anyone changes it. */
+export const DEFAULT_VIEW_MODE: ViewMode = "table";
+
 export const viewStorePersistOptions = (name: string) => ({
   name,
+  version: VIEW_STORE_VERSION,
+  migrate: (persisted: unknown, from: number) => {
+    if (from >= VIEW_STORE_VERSION) return persisted as Partial<IssueViewState>;
+    const state = (persisted ?? {}) as Partial<IssueViewState>;
+    return {
+      ...state,
+      viewMode: DEFAULT_VIEW_MODE,
+      tableColumns: DEFAULT_TABLE_COLUMNS.map((column) => ({ ...column })),
+    };
+  },
   storage: createJSONStorage(() => createWorkspaceAwareStorage(defaultStorage)),
   partialize: (state: IssueViewState) => ({
     // NOTE: `agentRunningFilter` is intentionally NOT persisted — running

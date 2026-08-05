@@ -5,8 +5,11 @@ import { createJSONStorage, persist } from "zustand/middleware";
 import { createWorkspaceAwareStorage, registerForWorkspaceRehydration } from "../../platform/workspace-storage";
 import { defaultStorage } from "../../platform/storage";
 import {
+  DEFAULT_TABLE_COLUMNS,
+  DEFAULT_VIEW_MODE,
   type IssueViewState,
   mergeViewStatePersisted,
+  VIEW_STORE_VERSION,
   viewStorePersistOptions,
   viewStoreSlice,
 } from "./view-store";
@@ -71,6 +74,31 @@ const issueSurfaceViewRegistryStore = createStore<IssueSurfaceViewRegistryState>
     }),
     {
       name: ISSUE_SURFACE_VIEW_STORAGE_KEY,
+      // Shares the view store's version: every surface holds a snapshot of the
+      // same shape, so a default that changes for one has changed for all of
+      // them. Bumping only the main store would leave every per-project and
+      // per-assignee view on the old layout.
+      version: VIEW_STORE_VERSION,
+      migrate: (persisted: unknown, from: number) => {
+        const state = (persisted ?? {}) as Partial<IssueSurfaceViewRegistryState>;
+        if (from >= VIEW_STORE_VERSION) return state;
+        // Only the layout fields are reset; each surface keeps its filters,
+        // sort and collapsed groups.
+        const surfaces = Object.fromEntries(
+          Object.entries(state.surfaces ?? {}).map(([key, entry]) => [
+            key,
+            {
+              ...entry,
+              state: {
+                ...entry.state,
+                viewMode: DEFAULT_VIEW_MODE,
+                tableColumns: DEFAULT_TABLE_COLUMNS.map((column) => ({ ...column })),
+              },
+            },
+          ]),
+        );
+        return { ...state, surfaces };
+      },
       storage: createJSONStorage(() => createWorkspaceAwareStorage(defaultStorage)),
       partialize: (state) => ({ surfaces: state.surfaces }),
       merge: (persisted, current) => {
