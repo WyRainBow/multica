@@ -279,7 +279,10 @@ them at all.
 
 Issues predating this feature have no route — **not a bug to fix**. Adding
 stations an issue never used fabricates a history rather than recovering one;
-add one only when someone is about to file into it.
+add one only when someone is about to file into it. `--phase` on such an issue
+fails with "add one with `multica issue phase add`" — that message is for a
+person deciding to start a route, not an instruction to you. Drop the flag and
+comment without it.
 
 ## A finished issue's title and description are frozen
 
