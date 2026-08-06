@@ -2919,6 +2919,33 @@ func (h *Handler) UpdateIssue(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		params.Status = pgtype.Text{String: *req.Status, Valid: true}
+
+		// Crossing the terminal boundary carries the archived banner in or out
+		// with it. Only the CROSSING does — done → cancelled is already
+		// finished and must not stack a second banner, and todo → in_progress
+		// has none to remove.
+		//
+		// Safe to write the description here even though a finished body is
+		// frozen: allowIssueBodyWrite has already run, and it judges the
+		// REQUEST's fields against the status the issue had on arrival. A
+		// caller sending only `status` passes it; this is the server annotating
+		// the transition, not the caller editing a frozen body.
+		wasTerminal := isTerminalIssueStatus(prevIssue.Status)
+		nowTerminal := isTerminalIssueStatus(*req.Status)
+		if wasTerminal != nowTerminal {
+			// req.Description is nil on a status-only request, which is the
+			// normal case; when both arrive, annotate what the caller sent.
+			body := prevIssue.Description.String
+			if req.Description != nil {
+				body = *req.Description
+			}
+			if nowTerminal {
+				body = insertArchivedNotice(body)
+			} else {
+				body = stripArchivedNotice(body)
+			}
+			params.Description = pgtype.Text{String: body, Valid: true}
+		}
 	}
 	if req.Priority != nil {
 		if !validateIssueEnum(w, "priority", *req.Priority, validIssuePriorities) {
