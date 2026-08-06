@@ -365,6 +365,15 @@ func (s *IssueService) Create(ctx context.Context, p IssueCreateParams, opts Iss
 //
 // Positions are 0, 1000, 2000 rather than a max+step read — nothing exists yet
 // to read a maximum from.
+//
+// Issues that predate this are deliberately left alone, and there is no
+// backfill to write. A route records where an issue's discussion actually
+// happened; adding stations to an issue that never used them does not recover
+// that history, it fabricates one — every comment would sit outside every
+// station, and the empty stations would read as work that was skipped rather
+// than as a feature that did not exist yet. "Only new issues have a route" is
+// a fact about when the feature landed, which is true and legible; a
+// backfilled route is a claim about the past that is not.
 func seedDefaultPhases(ctx context.Context, qtx *db.Queries, workspaceID, issueID pgtype.UUID) error {
 	for i, name := range issuephase.DefaultRoute {
 		if _, err := qtx.CreateIssuePhase(ctx, db.CreateIssuePhaseParams{

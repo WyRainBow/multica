@@ -45,10 +45,6 @@ Resolves MUL-2759
 Fix login MUL-2759                                 # links only — keyword not adjacent
 ```
 
-Consequence: a bare title prefix or a branch reference links the PR but does not
-close the issue on merge. A closing keyword immediately adjacent to the issue key
-records close intent; on merge, that close intent can move the linked issue to
-`done`.
 
 **Reference-only links (hidden from the PR list).** A key that appears **only**
 as a bare mention in the body — no closing keyword, and not in the title or
@@ -73,18 +69,12 @@ an unconditional command: if no code changed, say no PR is needed; if PR creatio
 is blocked by auth, failing tests, or missing remote state, report that blocker
 instead of pretending the run is complete.
 
-Use a routable issue key in the PR title, body, or branch so the webhook can link
-the PR back to the issue. If the PR should close the issue on merge, put the key
-immediately after a closing keyword in the title or body, for example:
+Use a routable issue key in the PR title, body, or branch so the webhook can
+link the PR back to the issue; for close intent, place it after a closing
+keyword per the rules above.
 
-```text
-MUL-2759: fix login redirect        # links only
-Closes MUL-2759                     # links and records close intent
-```
-
-In the final issue comment, include the PR URL when a PR exists. If the task did
-not produce a PR because no code changed or the user asked not to create one, say
-that explicitly.
+In the final issue comment, include the PR URL when a PR exists. If there is
+none because no code changed or the user asked for none, say so explicitly.
 
 ## Reading a linked PR's real state
 
@@ -240,25 +230,21 @@ anchored comment whenever the passage is what you are talking about.
 multica issue comment get <comment-id>
 ```
 
-Do NOT reach it by listing the issue's comments and filtering: the list
-endpoint returns the whole thread, this returns one comment, and on a long
-discussion that difference is most of your context budget.
-
-Takes the FULL UUID — the 8-character form shown in the list table and on the
-app's comment card is a handle for humans, never a value to retype. The
-response carries `issue_id` and `parent_id`, so one comment reaches the issue
-it is on and the thread root above it without a search.
+Do NOT reach it by listing and filtering: the list endpoint returns the whole
+thread, this returns one comment, and on a long discussion that difference is
+most of your context budget. Takes the FULL UUID — the 8-character form in the
+list table and on the app's comment card is a handle for humans, never a value
+to retype. The response carries `issue_id` and `parent_id`, so one comment
+reaches its issue and thread root without a search.
 
 ## Phases — filing what happened under the station it happened in
 
-A long issue's comments arrive in one flat run: comment 3 and comment 30 can
+A long issue's comments arrive in one flat run — comment 3 and comment 30 can
 belong to different stretches of work and nothing says so. A PHASE is a
 container inside one issue holding the comments written while it was there.
-
-Not a status: `status` answers "where is this now" and forgets the route, a
-phase stays. **Every new issue is created with 开始 → 评审 → 冻结 already on
-it** — you file into those rather than building a route first. Review recurs
-as `评审 2`, `评审 3`, each round its own container.
+Not a status: `status` forgets the route, a phase stays. **Every new issue is
+created with 开始 → 评审 → 冻结 already on it** — file into those rather than
+building a route first. Review recurs as `评审 2`, `评审 3`, each its own.
 
 ```bash
 multica issue phase list <id>                      # NAME, STATE, COMMENTS, ENTERED, COMPLETED
@@ -290,6 +276,10 @@ Rules that will bite you if you assume otherwise:
 Activities (status changes, description edits) carry no phase field. The UI
 places them by TIME into whichever phase was current; the CLI does not group
 them at all.
+
+Issues predating this feature have no route — **not a bug to fix**. Adding
+stations an issue never used fabricates a history rather than recovering one;
+add one only when someone is about to file into it.
 
 ## A finished issue's title and description are frozen
 
@@ -409,11 +399,9 @@ multica issue create --test --title "封存横幅是否插到正文顶部"
 ```
 
 `--test` prefixes `[测试]`, idempotently. Use it for anything you would delete
-afterwards; not going through the CLI, write the prefix yourself — the
-convention is the title, not the flag. (A prefix rather than a label because
-`multica issue list` has no labels column.)
-
-Delete your test issues when you are done, and say so.
+afterwards, and delete them when you are done. Not going through the CLI,
+write the prefix yourself — the convention is the title, not the flag, and it
+is a prefix rather than a label because `issue list` has no labels column.
 
 ## Sub-issues: `todo` starts work now, `backlog` parks it
 
@@ -469,29 +457,6 @@ multica issue status <stage-2-child-id> todo   # promote when its deps are met
 Read each sub-issue's description before promoting and only promote items whose
 stated dependencies are met; if a description conflicts with the parent's
 breakdown, leave it `backlog` and comment to confirm first.
-
-## Incorrect → correct
-
-PR title (link the issue):
-
-```text
-Fix login redirect                  # incorrect — no issue key, won't link
-MUL-2759: fix login redirect        # correct — links the PR
-```
-
-Serial / phased sub-issues (don't start the whole chain at once):
-
-```bash
-# incorrect — all fire immediately, no ordering
-multica issue create --title "Step 2" --parent <issue-id> --assignee <agent> --status todo
-multica issue create --title "Step 3" --parent <issue-id> --assignee <agent> --status todo
-
-# correct — stage them; Stage 1 runs, later stages park and are promoted as
-# each stage's barrier closes
-multica issue create --title "Step 1" --parent <issue-id> --assignee <agent> --stage 1 --status todo
-multica issue create --title "Step 2" --parent <issue-id> --assignee <agent> --stage 2 --status backlog
-multica issue create --title "Step 3" --parent <issue-id> --assignee <agent> --stage 3 --status backlog
-```
 
 ## References
 
