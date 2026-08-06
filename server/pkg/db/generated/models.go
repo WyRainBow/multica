@@ -282,6 +282,7 @@ type Card struct {
 	Content     string             `json:"content"`
 	CreatedAt   pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt   pgtype.Timestamptz `json:"updated_at"`
+	Kind        string             `json:"kind"`
 }
 
 type ChannelBindingToken struct {

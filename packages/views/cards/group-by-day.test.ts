@@ -9,6 +9,7 @@ function card(id: string, createdAt: string): Card {
     issue_id: null,
     author_type: "member",
     author_id: "user-1",
+    kind: "",
     title: id,
     content: "",
     created_at: createdAt,

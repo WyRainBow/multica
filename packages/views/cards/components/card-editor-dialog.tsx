@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { Loader2, Trash2 } from "lucide-react";
 import type { Card } from "@multica/core/types";
@@ -20,6 +20,10 @@ import {
   DialogTitle,
 } from "@multica/ui/components/ui/dialog";
 import { useT } from "../../i18n";
+import { useQuery } from "@tanstack/react-query";
+import { cardListOptions } from "@multica/core/cards/queries";
+import { useWorkspaceId } from "@multica/core/hooks";
+import { cardKindTabs } from "../card-kinds";
 
 /**
  * Write or edit one card.
@@ -46,6 +50,18 @@ export function CardEditorDialog({
 
   const [title, setTitle] = useState(card?.title ?? "");
   const [content, setContent] = useState(card?.content ?? "");
+  const [kind, setKind] = useState(card?.kind ?? "");
+
+  // Suggestions come from the list the page already has in cache, so opening
+  // the dialog costs no request. Reusing an existing name is the whole point:
+  // free text invites 文档 / 档案 / doc for one thing, and three tabs for one
+  // category is worse than none.
+  const wsId = useWorkspaceId();
+  const { data: cardList } = useQuery(cardListOptions(wsId));
+  const kindSuggestions = useMemo(
+    () => cardKindTabs(cardList?.cards ?? []).map((tab) => tab.kind),
+    [cardList],
+  );
   const [confirmingDelete, setConfirmingDelete] = useState(false);
 
   const pending =
@@ -58,11 +74,17 @@ export function CardEditorDialog({
     if (!canSave) return;
     try {
       if (card) {
-        await updateCard.mutateAsync({ id: card.id, title: title.trim(), content });
+        await updateCard.mutateAsync({
+          id: card.id,
+          title: title.trim(),
+          content,
+          kind: kind.trim(),
+        });
       } else {
         await createCard.mutateAsync({
           title: title.trim(),
           content,
+          kind: kind.trim(),
           ...(issueId ? { issue_id: issueId } : {}),
         });
       }
@@ -105,12 +127,31 @@ export function CardEditorDialog({
             column past the dialog and paint outside its background again —
             the same symptom, from the other direction. */}
         <div className="flex min-w-0 flex-col gap-3">
-          <Input
-            value={title}
-            onChange={(event) => setTitle(event.target.value)}
-            placeholder={t(($) => $.editor.title_placeholder)}
-            autoFocus
-          />
+          <div className="flex min-w-0 gap-2">
+            <Input
+              value={title}
+              onChange={(event) => setTitle(event.target.value)}
+              placeholder={t(($) => $.editor.title_placeholder)}
+              autoFocus
+              className="min-w-0 flex-1"
+            />
+            {/* A plain input with suggestions, not a fixed select: kinds are
+                whatever has been written, so the control has to accept a name
+                that does not exist yet. The list is there so a second card
+                about the same thing reuses 文档 instead of inventing 档案. */}
+            <Input
+              value={kind}
+              onChange={(event) => setKind(event.target.value)}
+              placeholder={t(($) => $.editor.kind_placeholder)}
+              list="card-kind-suggestions"
+              className="w-32 shrink-0"
+            />
+            <datalist id="card-kind-suggestions">
+              {kindSuggestions.map((suggestion) => (
+                <option key={suggestion} value={suggestion} />
+              ))}
+            </datalist>
+          </div>
           {/* The same Markdown editor an issue description uses, not a raw
               textarea: a card is read back as prose, and headings, lists and
               code blocks are most of what makes a note worth returning to.

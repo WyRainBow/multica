@@ -6,7 +6,8 @@
     "search_placeholder": "搜索卡片...",
     "empty": "还没有卡片。值得以后回头看的，随手记在这里。",
     "no_matches": "没有匹配的卡片。",
-    "day_count_other": "{{count}} 条"
+    "day_count_other": "{{count}} 条",
+    "all_kinds": "全部"
   },
   "card": {
     "edit": "编辑",
@@ -23,7 +24,8 @@
     "delete_action": "删除",
     "delete_confirm": "确定删除这张卡片？",
     "save_failed": "无法保存卡片",
-    "delete_failed": "无法删除卡片"
+    "delete_failed": "无法删除卡片",
+    "kind_placeholder": "分类"
   },
   "issue_section": {
     "title": "卡片",

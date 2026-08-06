@@ -27,8 +27,11 @@ type CardResponse struct {
 	AuthorID   string  `json:"author_id"`
 	Title      string  `json:"title"`
 	Content    string  `json:"content"`
-	CreatedAt  string  `json:"created_at"`
-	UpdatedAt  string  `json:"updated_at"`
+	// Which tab this card sits under. Empty means uncategorised, which is a
+	// real answer rather than a missing one — most notes never get filed.
+	Kind      string `json:"kind"`
+	CreatedAt string `json:"created_at"`
+	UpdatedAt string `json:"updated_at"`
 }
 
 const (
@@ -47,6 +50,7 @@ func cardToResponse(r db.Card) CardResponse {
 		AuthorID:    uuidToString(r.AuthorID),
 		Title:       r.Title,
 		Content:     r.Content,
+		Kind:        r.Kind,
 		CreatedAt:   timestampToString(r.CreatedAt),
 		UpdatedAt:   timestampToString(r.UpdatedAt),
 	}
@@ -55,12 +59,14 @@ func cardToResponse(r db.Card) CardResponse {
 type CreateCardRequest struct {
 	Title   string  `json:"title"`
 	Content string  `json:"content"`
+	Kind    string  `json:"kind"`
 	IssueID *string `json:"issue_id"`
 }
 
 type UpdateCardRequest struct {
 	Title   *string `json:"title"`
 	Content *string `json:"content"`
+	Kind    *string `json:"kind"`
 	// A present-but-null issue_id detaches the card from its requirement;
 	// an absent one leaves the link alone. json.RawMessage is what makes
 	// those two distinguishable.
@@ -145,6 +151,7 @@ func (h *Handler) CreateCard(w http.ResponseWriter, r *http.Request) {
 		AuthorID:    parseUUID(authorID),
 		Title:       title,
 		Content:     req.Content,
+		Kind:        strings.TrimSpace(req.Kind),
 	})
 	if err != nil {
 		slog.Warn("create card failed", append(logger.RequestAttrs(r), "error", err)...)
@@ -196,8 +203,29 @@ func (h *Handler) ListCards(w http.ResponseWriter, r *http.Request) {
 		total int64
 		err   error
 	)
-	if query := strings.TrimSpace(r.URL.Query().Get("q")); query != "" {
-		pattern := "%" + strings.ToLower(query) + "%"
+	// The tab filter. Present-but-empty is a real selection — the
+	// uncategorised tab — and is not the same as absent, which is 全部.
+	kindFilter, filterByKind := "", false
+	if raw, present := r.URL.Query()["kind"]; present && len(raw) > 0 {
+		kindFilter, filterByKind = strings.TrimSpace(raw[0]), true
+	}
+
+	switch {
+	case filterByKind:
+		rows, err = h.Queries.ListCardsByKind(r.Context(), db.ListCardsByKindParams{
+			WorkspaceID: wsUUID,
+			Kind:        kindFilter,
+			Limit:       int32(limit),
+			Offset:      int32(offset),
+		})
+		if err == nil {
+			total, err = h.Queries.CountCardsByKind(r.Context(), db.CountCardsByKindParams{
+				WorkspaceID: wsUUID,
+				Kind:        kindFilter,
+			})
+		}
+	case strings.TrimSpace(r.URL.Query().Get("q")) != "":
+		pattern := "%" + strings.ToLower(strings.TrimSpace(r.URL.Query().Get("q"))) + "%"
 		rows, err = h.Queries.SearchCards(r.Context(), db.SearchCardsParams{
 			WorkspaceID: wsUUID,
 			Pattern:     pattern,
@@ -210,7 +238,7 @@ func (h *Handler) ListCards(w http.ResponseWriter, r *http.Request) {
 				Pattern:     pattern,
 			})
 		}
-	} else {
+	default:
 		rows, err = h.Queries.ListCards(r.Context(), db.ListCardsParams{
 			WorkspaceID: wsUUID,
 			Limit:       int32(limit),
@@ -231,6 +259,30 @@ func (h *Handler) ListCards(w http.ResponseWriter, r *http.Request) {
 		resp[i] = cardToResponse(row)
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"cards": resp, "total": total})
+}
+
+// ListCardKinds handles GET /api/cards/kinds — the tabs, with a count each.
+//
+// Derived from what has actually been written rather than from a fixed list:
+// the kinds people use are the ones they typed, and a category that exists in
+// code but in no card is a tab nobody can fill. Ordered most-used first so a
+// category someone files into daily does not sit behind one tried once.
+func (h *Handler) ListCardKinds(w http.ResponseWriter, r *http.Request) {
+	wsUUID, ok := parseUUIDOrBadRequest(w, h.resolveWorkspaceID(r), "workspace_id")
+	if !ok {
+		return
+	}
+	rows, err := h.Queries.ListCardKinds(r.Context(), wsUUID)
+	if err != nil {
+		slog.Warn("list card kinds failed", append(logger.RequestAttrs(r), "error", err)...)
+		writeError(w, http.StatusInternalServerError, "failed to list card kinds")
+		return
+	}
+	kinds := make([]map[string]any, 0, len(rows))
+	for _, row := range rows {
+		kinds = append(kinds, map[string]any{"kind": row.Kind, "count": row.CardCount})
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"kinds": kinds})
 }
 
 // GetCard handles GET /api/cards/{id}.
@@ -267,6 +319,14 @@ func (h *Handler) UpdateCard(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Absent leaves the kind alone; an empty string moves the card back to
+	// uncategorised. COALESCE cannot express the second, so the empty case is
+	// sent as a present-but-empty value rather than as a nil.
+	var kind pgtype.Text
+	if req.Kind != nil {
+		kind = pgtype.Text{String: strings.TrimSpace(*req.Kind), Valid: true}
+	}
+
 	// Absent, explicit null, and a value are three different intents.
 	clearIssue := len(req.IssueID) > 0 && string(req.IssueID) == "null"
 	var issueRef *string
@@ -288,6 +348,7 @@ func (h *Handler) UpdateCard(w http.ResponseWriter, r *http.Request) {
 		WorkspaceID: card.WorkspaceID,
 		Title:       pgtype.Text{String: title, Valid: true},
 		Content:     pgtype.Text{String: content, Valid: true},
+		Kind:        kind,
 		IssueID:     issueID,
 		ClearIssue:  clearIssue,
 	})

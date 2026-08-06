@@ -1,0 +1,11 @@
+-- What kind of note a card is, so the cards page can offer tabs.
+--
+-- Free text, not an enum: the two kinds that exist today (想法 / 文档) are the
+-- two somebody happened to need first, and a personal knowledge base grows
+-- categories the way notes grow — by writing one. An enum would make every
+-- new kind a migration, which is the wrong price for renaming a tab.
+--
+-- Empty string rather than NULL for "uncategorised": the tabs are built from
+-- the distinct values, and one nullable column would make every reader handle
+-- both an absent and an empty case for the same meaning.
+ALTER TABLE card ADD COLUMN kind TEXT NOT NULL DEFAULT '';

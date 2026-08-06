@@ -1,6 +1,6 @@
 -- name: CreateCard :one
-INSERT INTO card (workspace_id, issue_id, author_type, author_id, title, content)
-VALUES ($1, sqlc.narg('issue_id'), $2, $3, $4, $5)
+INSERT INTO card (workspace_id, issue_id, author_type, author_id, title, content, kind)
+VALUES ($1, sqlc.narg('issue_id'), $2, $3, $4, $5, $6)
 RETURNING *;
 
 -- name: GetCard :one
@@ -61,6 +61,7 @@ GROUP BY issue_id;
 UPDATE card SET
     title = COALESCE(sqlc.narg('title'), title),
     content = COALESCE(sqlc.narg('content'), content),
+    kind = COALESCE(sqlc.narg('kind'), kind),
     issue_id = CASE WHEN sqlc.arg('clear_issue')::boolean THEN NULL
                     ELSE COALESCE(sqlc.narg('issue_id'), issue_id) END,
     updated_at = now()
@@ -69,3 +70,24 @@ RETURNING *;
 
 -- name: DeleteCard :exec
 DELETE FROM card WHERE id = $1 AND workspace_id = $2;
+
+-- name: ListCardsByKind :many
+SELECT * FROM card
+WHERE workspace_id = sqlc.arg(workspace_id) AND kind = sqlc.arg(kind)
+ORDER BY created_at DESC, id DESC
+LIMIT sqlc.arg('limit') OFFSET sqlc.arg('offset');
+
+-- name: CountCardsByKind :one
+SELECT count(*) FROM card
+WHERE workspace_id = sqlc.arg(workspace_id) AND kind = sqlc.arg(kind);
+
+-- name: ListCardKinds :many
+-- The tabs, in the order they should appear: most-used first, so a category
+-- someone actually files into does not sit behind one they tried once. The
+-- uncategorised bucket is excluded — "全部" already covers it, and a blank tab
+-- label has nothing to render.
+SELECT kind, count(*) AS card_count
+FROM card
+WHERE workspace_id = $1 AND kind <> ''
+GROUP BY kind
+ORDER BY count(*) DESC, kind ASC;

@@ -6,7 +6,8 @@
     "search_placeholder": "カードを検索...",
     "empty": "まだ何もありません。後で見返したいことを書き留めておきましょう。",
     "no_matches": "一致するカードはありません。",
-    "day_count_other": "{{count}} 件"
+    "day_count_other": "{{count}} 件",
+    "all_kinds": "すべて"
   },
   "card": {
     "edit": "編集",
@@ -23,7 +24,8 @@
     "delete_action": "削除",
     "delete_confirm": "このカードを削除しますか？",
     "save_failed": "カードを保存できませんでした",
-    "delete_failed": "カードを削除できませんでした"
+    "delete_failed": "カードを削除できませんでした",
+    "kind_placeholder": "種類"
   },
   "issue_section": {
     "title": "カード",

@@ -22,6 +22,23 @@ func (q *Queries) CountCards(ctx context.Context, workspaceID pgtype.UUID) (int6
 	return count, err
 }
 
+const countCardsByKind = `-- name: CountCardsByKind :one
+SELECT count(*) FROM card
+WHERE workspace_id = $1 AND kind = $2
+`
+
+type CountCardsByKindParams struct {
+	WorkspaceID pgtype.UUID `json:"workspace_id"`
+	Kind        string      `json:"kind"`
+}
+
+func (q *Queries) CountCardsByKind(ctx context.Context, arg CountCardsByKindParams) (int64, error) {
+	row := q.db.QueryRow(ctx, countCardsByKind, arg.WorkspaceID, arg.Kind)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const countSearchCards = `-- name: CountSearchCards :one
 SELECT count(*) FROM card
 WHERE workspace_id = $1
@@ -43,9 +60,9 @@ func (q *Queries) CountSearchCards(ctx context.Context, arg CountSearchCardsPara
 }
 
 const createCard = `-- name: CreateCard :one
-INSERT INTO card (workspace_id, issue_id, author_type, author_id, title, content)
-VALUES ($1, $6, $2, $3, $4, $5)
-RETURNING id, workspace_id, issue_id, author_type, author_id, title, content, created_at, updated_at
+INSERT INTO card (workspace_id, issue_id, author_type, author_id, title, content, kind)
+VALUES ($1, $7, $2, $3, $4, $5, $6)
+RETURNING id, workspace_id, issue_id, author_type, author_id, title, content, created_at, updated_at, kind
 `
 
 type CreateCardParams struct {
@@ -54,6 +71,7 @@ type CreateCardParams struct {
 	AuthorID    pgtype.UUID `json:"author_id"`
 	Title       string      `json:"title"`
 	Content     string      `json:"content"`
+	Kind        string      `json:"kind"`
 	IssueID     pgtype.UUID `json:"issue_id"`
 }
 
@@ -64,6 +82,7 @@ func (q *Queries) CreateCard(ctx context.Context, arg CreateCardParams) (Card, e
 		arg.AuthorID,
 		arg.Title,
 		arg.Content,
+		arg.Kind,
 		arg.IssueID,
 	)
 	var i Card
@@ -77,6 +96,7 @@ func (q *Queries) CreateCard(ctx context.Context, arg CreateCardParams) (Card, e
 		&i.Content,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.Kind,
 	)
 	return i, err
 }
@@ -96,7 +116,7 @@ func (q *Queries) DeleteCard(ctx context.Context, arg DeleteCardParams) error {
 }
 
 const getCard = `-- name: GetCard :one
-SELECT id, workspace_id, issue_id, author_type, author_id, title, content, created_at, updated_at FROM card
+SELECT id, workspace_id, issue_id, author_type, author_id, title, content, created_at, updated_at, kind FROM card
 WHERE id = $1 AND workspace_id = $2
 `
 
@@ -120,6 +140,7 @@ func (q *Queries) GetCard(ctx context.Context, arg GetCardParams) (Card, error) 
 		&i.Content,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.Kind,
 	)
 	return i, err
 }
@@ -163,8 +184,45 @@ func (q *Queries) ListCardCountsForIssues(ctx context.Context, arg ListCardCount
 	return items, nil
 }
 
+const listCardKinds = `-- name: ListCardKinds :many
+SELECT kind, count(*) AS card_count
+FROM card
+WHERE workspace_id = $1 AND kind <> ''
+GROUP BY kind
+ORDER BY count(*) DESC, kind ASC
+`
+
+type ListCardKindsRow struct {
+	Kind      string `json:"kind"`
+	CardCount int64  `json:"card_count"`
+}
+
+// The tabs, in the order they should appear: most-used first, so a category
+// someone actually files into does not sit behind one they tried once. The
+// uncategorised bucket is excluded — "全部" already covers it, and a blank tab
+// label has nothing to render.
+func (q *Queries) ListCardKinds(ctx context.Context, workspaceID pgtype.UUID) ([]ListCardKindsRow, error) {
+	rows, err := q.db.Query(ctx, listCardKinds, workspaceID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListCardKindsRow{}
+	for rows.Next() {
+		var i ListCardKindsRow
+		if err := rows.Scan(&i.Kind, &i.CardCount); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listCards = `-- name: ListCards :many
-SELECT id, workspace_id, issue_id, author_type, author_id, title, content, created_at, updated_at FROM card
+SELECT id, workspace_id, issue_id, author_type, author_id, title, content, created_at, updated_at, kind FROM card
 WHERE workspace_id = $1
 ORDER BY created_at DESC, id DESC
 LIMIT $2 OFFSET $3
@@ -198,6 +256,57 @@ func (q *Queries) ListCards(ctx context.Context, arg ListCardsParams) ([]Card, e
 			&i.Content,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.Kind,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listCardsByKind = `-- name: ListCardsByKind :many
+SELECT id, workspace_id, issue_id, author_type, author_id, title, content, created_at, updated_at, kind FROM card
+WHERE workspace_id = $1 AND kind = $2
+ORDER BY created_at DESC, id DESC
+LIMIT $4 OFFSET $3
+`
+
+type ListCardsByKindParams struct {
+	WorkspaceID pgtype.UUID `json:"workspace_id"`
+	Kind        string      `json:"kind"`
+	Offset      int32       `json:"offset"`
+	Limit       int32       `json:"limit"`
+}
+
+func (q *Queries) ListCardsByKind(ctx context.Context, arg ListCardsByKindParams) ([]Card, error) {
+	rows, err := q.db.Query(ctx, listCardsByKind,
+		arg.WorkspaceID,
+		arg.Kind,
+		arg.Offset,
+		arg.Limit,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []Card{}
+	for rows.Next() {
+		var i Card
+		if err := rows.Scan(
+			&i.ID,
+			&i.WorkspaceID,
+			&i.IssueID,
+			&i.AuthorType,
+			&i.AuthorID,
+			&i.Title,
+			&i.Content,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.Kind,
 		); err != nil {
 			return nil, err
 		}
@@ -210,7 +319,7 @@ func (q *Queries) ListCards(ctx context.Context, arg ListCardsParams) ([]Card, e
 }
 
 const listCardsForIssue = `-- name: ListCardsForIssue :many
-SELECT id, workspace_id, issue_id, author_type, author_id, title, content, created_at, updated_at FROM card
+SELECT id, workspace_id, issue_id, author_type, author_id, title, content, created_at, updated_at, kind FROM card
 WHERE workspace_id = $1 AND issue_id = $2
 ORDER BY created_at ASC, id ASC
 `
@@ -241,6 +350,7 @@ func (q *Queries) ListCardsForIssue(ctx context.Context, arg ListCardsForIssuePa
 			&i.Content,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.Kind,
 		); err != nil {
 			return nil, err
 		}
@@ -253,7 +363,7 @@ func (q *Queries) ListCardsForIssue(ctx context.Context, arg ListCardsForIssuePa
 }
 
 const searchCards = `-- name: SearchCards :many
-SELECT id, workspace_id, issue_id, author_type, author_id, title, content, created_at, updated_at FROM card
+SELECT id, workspace_id, issue_id, author_type, author_id, title, content, created_at, updated_at, kind FROM card
 WHERE workspace_id = $1
   AND (LOWER(title) LIKE $2 OR LOWER(content) LIKE $2)
 ORDER BY created_at DESC, id DESC
@@ -296,6 +406,7 @@ func (q *Queries) SearchCards(ctx context.Context, arg SearchCardsParams) ([]Car
 			&i.Content,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.Kind,
 		); err != nil {
 			return nil, err
 		}
@@ -311,16 +422,18 @@ const updateCard = `-- name: UpdateCard :one
 UPDATE card SET
     title = COALESCE($1, title),
     content = COALESCE($2, content),
-    issue_id = CASE WHEN $3::boolean THEN NULL
-                    ELSE COALESCE($4, issue_id) END,
+    kind = COALESCE($3, kind),
+    issue_id = CASE WHEN $4::boolean THEN NULL
+                    ELSE COALESCE($5, issue_id) END,
     updated_at = now()
-WHERE id = $5 AND workspace_id = $6
-RETURNING id, workspace_id, issue_id, author_type, author_id, title, content, created_at, updated_at
+WHERE id = $6 AND workspace_id = $7
+RETURNING id, workspace_id, issue_id, author_type, author_id, title, content, created_at, updated_at, kind
 `
 
 type UpdateCardParams struct {
 	Title       pgtype.Text `json:"title"`
 	Content     pgtype.Text `json:"content"`
+	Kind        pgtype.Text `json:"kind"`
 	ClearIssue  bool        `json:"clear_issue"`
 	IssueID     pgtype.UUID `json:"issue_id"`
 	ID          pgtype.UUID `json:"id"`
@@ -333,6 +446,7 @@ func (q *Queries) UpdateCard(ctx context.Context, arg UpdateCardParams) (Card, e
 	row := q.db.QueryRow(ctx, updateCard,
 		arg.Title,
 		arg.Content,
+		arg.Kind,
 		arg.ClearIssue,
 		arg.IssueID,
 		arg.ID,
@@ -349,6 +463,7 @@ func (q *Queries) UpdateCard(ctx context.Context, arg UpdateCardParams) (Card, e
 		&i.Content,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.Kind,
 	)
 	return i, err
 }

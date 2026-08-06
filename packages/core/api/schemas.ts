@@ -635,6 +635,9 @@ export const CardSchema = z.object({
   // older or partial payload must still render rather than blank the list.
   title: z.string().default(""),
   content: z.string().default(""),
+  // Empty is "uncategorised", and an older backend that does not send the
+  // field at all means the same thing — one default covers both.
+  kind: z.string().default(""),
   created_at: z.string(),
   updated_at: z.string(),
 }).loose();

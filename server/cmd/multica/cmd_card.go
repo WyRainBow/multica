@@ -69,6 +69,17 @@ var cardUpdateCmd = &cobra.Command{
 	RunE:  runCardUpdate,
 }
 
+var cardKindsCmd = &cobra.Command{
+	Use:   "kinds",
+	Short: "List the kinds in use, with a count each",
+	Long: `List the kinds in use, with a count each.
+
+Kinds are free text and become tabs on the cards page, so this is how you find
+the name to reuse instead of inventing 文档 / 档案 / doc for one thing.`,
+	Args: cobra.NoArgs,
+	RunE: runCardKinds,
+}
+
 var cardDeleteCmd = &cobra.Command{
 	Use:   "delete <card-id>",
 	Short: "Delete a card",
@@ -81,6 +92,7 @@ func init() {
 	cardCmd.AddCommand(cardGetCmd)
 	cardCmd.AddCommand(cardAddCmd)
 	cardCmd.AddCommand(cardUpdateCmd)
+	cardCmd.AddCommand(cardKindsCmd)
 	cardCmd.AddCommand(cardDeleteCmd)
 
 	cardListCmd.Flags().String("output", "table", "Output format: table or json")
@@ -88,15 +100,19 @@ func init() {
 	cardListCmd.Flags().Int("limit", 50, "Maximum number of cards to return")
 	cardListCmd.Flags().Int("offset", 0, "Number of cards to skip (for pagination)")
 	cardListCmd.Flags().String("issue", "", "Only cards linked to this issue (key or UUID)")
+	cardListCmd.Flags().String("kind", "",
+		"Only cards of this kind. Pass an empty value (--kind=) for the uncategorised ones; omit it for all. `card kinds` lists what exists.")
 	cardListCmd.Flags().String("search", "", "Only cards whose title or content contains this text (case-insensitive). Searches the whole workspace, not just the current page. Ignored with --issue, which returns that issue's cards in full.")
 
 	cardGetCmd.Flags().String("output", "table", "Output format: table or json")
+	cardKindsCmd.Flags().String("output", "table", "Output format: table or json")
 
 	cardAddCmd.Flags().String("title", "", "Card title (required)")
 	cardAddCmd.Flags().String("content", "", "Card content (decodes \\n, \\r, \\t, \\\\; pipe via --content-stdin for multi-line bodies)")
 	cardAddCmd.Flags().Bool("content-stdin", false, "Read card content from stdin (preserves multi-line content verbatim)")
 	cardAddCmd.Flags().String("content-file", "", "Read card content from a UTF-8 file. The path must be inside the current working directory unless --allow-external-file is set.")
 	cardAddCmd.Flags().Bool("allow-external-file", false, "Allow --content-file to read a path outside the current working directory")
+	cardAddCmd.Flags().String("kind", "", "Kind of note, free text — it becomes a tab on the cards page. `card kinds` lists what already exists; reuse a name rather than inventing a near-duplicate.")
 	cardAddCmd.Flags().String("issue", "", "Link the card to this issue (key or UUID)")
 	cardAddCmd.Flags().String("output", "json", "Output format: table or json")
 
@@ -105,6 +121,7 @@ func init() {
 	cardUpdateCmd.Flags().Bool("content-stdin", false, "Read the new content from stdin")
 	cardUpdateCmd.Flags().String("content-file", "", "Read the new content from a UTF-8 file")
 	cardUpdateCmd.Flags().Bool("allow-external-file", false, "Allow --content-file to read a path outside the current working directory")
+	cardUpdateCmd.Flags().String("kind", "", "New kind. Pass an empty value (--kind=) to move the card back to uncategorised.")
 	cardUpdateCmd.Flags().String("issue", "", "Link the card to this issue (key or UUID)")
 	cardUpdateCmd.Flags().Bool("detach", false, "Remove the card's issue link. Mutually exclusive with --issue.")
 	cardUpdateCmd.Flags().String("output", "json", "Output format: table or json")
@@ -117,6 +134,7 @@ func init() {
 type cardRow struct {
 	ID        string  `json:"id"`
 	IssueID   *string `json:"issue_id"`
+	Kind      string  `json:"kind"`
 	Title     string  `json:"title"`
 	Content   string  `json:"content"`
 	CreatedAt string  `json:"created_at"`
@@ -156,6 +174,12 @@ func runCardList(cmd *cobra.Command, _ []string) error {
 		if search, _ := cmd.Flags().GetString("search"); strings.TrimSpace(search) != "" {
 			params.Set("q", strings.TrimSpace(search))
 		}
+		// Changed, not the value: --kind= selects the uncategorised tab, which
+		// is a different request from omitting it.
+		if cmd.Flags().Changed("kind") {
+			kind, _ := cmd.Flags().GetString("kind")
+			params.Set("kind", strings.TrimSpace(kind))
+		}
 		path += "?" + params.Encode()
 	}
 
@@ -184,16 +208,21 @@ func runCardList(cmd *cobra.Command, _ []string) error {
 	}
 
 	full, _ := cmd.Flags().GetBool("full-id")
-	headers := []string{"ID", "TITLE", "ISSUE", "UPDATED"}
+	headers := []string{"ID", "TITLE", "KIND", "ISSUE", "UPDATED"}
 	rows := make([][]string, 0, len(resp.Cards))
 	for _, card := range resp.Cards {
 		issue := "—"
 		if card.IssueID != nil && *card.IssueID != "" {
 			issue = displayID(*card.IssueID, full)
 		}
+		kind := card.Kind
+		if kind == "" {
+			kind = "—"
+		}
 		rows = append(rows, []string{
 			displayID(card.ID, full),
 			cardTitleForTable(card),
+			kind,
 			issue,
 			shortTimestamp(card.UpdatedAt),
 		})
@@ -278,6 +307,9 @@ func runCardAdd(cmd *cobra.Command, _ []string) error {
 	defer cancel()
 
 	body := map[string]any{"title": title, "content": content}
+	if kind, _ := cmd.Flags().GetString("kind"); strings.TrimSpace(kind) != "" {
+		body["kind"] = strings.TrimSpace(kind)
+	}
 	if issueRef, _ := cmd.Flags().GetString("issue"); strings.TrimSpace(issueRef) != "" {
 		ref, resolveErr := resolveIssueRef(ctx, client, issueRef)
 		if resolveErr != nil {
@@ -320,6 +352,10 @@ func runCardUpdate(cmd *cobra.Command, args []string) error {
 	if hasContent {
 		body["content"] = content
 	}
+	if cmd.Flags().Changed("kind") {
+		kind, _ := cmd.Flags().GetString("kind")
+		body["kind"] = strings.TrimSpace(kind)
+	}
 
 	client, err := newAPIClient(cmd)
 	if err != nil {
@@ -343,7 +379,7 @@ func runCardUpdate(cmd *cobra.Command, args []string) error {
 	}
 
 	if len(body) == 0 {
-		return fmt.Errorf("nothing to update; pass --title, --content, --issue or --detach")
+		return fmt.Errorf("nothing to update; pass --title, --content, --kind, --issue or --detach")
 	}
 
 	var card cardRow
@@ -358,6 +394,41 @@ func runCardUpdate(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 	return cli.PrintJSON(os.Stdout, card)
+}
+
+func runCardKinds(cmd *cobra.Command, _ []string) error {
+	client, err := newAPIClient(cmd)
+	if err != nil {
+		return err
+	}
+
+	ctx, cancel := cli.APIContext(context.Background())
+	defer cancel()
+
+	var resp struct {
+		Kinds []struct {
+			Kind  string `json:"kind"`
+			Count int64  `json:"count"`
+		} `json:"kinds"`
+	}
+	if err := client.GetJSON(ctx, "/api/cards/kinds", &resp); err != nil {
+		return fmt.Errorf("list card kinds: %w", err)
+	}
+
+	output, _ := cmd.Flags().GetString("output")
+	if output == "json" {
+		return cli.PrintJSON(os.Stdout, resp)
+	}
+	if len(resp.Kinds) == 0 {
+		fmt.Fprintln(os.Stderr, "No kinds yet — every card is uncategorised.")
+		return nil
+	}
+	rows := make([][]string, 0, len(resp.Kinds))
+	for _, k := range resp.Kinds {
+		rows = append(rows, []string{k.Kind, fmt.Sprintf("%d", k.Count)})
+	}
+	cli.PrintTable(os.Stdout, []string{"KIND", "CARDS"}, rows)
+	return nil
 }
 
 func runCardDelete(cmd *cobra.Command, args []string) error {

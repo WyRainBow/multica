@@ -141,3 +141,139 @@ func TestListCards_BlankQueryListsEverything(t *testing.T) {
 		t.Fatalf("blank q returned %d, plain list returned %d", blank, plain)
 	}
 }
+
+// ---------------------------------------------------------------------------
+// Kinds — the tabs
+// ---------------------------------------------------------------------------
+
+func createKindCard(t *testing.T, title, kind string) string {
+	t.Helper()
+	recorder := httptest.NewRecorder()
+	req := newRequest("POST", "/api/cards", map[string]any{
+		"title": title, "content": "内容", "kind": kind,
+	})
+	testHandler.CreateCard(recorder, req)
+	if recorder.Code != http.StatusCreated {
+		t.Fatalf("CreateCard: expected 201, got %d: %s", recorder.Code, recorder.Body.String())
+	}
+	var card CardResponse
+	if err := json.NewDecoder(recorder.Body).Decode(&card); err != nil {
+		t.Fatalf("decode card: %v", err)
+	}
+	t.Cleanup(func() {
+		del := httptest.NewRecorder()
+		r := newRequest("DELETE", "/api/cards/"+card.ID, nil)
+		r = withURLParam(r, "id", card.ID)
+		testHandler.DeleteCard(del, r)
+	})
+	return card.ID
+}
+
+func listCardsWithQuery(t *testing.T, rawQuery string) []CardResponse {
+	t.Helper()
+	recorder := httptest.NewRecorder()
+	testHandler.ListCards(recorder, newRequest("GET", "/api/cards?"+rawQuery, nil))
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("ListCards: expected 200, got %d: %s", recorder.Code, recorder.Body.String())
+	}
+	var resp struct {
+		Cards []CardResponse `json:"cards"`
+	}
+	if err := json.NewDecoder(recorder.Body).Decode(&resp); err != nil {
+		t.Fatalf("decode cards: %v", err)
+	}
+	return resp.Cards
+}
+
+func TestListCards_FiltersByKind(t *testing.T) {
+	if testHandler == nil || testPool == nil {
+		t.Skip("database not available")
+	}
+	want := createKindCard(t, "一篇文档", "kindtest-文档")
+	createKindCard(t, "一个想法", "kindtest-想法")
+
+	cards := listCardsWithQuery(t, "kind=kindtest-%E6%96%87%E6%A1%A3")
+	if len(cards) != 1 || cards[0].ID != want {
+		t.Fatalf("kind filter returned %d cards, want just the 文档 one", len(cards))
+	}
+}
+
+// A present-but-empty kind selects the uncategorised cards. Absent means 全部,
+// which is a different request — collapsing the two would make the
+// uncategorised tab impossible to express.
+func TestListCards_EmptyKindSelectsUncategorised(t *testing.T) {
+	if testHandler == nil || testPool == nil {
+		t.Skip("database not available")
+	}
+	filed := createKindCard(t, "已分类", "kindtest-已分类")
+	createKindCard(t, "未分类", "")
+
+	for _, card := range listCardsWithQuery(t, "kind=") {
+		if card.ID == filed {
+			t.Fatal("a filed card appeared under the uncategorised tab")
+		}
+		if card.Kind != "" {
+			t.Fatalf("card %s has kind %q under the uncategorised tab", card.ID, card.Kind)
+		}
+	}
+}
+
+// The tabs come from what has been written, with a count each.
+func TestListCardKinds_CountsWhatExists(t *testing.T) {
+	if testHandler == nil || testPool == nil {
+		t.Skip("database not available")
+	}
+	createKindCard(t, "a", "kindtest-多的")
+	createKindCard(t, "b", "kindtest-多的")
+	createKindCard(t, "c", "kindtest-少的")
+	createKindCard(t, "d", "")
+
+	recorder := httptest.NewRecorder()
+	testHandler.ListCardKinds(recorder, newRequest("GET", "/api/cards/kinds", nil))
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("ListCardKinds: expected 200, got %d: %s", recorder.Code, recorder.Body.String())
+	}
+	var resp struct {
+		Kinds []struct {
+			Kind  string `json:"kind"`
+			Count int64  `json:"count"`
+		} `json:"kinds"`
+	}
+	if err := json.NewDecoder(recorder.Body).Decode(&resp); err != nil {
+		t.Fatalf("decode kinds: %v", err)
+	}
+
+	counts := map[string]int64{}
+	for _, k := range resp.Kinds {
+		if k.Kind == "" {
+			t.Fatal("the uncategorised bucket must not be a tab")
+		}
+		counts[k.Kind] = k.Count
+	}
+	if counts["kindtest-多的"] != 2 || counts["kindtest-少的"] != 1 {
+		t.Fatalf("counts = %v, want 多的:2 少的:1", counts)
+	}
+}
+
+// Omitting kind on an update leaves it alone; an empty string clears it.
+func TestUpdateCard_EmptyKindClearsIt(t *testing.T) {
+	if testHandler == nil || testPool == nil {
+		t.Skip("database not available")
+	}
+	id := createKindCard(t, "会被清空", "kindtest-待清空")
+
+	recorder := httptest.NewRecorder()
+	req := newRequest("PUT", "/api/cards/"+id, map[string]any{"kind": ""})
+	req = withURLParam(req, "id", id)
+	testHandler.UpdateCard(recorder, req)
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("UpdateCard: expected 200, got %d: %s", recorder.Code, recorder.Body.String())
+	}
+	var updated CardResponse
+	if err := json.NewDecoder(recorder.Body).Decode(&updated); err != nil {
+		t.Fatalf("decode card: %v", err)
+	}
+	if updated.Kind != "" {
+		t.Fatalf("kind = %q, want it cleared", updated.Kind)
+	}
+}

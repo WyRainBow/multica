@@ -6,7 +6,8 @@
     "search_placeholder": "카드 검색...",
     "empty": "아직 아무것도 없습니다. 나중에 다시 볼 만한 것을 적어 두세요.",
     "no_matches": "일치하는 카드가 없습니다.",
-    "day_count_other": "{{count}}개"
+    "day_count_other": "{{count}}개",
+    "all_kinds": "전체"
   },
   "card": {
     "edit": "편집",
@@ -23,7 +24,8 @@
     "delete_action": "삭제",
     "delete_confirm": "이 카드를 삭제할까요?",
     "save_failed": "카드를 저장하지 못했습니다",
-    "delete_failed": "카드를 삭제하지 못했습니다"
+    "delete_failed": "카드를 삭제하지 못했습니다",
+    "kind_placeholder": "종류"
   },
   "issue_section": {
     "title": "카드",

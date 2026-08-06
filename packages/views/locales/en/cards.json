@@ -6,7 +6,8 @@
     "search_placeholder": "Search cards...",
     "empty": "Nothing written down yet. Keep whatever is worth coming back to.",
     "no_matches": "No card matches that search.",
-    "day_count_other": "{{count}} cards"
+    "day_count_other": "{{count}} cards",
+    "all_kinds": "All"
   },
   "card": {
     "edit": "Edit",
@@ -23,7 +24,8 @@
     "delete_action": "Delete",
     "delete_confirm": "Delete this card?",
     "save_failed": "Failed to save the card",
-    "delete_failed": "Failed to delete the card"
+    "delete_failed": "Failed to delete the card",
+    "kind_placeholder": "Kind"
   },
   "issue_section": {
     "title": "Cards",

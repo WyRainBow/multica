@@ -1123,6 +1123,9 @@ func NewRouterWithOptions(pool *pgxpool.Pool, hub *realtime.Hub, bus *events.Bus
 			r.Route("/api/cards", func(r chi.Router) {
 				r.Get("/", h.ListCards)
 				r.Post("/", h.CreateCard)
+				// The tabs, derived from what has been written. Above
+				// /{id} so "kinds" is not read as a card id.
+				r.Get("/kinds", h.ListCardKinds)
 				r.Route("/{id}", func(r chi.Router) {
 					r.Get("/", h.GetCard)
 					r.Put("/", h.UpdateCard)

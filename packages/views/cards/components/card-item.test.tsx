@@ -28,6 +28,7 @@ function makeCard(overrides: Partial<Card> = {}): Card {
     issue_id: null,
     author_type: "member",
     author_id: "user-1",
+    kind: "",
     title: "便宜的充值网站",
     content: "**待确认**（用之前先自己核实）",
     created_at: "2026-08-04T02:15:00Z",
