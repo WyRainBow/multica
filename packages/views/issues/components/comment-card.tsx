@@ -2,7 +2,7 @@
 
 import { memo, useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import type { IssuePhase } from "@multica/core/types";
-import { CheckCircle2, ChevronRight, ListChevronsDownUp, Copy, Loader2, Milestone, MoreHorizontal, Pencil, RotateCcw, Trash2 } from "lucide-react";
+import { CheckCircle2, ChevronRight, ListChevronsDownUp, Copy, Loader2, MoreHorizontal, Pencil, RotateCcw, Trash2, Waypoints } from "lucide-react";
 import { toast } from "sonner";
 import { Card } from "@multica/ui/components/ui/card";
 import { Button } from "@multica/ui/components/ui/button";
@@ -692,7 +692,7 @@ function CommentRow({
                   <DropdownMenuSeparator />
                   <DropdownMenuSub>
                     <DropdownMenuSubTrigger>
-                      <Milestone className="h-3.5 w-3.5" />
+                      <Waypoints className="h-3.5 w-3.5" />
                       {t(($) => $.phases.assign)}
                     </DropdownMenuSubTrigger>
                     <DropdownMenuSubContent>
@@ -1043,6 +1043,43 @@ function CommentCardImpl({
                         <Copy className="h-3.5 w-3.5" />
                         {t(($) => $.comment.copy_action)}
                       </DropdownMenuItem>
+                      {/* The same submenu a reply has. It was only on replies,
+                          which is backwards: a thread root is the comment most
+                          likely to be filed under a station, because it is the
+                          one that opened the discussion. */}
+                      {phases && phases.length > 0 && onSetPhase && (
+                        <>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuSub>
+                            <DropdownMenuSubTrigger>
+                              <Waypoints className="h-3.5 w-3.5" />
+                              {t(($) => $.phases.assign)}
+                            </DropdownMenuSubTrigger>
+                            <DropdownMenuSubContent>
+                              {phases.map((phase: IssuePhase) => (
+                                <DropdownMenuItem
+                                  key={phase.id}
+                                  onClick={() => onSetPhase(entry.id, phase.id)}
+                                >
+                                  {phase.id === entry.phase_id && (
+                                    <CheckCircle2 className="h-3.5 w-3.5" />
+                                  )}
+                                  {phase.name}
+                                </DropdownMenuItem>
+                              ))}
+                              {entry.phase_id && (
+                                <>
+                                  <DropdownMenuSeparator />
+                                  <DropdownMenuItem onClick={() => onSetPhase(entry.id, null)}>
+                                    <RotateCcw className="h-3.5 w-3.5" />
+                                    {t(($) => $.phases.clear)}
+                                  </DropdownMenuItem>
+                                </>
+                              )}
+                            </DropdownMenuSubContent>
+                          </DropdownMenuSub>
+                        </>
+                      )}
                       {onResolveToggle && (
                         <>
                           <DropdownMenuSeparator />
