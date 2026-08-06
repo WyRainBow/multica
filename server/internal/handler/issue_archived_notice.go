@@ -19,7 +19,7 @@ import "strings"
 // which is authored content with no locale of its own, and a body whose banner
 // changes language depending on who happened to close it would be worse than
 // one that always reads the same.
-const archivedNoticeBody = "**本 issue 已完成** —— 以下正文仅作封存记录，对过去准确、对现在不一定。据此行动前请先核对当前状态。"
+const archivedNoticeBody = "**本 issue 已完成** —— 以下正文仅作封存记录、对过去准确、对现在不一定。据此行动前请先核对查证当前状态。"
 
 // archivedNoticeMarker is what strip matches on, and it is deliberately
 // narrower than the full sentence: the wording above may be tuned later, and an

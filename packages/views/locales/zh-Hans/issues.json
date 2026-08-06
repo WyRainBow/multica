@@ -242,7 +242,7 @@
     "desc_placeholder": "添加描述...",
     "sub_issues_label": "子 issue",
     "sub_issue_of": "属于父 issue",
-    "frozen_hint": "已结束，标题和正文已冻结。改回未完成状态即可编辑。",
+    "frozen_hint": "已结束、标题和正文已冻结。改回未完成状态即可编辑。",
     "description_length_other": "{{count}} 字",
     "parked_from": "挂起自",
     "section_parked": "从这里挂起的",
@@ -346,7 +346,7 @@
     "workdir_path_unavailable": "暂无本地 workdir — 这个任务还没被本地 agent 运行过",
     "comment_edited_at": "{{time}} 编辑过",
     "comment_never_edited": "未编辑过",
-    "frozen_stale_hint": "它记录的是工作结束时的样子 —— 对过去准确，对现在不一定。据此行动前先核对当前状态。"
+    "frozen_stale_hint": "它记录的是工作结束时的样子 —— 对过去准确、对现在不一定。据此行动前先查证核对当前状态。"
   },
   "outline": {
     "collapse": "收起目录",
