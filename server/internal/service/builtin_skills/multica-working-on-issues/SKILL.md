@@ -267,6 +267,9 @@ Rules that will bite you if you assume otherwise:
   starting over.
 - **State is derived**, never stored: completed → `done`, entered → `current`,
   neither → `pending`.
+- **A reply joins the comment it answers.** `--parent` with no `--phase` takes
+  the parent's station, so you never have to restate it; pass `--phase` on the
+  reply only to put it somewhere else.
 - **Deleting a phase deletes its comments**, so the CLI needs `--force` once it
   holds any. `phase list` shows that count — it is the only warning you get.
 - **`comment list --phase` filters client-side**, so it is rejected with

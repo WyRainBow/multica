@@ -1955,6 +1955,27 @@ func (h *Handler) CreateComment(w http.ResponseWriter, r *http.Request) {
 		phaseID = parsed
 	}
 
+	// A reply with no phase of its own joins the comment it answers.
+	//
+	// Without this, filing a discussion under 评审 and then replying to it
+	// leaves the reply outside every station: filter the timeline to 评审 and
+	// the question is there while the answer is not. Nobody re-states the
+	// phase on a reply, and an agent using --parent has no reason to think it
+	// has to.
+	//
+	// The DIRECT parent, not the thread root: if someone deliberately moved a
+	// sub-branch to another station, replies to that branch belong with it.
+	// Scoped by workspace and then checked against this issue, so a parent id
+	// from elsewhere cannot drag in a phase that is not on this route.
+	if !phaseID.Valid && parentID.Valid {
+		if parent, err := h.Queries.GetCommentInWorkspace(r.Context(), db.GetCommentInWorkspaceParams{
+			ID:          parentID,
+			WorkspaceID: issue.WorkspaceID,
+		}); err == nil && parent.IssueID == issue.ID {
+			phaseID = parent.PhaseID
+		}
+	}
+
 	comment, err := h.Queries.CreateComment(r.Context(), db.CreateCommentParams{
 		IssueID:      issue.ID,
 		WorkspaceID:  issue.WorkspaceID,
