@@ -391,6 +391,24 @@ so the default resolves to nothing and the issue is created unassigned exactly
 as before. Keep passing `--assignee <agent>` when handing work to an agent —
 that is still the only way the issue reaches one.
 
+## Cards: a note that is not an issue
+
+A retrospective, a lesson learned, a decision worth keeping — none of those is
+work to be tracked, and filing them as issues gives them a status nobody will
+ever move. Write a card instead: a title plus Markdown, owned by the
+workspace, with an optional link to the issue it came out of.
+
+```bash
+multica card add --title "COC-97 踩坑" --content-stdin < notes.md
+multica card list                       # newest first
+multica card list --issue COC-97        # only cards linked to that issue
+multica card get <card-id>
+```
+
+Pipe the body in rather than passing `--content` inline for anything longer
+than a sentence — a retrospective is a document, and inline content mangles
+newlines.
+
 ## Mark a throwaway issue as a test
 
 An issue you create to try something out must be marked, or it sits in the

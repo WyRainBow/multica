@@ -265,6 +265,23 @@ Nothing links a finished issue to whatever replaced it — relations are only
 plus parent/child. A successor has to be recorded by hand as the
 `superseded_by` metadata key, which is where the notice points.
 
+## `multica card` — notes that are not issues
+
+| Behavior | File:line |
+|---|---|
+| `multica card list/get/add/update/delete` | `server/cmd/multica/cmd_card.go:25` |
+| `--issue` on list switches endpoint, not query param | `server/cmd/multica/cmd_card.go:125` |
+| Untitled cards fall back to the body's first line | `server/cmd/multica/cmd_card.go:198` (`cardTitleForTable`) |
+| `--title` or `--content` required | `server/cmd/multica/cmd_card.go:246` |
+| API routes (`/api/cards`, `/api/issues/{id}/cards`) | `server/cmd/server/router.go:1123,1162` |
+| Handler and validation | `server/internal/handler/card.go` |
+| Tests | `server/cmd/multica/cmd_card_test.go` |
+
+`--detach` sends a JSON `null` for `issue_id`; omitting both `--issue` and
+`--detach` omits the field. The server reads it as `json.RawMessage` precisely
+so "absent" and "null" mean different things, and the CLI refuses the two
+flags together rather than letting argument order decide.
+
 ## `multica issue create --test` — mark a throwaway
 
 | Behavior | File:line |
