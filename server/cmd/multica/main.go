@@ -46,6 +46,7 @@ func init() {
 
 	// Core commands
 	issueCmd.GroupID = groupCore
+	cardCmd.GroupID = groupCore
 	projectCmd.GroupID = groupCore
 	labelCmd.GroupID = groupCore
 	propertyCmd.GroupID = groupCore

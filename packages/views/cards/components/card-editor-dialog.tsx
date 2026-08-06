@@ -88,14 +88,23 @@ export function CardEditorDialog({
 
   return (
     <Dialog open onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-w-2xl">
+      {/* sm:, not a bare max-w-*: DialogContent's own class list ends with
+          sm:max-w-sm, and an unprefixed override loses to it above 640px. The
+          box then sat at 384px while the editor inside kept its natural width,
+          painting content outside the background — which read as the dialog
+          being half transparent rather than half the width it should be. */}
+      <DialogContent className="sm:max-w-4xl">
         <DialogHeader>
           <DialogTitle>
             {card ? t(($) => $.editor.edit_title) : t(($) => $.editor.new_title)}
           </DialogTitle>
         </DialogHeader>
 
-        <div className="flex flex-col gap-3">
+        {/* min-w-0: a flex child sizes to its content by default, so one wide
+            table or an unbreakable code span in the note would push this
+            column past the dialog and paint outside its background again —
+            the same symptom, from the other direction. */}
+        <div className="flex min-w-0 flex-col gap-3">
           <Input
             value={title}
             onChange={(event) => setTitle(event.target.value)}
@@ -108,7 +117,10 @@ export function CardEditorDialog({
               `defaultValue`, not `value` — the editor owns its document while
               open, and re-feeding it on every keystroke would fight the
               cursor. */}
-          <div className="max-h-[50vh] min-h-48 overflow-y-auto rounded-lg border px-3 py-2">
+          {/* overflow-auto, not overflow-y-auto: a note pasted from a doc
+              carries tables and long code lines, and a horizontal overflow
+              with nowhere to go escapes the box instead of scrolling in it. */}
+          <div className="max-h-[50vh] min-h-48 overflow-auto rounded-lg border px-3 py-2">
             <ContentEditor
               key={card?.id ?? "new"}
               defaultValue={card?.content ?? ""}
