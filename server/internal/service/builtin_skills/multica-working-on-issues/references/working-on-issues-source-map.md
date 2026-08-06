@@ -265,6 +265,21 @@ Nothing links a finished issue to whatever replaced it — relations are only
 plus parent/child. A successor has to be recorded by hand as the
 `superseded_by` metadata key, which is where the notice points.
 
+## `multica issue create --test` — mark a throwaway
+
+| Behavior | File:line |
+|---|---|
+| `--test` flag | `server/cmd/multica/cmd_issue.go:527` |
+| Prefix constant | `server/cmd/multica/cmd_issue.go:1196` (`testIssueTitlePrefix`) |
+| Idempotent marking, trims first | `server/cmd/multica/cmd_issue.go:1202` (`markTestIssueTitle`) |
+| Applied before the title is sent | `server/cmd/multica/cmd_issue.go:1215` |
+| Tests | `server/cmd/multica/cmd_issue_test_prefix_test.go` |
+
+Client-side only — the server stores whatever title it is given, so the same
+prefix typed by hand is indistinguishable from the flag's. That is deliberate:
+the convention is the title, and it has to hold for callers that never touch
+this CLI.
+
 ## `multica issue comment get` — read one comment by id
 
 | Behavior | File:line |

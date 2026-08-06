@@ -419,6 +419,31 @@ so the default resolves to nothing and the issue is created unassigned exactly
 as before. Keep passing `--assignee <agent>` when handing work to an agent —
 that is still the only way the issue reaches one.
 
+## Mark a throwaway issue as a test
+
+An issue you create to try something out — checking a behaviour, reproducing a
+bug, verifying a change — must be marked, or it sits in the list looking like
+real work and someone has to open it to find out.
+
+```bash
+multica issue create --test --title "封存横幅是否插到正文顶部"
+# title becomes: [测试] 封存横幅是否插到正文顶部
+```
+
+`--test` prefixes the title with `[测试]`. It is idempotent, so passing it with
+an already-prefixed title, or retrying a create, still yields one prefix.
+
+Use it for anything you would delete afterwards. If you are not going through
+the CLI, write the same prefix yourself — the convention is the title, not the
+flag.
+
+A prefix rather than a label because `multica issue list` has no labels column:
+a label would be invisible in exactly the place these have to be told apart.
+Labels are still the better answer for anything filtered in the web UI.
+
+Delete your test issues when you are done with them, and say so. A marked
+issue left behind is better than an unmarked one, but neither is tidy.
+
 ## Sub-issues: `todo` starts work now, `backlog` parks it
 
 On an agent-assigned issue, create status decides whether the assignee fires

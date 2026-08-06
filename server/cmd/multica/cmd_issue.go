@@ -524,6 +524,8 @@ func init() {
 
 	// issue create
 	issueCreateCmd.Flags().String("title", "", "Issue title (required)")
+	issueCreateCmd.Flags().Bool("test", false,
+		"Mark this as a throwaway test issue: prefixes the title with "+testIssueTitlePrefix+" so it is separable from real work at a glance. Idempotent — a title that already carries the prefix is left alone.")
 	issueCreateCmd.Flags().String("description", "", "Issue description (decodes \\n, \\r, \\t, \\\\; pipe via --description-stdin to preserve literal backslashes)")
 	issueCreateCmd.Flags().Bool("description-stdin", false, "Read issue description from stdin (preserves multi-line content verbatim)")
 	issueCreateCmd.Flags().String("description-file", "", "Read issue description from a UTF-8 file (preserves multi-line content verbatim; use this on Windows when stdin piping mangles non-ASCII bytes). The path must be inside the current working directory unless --allow-external-file is set.")
@@ -1185,10 +1187,33 @@ func currentMemberID(ctx context.Context, client *cli.APIClient) string {
 	return me.ID
 }
 
+// testIssueTitlePrefix marks an issue as a throwaway.
+//
+// A title prefix rather than a label, because the surface that matters here is
+// `multica issue list`, whose table has no labels column — a label would be
+// invisible in exactly the place these need to be told apart. Labels remain the
+// better answer for anything a person filters in the web UI.
+const testIssueTitlePrefix = "[测试]"
+
+// markTestIssueTitle adds the prefix unless it is already there. Idempotent
+// because a caller who passes both --test and an already-prefixed title means
+// one prefix, not two — and because agents retrying a create should not
+// accumulate them.
+func markTestIssueTitle(title string) string {
+	trimmed := strings.TrimSpace(title)
+	if strings.HasPrefix(trimmed, testIssueTitlePrefix) {
+		return trimmed
+	}
+	return testIssueTitlePrefix + " " + trimmed
+}
+
 func runIssueCreate(cmd *cobra.Command, _ []string) error {
 	title, _ := cmd.Flags().GetString("title")
 	if title == "" {
 		return fmt.Errorf("--title is required")
+	}
+	if isTest, _ := cmd.Flags().GetBool("test"); isTest {
+		title = markTestIssueTitle(title)
 	}
 	statusFlag, _ := cmd.Flags().GetString("status")
 	if statusFlag != "" {
