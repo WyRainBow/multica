@@ -15,13 +15,6 @@ ORDER BY position ASC, created_at ASC;
 SELECT * FROM issue_phase
 WHERE id = $1 AND workspace_id = $2;
 
--- name: MaxIssuePhasePosition :one
--- Where the next station goes when the caller does not say. COALESCE so the
--- first phase on an issue starts the sequence rather than returning no row.
-SELECT COALESCE(MAX(position), -1)::int AS max_position
-FROM issue_phase
-WHERE workspace_id = $1 AND issue_id = $2;
-
 -- name: EnterIssuePhase :one
 -- Mark arrival. `entered_at` is derived here rather than accepted from the
 -- caller — a timestamp someone has to remember to type is a timestamp that is

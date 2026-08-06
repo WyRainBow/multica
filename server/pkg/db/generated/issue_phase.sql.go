@@ -272,31 +272,11 @@ func (q *Queries) ListIssuePhases(ctx context.Context, arg ListIssuePhasesParams
 	return items, nil
 }
 
-const maxIssuePhasePosition = `-- name: MaxIssuePhasePosition :one
-SELECT COALESCE(MAX(position), -1)::int AS max_position
-FROM issue_phase
-WHERE workspace_id = $1 AND issue_id = $2
-`
-
-type MaxIssuePhasePositionParams struct {
-	WorkspaceID pgtype.UUID `json:"workspace_id"`
-	IssueID     pgtype.UUID `json:"issue_id"`
-}
-
-// Where the next station goes when the caller does not say. COALESCE so the
-// first phase on an issue starts the sequence rather than returning no row.
-func (q *Queries) MaxIssuePhasePosition(ctx context.Context, arg MaxIssuePhasePositionParams) (int32, error) {
-	row := q.db.QueryRow(ctx, maxIssuePhasePosition, arg.WorkspaceID, arg.IssueID)
-	var max_position int32
-	err := row.Scan(&max_position)
-	return max_position, err
-}
-
 const setCommentPhase = `-- name: SetCommentPhase :one
 UPDATE comment
 SET phase_id = $1, updated_at = now()
 WHERE id = $2 AND workspace_id = $3
-RETURNING id, issue_id, author_type, author_id, content, type, created_at, updated_at, parent_id, workspace_id, resolved_at, resolved_by_type, resolved_by_id, source_task_id, quick_action_id, anchor_text, anchor_offset, phase_id
+RETURNING id, issue_id, author_type, author_id, content, type, created_at, updated_at, parent_id, workspace_id, resolved_at, resolved_by_type, resolved_by_id, source_task_id, quick_action_id, phase_id, anchor_text, anchor_offset
 `
 
 type SetCommentPhaseParams struct {
@@ -324,9 +304,9 @@ func (q *Queries) SetCommentPhase(ctx context.Context, arg SetCommentPhaseParams
 		&i.ResolvedByID,
 		&i.SourceTaskID,
 		&i.QuickActionID,
+		&i.PhaseID,
 		&i.AnchorText,
 		&i.AnchorOffset,
-		&i.PhaseID,
 	)
 	return i, err
 }

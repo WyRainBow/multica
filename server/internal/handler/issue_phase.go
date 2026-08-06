@@ -87,39 +87,35 @@ func (h *Handler) CreateIssuePhase(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	position := int32(0)
-	if req.Position != nil {
-		position = *req.Position
-	} else {
-		max, err := h.Queries.MaxIssuePhasePosition(r.Context(), db.MaxIssuePhasePositionParams{
-			WorkspaceID: issue.WorkspaceID,
-			IssueID:     issue.ID,
-		})
-		if err != nil {
-			slog.Warn("read max phase position failed",
-				append(logger.RequestAttrs(r), "error", err)...)
-			writeError(w, http.StatusInternalServerError, "failed to create phase")
-			return
-		}
-		position = max + phasePositionStep
+	// The route, in track order. Read once and used twice: to place the new
+	// station and to refuse a duplicate name.
+	existing, err := h.Queries.ListIssuePhases(r.Context(), db.ListIssuePhasesParams{
+		WorkspaceID: issue.WorkspaceID,
+		IssueID:     issue.ID,
+	})
+	if err != nil {
+		slog.Warn("read issue phases failed", append(logger.RequestAttrs(r), "error", err)...)
+		writeError(w, http.StatusInternalServerError, "failed to create phase")
+		return
 	}
 
 	// One station per name. A route with two stations called 实施中 cannot say
 	// which one a comment belongs to, and the count on each stops meaning
 	// anything. Checked here for a readable refusal; a unique index backs it
 	// up so two concurrent creates cannot both slip through.
-	existing, err := h.Queries.ListIssuePhases(r.Context(), db.ListIssuePhasesParams{
-		WorkspaceID: issue.WorkspaceID,
-		IssueID:     issue.ID,
-	})
-	if err == nil {
-		for _, phase := range existing {
-			if strings.EqualFold(strings.TrimSpace(phase.Name), name) {
-				writeError(w, http.StatusConflict,
-					"this issue already has a phase named "+phase.Name)
-				return
-			}
+	for _, phase := range existing {
+		if strings.EqualFold(strings.TrimSpace(phase.Name), name) {
+			writeError(w, http.StatusConflict,
+				"this issue already has a phase named "+phase.Name)
+			return
 		}
+	}
+
+	position := int32(0)
+	if req.Position != nil {
+		position = *req.Position
+	} else {
+		position = nextPhasePosition(existing, name)
 	}
 
 	phase, err := h.Queries.CreateIssuePhase(r.Context(), db.CreateIssuePhaseParams{
