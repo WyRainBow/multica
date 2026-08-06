@@ -57,6 +57,17 @@ func newCardUpdateCmd() *cobra.Command {
 	return c
 }
 
+func newCardListCmd() *cobra.Command {
+	c := &cobra.Command{Use: "list"}
+	c.Flags().String("output", "table", "")
+	c.Flags().Bool("full-id", false, "")
+	c.Flags().Int("limit", 50, "")
+	c.Flags().Int("offset", 0, "")
+	c.Flags().String("issue", "", "")
+	c.Flags().String("search", "", "")
+	return c
+}
+
 func newCardAddCmd() *cobra.Command {
 	c := newCardUpdateCmd()
 	c.Use = "add"
@@ -195,5 +206,49 @@ func TestCardTitleForTable_FallsBackToTheBody(t *testing.T) {
 	got := cardTitleForTable(cardRow{Content: long})
 	if len([]rune(got)) != 41 {
 		t.Fatalf("clipped title is %d runes, want 40 plus the ellipsis", len([]rune(got)))
+	}
+}
+
+// Search runs on the server: the caller holds one page, so a client-side
+// filter would search the page and report nothing for a card two pages down.
+func TestCardList_SendsSearchAsAQueryParam(t *testing.T) {
+	paths, _ := cardTestServer(t, func(w http.ResponseWriter, r *http.Request) {
+		_ = json.NewEncoder(w).Encode(map[string]any{"cards": []any{}, "total": 0})
+	})
+
+	cmd := newCardListCmd()
+	_ = cmd.Flags().Set("search", "踩坑")
+	if _, err := captureStdout(t, func() error {
+		return runCardList(cmd, nil)
+	}); err != nil {
+		t.Fatalf("list: %v", err)
+	}
+
+	var listPath string
+	for _, p := range *paths {
+		if strings.HasPrefix(p, "GET /api/cards") {
+			listPath = p
+		}
+	}
+	if listPath == "" {
+		t.Fatalf("no card list request; paths = %v", *paths)
+	}
+}
+
+// --issue reads a different endpoint that returns that issue's cards in full
+// and takes no query. Silently dropping the search would look like a search
+// that matched everything.
+func TestCardList_RefusesSearchWithIssue(t *testing.T) {
+	cardTestServer(t, nil)
+
+	cmd := newCardListCmd()
+	_ = cmd.Flags().Set("search", "踩坑")
+	_ = cmd.Flags().Set("issue", testIssueUUID)
+
+	_, err := captureStdout(t, func() error {
+		return runCardList(cmd, nil)
+	})
+	if err == nil || !strings.Contains(err.Error(), "cannot be combined") {
+		t.Fatalf("error = %v, want a refusal", err)
 	}
 }

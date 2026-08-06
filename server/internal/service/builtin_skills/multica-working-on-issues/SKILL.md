@@ -401,6 +401,7 @@ workspace, with an optional link to the issue it came out of.
 ```bash
 multica card add --title "COC-97 踩坑" --content-stdin < notes.md
 multica card list                       # newest first
+multica card list --search 踩坑          # title AND body, whole workspace
 multica card list --issue COC-97        # only cards linked to that issue
 multica card get <card-id>
 ```

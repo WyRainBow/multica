@@ -183,19 +183,45 @@ func (h *Handler) ListCards(w http.ResponseWriter, r *http.Request) {
 		offset = parsed
 	}
 
-	rows, err := h.Queries.ListCards(r.Context(), db.ListCardsParams{
-		WorkspaceID: wsUUID,
-		Limit:       int32(limit),
-		Offset:      int32(offset),
-	})
+	// A card is written to be found again months later, which a page-by-page
+	// scroll cannot do. Filtering here rather than client-side because the
+	// caller only ever holds one page — a client filter would search the page,
+	// not the workspace, and would silently return nothing for a card two
+	// pages down.
+	//
+	// Lowercased in Go so SQL lowercases the column only, matching how issue
+	// search feeds the pg_bigm indexes (see buildSearchQuery in issue.go).
+	var (
+		rows  []db.Card
+		total int64
+		err   error
+	)
+	if query := strings.TrimSpace(r.URL.Query().Get("q")); query != "" {
+		pattern := "%" + strings.ToLower(query) + "%"
+		rows, err = h.Queries.SearchCards(r.Context(), db.SearchCardsParams{
+			WorkspaceID: wsUUID,
+			Pattern:     pattern,
+			Limit:       int32(limit),
+			Offset:      int32(offset),
+		})
+		if err == nil {
+			total, err = h.Queries.CountSearchCards(r.Context(), db.CountSearchCardsParams{
+				WorkspaceID: wsUUID,
+				Pattern:     pattern,
+			})
+		}
+	} else {
+		rows, err = h.Queries.ListCards(r.Context(), db.ListCardsParams{
+			WorkspaceID: wsUUID,
+			Limit:       int32(limit),
+			Offset:      int32(offset),
+		})
+		if err == nil {
+			total, err = h.Queries.CountCards(r.Context(), wsUUID)
+		}
+	}
 	if err != nil {
 		slog.Warn("list cards failed", append(logger.RequestAttrs(r), "error", err)...)
-		writeError(w, http.StatusInternalServerError, "failed to list cards")
-		return
-	}
-	total, err := h.Queries.CountCards(r.Context(), wsUUID)
-	if err != nil {
-		slog.Warn("count cards failed", append(logger.RequestAttrs(r), "error", err)...)
 		writeError(w, http.StatusInternalServerError, "failed to list cards")
 		return
 	}

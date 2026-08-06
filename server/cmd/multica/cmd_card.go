@@ -88,6 +88,7 @@ func init() {
 	cardListCmd.Flags().Int("limit", 50, "Maximum number of cards to return")
 	cardListCmd.Flags().Int("offset", 0, "Number of cards to skip (for pagination)")
 	cardListCmd.Flags().String("issue", "", "Only cards linked to this issue (key or UUID)")
+	cardListCmd.Flags().String("search", "", "Only cards whose title or content contains this text (case-insensitive). Searches the whole workspace, not just the current page. Ignored with --issue, which returns that issue's cards in full.")
 
 	cardGetCmd.Flags().String("output", "table", "Output format: table or json")
 
@@ -136,6 +137,9 @@ func runCardList(cmd *cobra.Command, _ []string) error {
 	path := "/api/cards"
 	issueRef, _ := cmd.Flags().GetString("issue")
 	if strings.TrimSpace(issueRef) != "" {
+		if search, _ := cmd.Flags().GetString("search"); strings.TrimSpace(search) != "" {
+			return fmt.Errorf("--search and --issue cannot be combined; the issue-scoped read returns that issue's cards in full")
+		}
 		ref, resolveErr := resolveIssueRef(ctx, client, issueRef)
 		if resolveErr != nil {
 			return fmt.Errorf("resolve issue: %w", resolveErr)
@@ -148,6 +152,9 @@ func runCardList(cmd *cobra.Command, _ []string) error {
 		params.Set("limit", fmt.Sprintf("%d", limit))
 		if offset > 0 {
 			params.Set("offset", fmt.Sprintf("%d", offset))
+		}
+		if search, _ := cmd.Flags().GetString("search"); strings.TrimSpace(search) != "" {
+			params.Set("q", strings.TrimSpace(search))
 		}
 		path += "?" + params.Encode()
 	}
@@ -166,7 +173,13 @@ func runCardList(cmd *cobra.Command, _ []string) error {
 	}
 
 	if len(resp.Cards) == 0 {
-		fmt.Fprintln(os.Stderr, "No cards yet.")
+		// "No cards yet" is false when 13 exist and none matched — the reader
+		// would conclude the workspace is empty and stop looking.
+		if search, _ := cmd.Flags().GetString("search"); strings.TrimSpace(search) != "" {
+			fmt.Fprintf(os.Stderr, "No cards match %q.\n", strings.TrimSpace(search))
+		} else {
+			fmt.Fprintln(os.Stderr, "No cards yet.")
+		}
 		return nil
 	}
 

@@ -22,6 +22,26 @@ func (q *Queries) CountCards(ctx context.Context, workspaceID pgtype.UUID) (int6
 	return count, err
 }
 
+const countSearchCards = `-- name: CountSearchCards :one
+SELECT count(*) FROM card
+WHERE workspace_id = $1
+  AND (LOWER(title) LIKE $2 OR LOWER(content) LIKE $2)
+`
+
+type CountSearchCardsParams struct {
+	WorkspaceID pgtype.UUID `json:"workspace_id"`
+	Pattern     string      `json:"pattern"`
+}
+
+// The total has to describe the same set the page came from, or "showing 5 of
+// 13" reports the workspace rather than the search.
+func (q *Queries) CountSearchCards(ctx context.Context, arg CountSearchCardsParams) (int64, error) {
+	row := q.db.QueryRow(ctx, countSearchCards, arg.WorkspaceID, arg.Pattern)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const createCard = `-- name: CreateCard :one
 INSERT INTO card (workspace_id, issue_id, author_type, author_id, title, content)
 VALUES ($1, $6, $2, $3, $4, $5)
@@ -204,6 +224,61 @@ type ListCardsForIssueParams struct {
 // are a narrative of how the work went, which reads forwards.
 func (q *Queries) ListCardsForIssue(ctx context.Context, arg ListCardsForIssueParams) ([]Card, error) {
 	rows, err := q.db.Query(ctx, listCardsForIssue, arg.WorkspaceID, arg.IssueID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []Card{}
+	for rows.Next() {
+		var i Card
+		if err := rows.Scan(
+			&i.ID,
+			&i.WorkspaceID,
+			&i.IssueID,
+			&i.AuthorType,
+			&i.AuthorID,
+			&i.Title,
+			&i.Content,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const searchCards = `-- name: SearchCards :many
+SELECT id, workspace_id, issue_id, author_type, author_id, title, content, created_at, updated_at FROM card
+WHERE workspace_id = $1
+  AND (LOWER(title) LIKE $2 OR LOWER(content) LIKE $2)
+ORDER BY created_at DESC, id DESC
+LIMIT $4 OFFSET $3
+`
+
+type SearchCardsParams struct {
+	WorkspaceID pgtype.UUID `json:"workspace_id"`
+	Pattern     string      `json:"pattern"`
+	Offset      int32       `json:"offset"`
+	Limit       int32       `json:"limit"`
+}
+
+// Cards are written to be found again months later, so a title-only match
+// would miss the body that holds the lesson. LOWER(col) LIKE rather than
+// ILIKE: the pg_bigm / pg_trgm GIN indexes this repo relies on for issue
+// search only match that form, and the pattern arrives already lowercased
+// from Go so SQL lowercases one side only.
+func (q *Queries) SearchCards(ctx context.Context, arg SearchCardsParams) ([]Card, error) {
+	rows, err := q.db.Query(ctx, searchCards,
+		arg.WorkspaceID,
+		arg.Pattern,
+		arg.Offset,
+		arg.Limit,
+	)
 	if err != nil {
 		return nil, err
 	}
