@@ -236,36 +236,29 @@ anchored comment whenever the passage is what you are talking about.
 
 ## Reading one comment you were handed
 
-When someone gives you a comment id — copied off a comment card in the app, or
-from the ID column of `multica issue comment list` — read that comment
-directly:
-
 ```bash
 multica issue comment get <comment-id>
 ```
 
-Do NOT reach it by listing the issue's comments and filtering. The list
-endpoint returns the whole thread; this returns one comment. On an issue with
-a long discussion that difference is most of your context budget.
+Do NOT reach it by listing the issue's comments and filtering: the list
+endpoint returns the whole thread, this returns one comment, and on a long
+discussion that difference is most of your context budget.
 
-It takes the FULL UUID. A truncated id (the 8-character form the list table
-and the app's card chip show) is rejected locally with a message pointing at
-where the full one lives — the short form is a handle for humans, never a
-value to retype.
-
-The response carries `issue_id` and `parent_id`, so from one comment you can
-reach the issue it is on and the thread root above it without a search.
+Takes the FULL UUID — the 8-character form shown in the list table and on the
+app's comment card is a handle for humans, never a value to retype. The
+response carries `issue_id` and `parent_id`, so one comment reaches the issue
+it is on and the thread root above it without a search.
 
 ## Phases — filing what happened under the station it happened in
 
 A long issue's comments arrive in one flat run: comment 3 and comment 30 can
-belong to completely different stretches of work, and nothing in the thread
-says so. A PHASE is a container inside one issue that holds the comments
-written while the issue was in it.
+belong to different stretches of work and nothing says so. A PHASE is a
+container inside one issue holding the comments written while it was there.
 
-A phase is not a status. `status` answers "where is this now" and forgets the
-route; a phase stays. The usual route is 开始 → 评审 → 冻结, with review
-recurring as `评审 2`, `评审 3` — each round its own container.
+Not a status: `status` answers "where is this now" and forgets the route, a
+phase stays. **Every new issue is created with 开始 → 评审 → 冻结 already on
+it** — you file into those rather than building a route first. Review recurs
+as `评审 2`, `评审 3`, each round its own container.
 
 ```bash
 multica issue phase list <id>                      # NAME, STATE, COMMENTS, ENTERED, COMPLETED
@@ -278,29 +271,25 @@ multica issue comment list <id> --phase 评审
 
 Rules that will bite you if you assume otherwise:
 
-- **`<phase>` is the NAME**, case-insensitive, unique prefix accepted; the full
-  UUID also works. Matching is exact-first, so `评审` still resolves once
-  `评审 2` exists.
-- **Names are unique per issue.** Adding a duplicate returns **409** rather
-  than leaving two stations that read the same. Applying a route template
-  twice is the case this protects.
+- **`<phase>` is the NAME** — case-insensitive, unique prefix accepted, full
+  UUID also works. Exact-first, so `评审` still resolves once `评审 2` exists.
+- **Names are unique per issue**; a duplicate returns **409** rather than two
+  stations that read the same.
 - **`complete` requires `enter` first** (**409** otherwise) — completing an
-  unentered phase would record a route the work never took. `enter` on an
-  already-entered phase keeps the FIRST arrival time and clears completion:
-  re-entering means the work came back, not that it started over.
+  unentered phase records a route the work never took. `enter` on an entered
+  phase keeps the FIRST arrival and clears completion: coming back is not
+  starting over.
 - **State is derived**, never stored: completed → `done`, entered → `current`,
   neither → `pending`.
-- **Deleting a phase deletes its comments**, so the CLI requires `--force` once
-  the phase holds any. Read `multica issue phase list` first — that count is
-  the only warning you get.
-- **`comment list --phase` filters client-side**, so it is rejected together
-  with `--recent` / `--tail` / `--thread` / `--before`: those pick a window
-  before the filter could apply, and the result would read as "everything in
-  this phase" while being only a slice of it.
+- **Deleting a phase deletes its comments**, so the CLI needs `--force` once it
+  holds any. `phase list` shows that count — it is the only warning you get.
+- **`comment list --phase` filters client-side**, so it is rejected with
+  `--recent` / `--tail` / `--thread` / `--before`: those pick a window first,
+  and the result would read as "everything in this phase" while being a slice.
 
 Activities (status changes, description edits) carry no phase field. The UI
-places them by TIME, into whichever phase was current when they happened; the
-CLI does not group them at all.
+places them by TIME into whichever phase was current; the CLI does not group
+them at all.
 
 ## A finished issue's title and description are frozen
 
@@ -328,32 +317,22 @@ your own initiative.
 
 ### Reading one: it is a record, not the current state
 
-The freeze is a rule about writing. Reading a finished issue has its own rule,
-and it is the one that actually costs you if you get it wrong.
+The freeze is a rule about writing. Reading has its own, and it is the one
+that costs you if you get it wrong: a finished issue describes **what was true
+when it finished** — accurate about the past, silent about the present. A
+design it describes may have been replaced last month and it neither knows
+that nor says so. When `status` is `done` or `cancelled`:
 
-A finished issue describes **what was true when it finished**. That makes it
-accurate about the past and silent about the present. A design it describes may
-have been replaced last month; the issue neither knows that nor says so.
-
-So when `status` is `done` or `cancelled`:
-
-- **Do not treat the description as the current state of anything.** Verify
-  against the code, the config, or a live check before acting on it. `multica
-  issue get` prints this reminder on stderr so it is hard to miss.
-- **Do not discount it either.** Why a decision was made, what was tried, what
-  was rejected — that is usually written down nowhere else and is still true.
-  "Finished" is not "wrong", and an agent that skims past a closed issue
-  re-litigates decisions that were already settled.
-- **There is no automatic pointer to whatever replaced it.** Issue relations
-  are only `blocks` / `blocked_by` / `related` plus parent/child; none of them
-  means "superseded by". If a successor was recorded, it is a metadata key:
-
-  ```bash
-  multica issue metadata list <id>        # look for superseded_by
-  ```
-
-  If you finish an issue that replaces an older one, record it, or the next
-  reader has no way to find the current version:
+- **Do not treat the description as current state.** Verify against the code,
+  the config, or a live check first. `multica issue get` prints this on stderr.
+- **Do not discount it either.** Why a decision was made and what was rejected
+  is usually written down nowhere else and is still true. "Finished" is not
+  "wrong"; skimming past a closed issue re-litigates settled decisions.
+- **No automatic pointer to whatever replaced it.** Relations are only
+  `blocks` / `blocked_by` / `related` plus parent/child — none means
+  "superseded by". A recorded successor is a metadata key, so check
+  `multica issue metadata list <id>` for `superseded_by`, and when you finish
+  an issue that replaces an older one, record it there:
 
   ```bash
   multica issue metadata set <old-id> --key superseded_by --value COC-99
@@ -421,28 +400,20 @@ that is still the only way the issue reaches one.
 
 ## Mark a throwaway issue as a test
 
-An issue you create to try something out — checking a behaviour, reproducing a
-bug, verifying a change — must be marked, or it sits in the list looking like
-real work and someone has to open it to find out.
+An issue you create to try something out must be marked, or it sits in the
+list looking like real work.
 
 ```bash
 multica issue create --test --title "封存横幅是否插到正文顶部"
-# title becomes: [测试] 封存横幅是否插到正文顶部
+# [测试] 封存横幅是否插到正文顶部
 ```
 
-`--test` prefixes the title with `[测试]`. It is idempotent, so passing it with
-an already-prefixed title, or retrying a create, still yields one prefix.
+`--test` prefixes `[测试]`, idempotently. Use it for anything you would delete
+afterwards; not going through the CLI, write the prefix yourself — the
+convention is the title, not the flag. (A prefix rather than a label because
+`multica issue list` has no labels column.)
 
-Use it for anything you would delete afterwards. If you are not going through
-the CLI, write the same prefix yourself — the convention is the title, not the
-flag.
-
-A prefix rather than a label because `multica issue list` has no labels column:
-a label would be invisible in exactly the place these have to be told apart.
-Labels are still the better answer for anything filtered in the web UI.
-
-Delete your test issues when you are done with them, and say so. A marked
-issue left behind is better than an unmarked one, but neither is tidy.
+Delete your test issues when you are done, and say so.
 
 ## Sub-issues: `todo` starts work now, `backlog` parks it
 
