@@ -644,6 +644,13 @@ func (s *AutopilotService) dispatchCreateIssue(ctx context.Context, ap db.Autopi
 		return fmt.Errorf("create issue: %w", err)
 	}
 
+	// Same route every other issue gets. An autopilot-created issue is still
+	// an issue, and this is the path where a missing route would be least
+	// likely to be noticed — nobody watched it being created.
+	if err := seedDefaultPhases(ctx, qtx, ap.WorkspaceID, issue.ID); err != nil {
+		return err
+	}
+
 	// Fan out the default subscriber template inside the same tx as the
 	// issue insert, before EventIssueCreated fires — so notification
 	// listeners see the full subscriber set on the first event instead of

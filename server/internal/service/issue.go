@@ -11,6 +11,7 @@ import (
 	"github.com/multica-ai/multica/server/internal/analytics"
 	"github.com/multica-ai/multica/server/internal/events"
 	"github.com/multica-ai/multica/server/internal/issueguard"
+	"github.com/multica-ai/multica/server/internal/issuephase"
 	"github.com/multica-ai/multica/server/internal/issueposition"
 	obsmetrics "github.com/multica-ai/multica/server/internal/metrics"
 	"github.com/multica-ai/multica/server/internal/util"
@@ -315,6 +316,23 @@ func (s *IssueService) Create(ctx context.Context, p IssueCreateParams, opts Iss
 		}
 	}
 
+	// Seed the route in the same transaction, for the same reason the labels
+	// above are attached here: an issue that committed without its stations
+	// would break the one thing this is for — that EVERY issue has a route,
+	// including sub-issues and anything an agent or a channel created. A
+	// second round-trip after commit could half-fail and leave exactly the
+	// issues nobody would think to check.
+	//
+	// Sub-issues get one too. A route is a property of an issue, and a
+	// sub-issue is an issue; carving out an exception would mean the answer to
+	// "does this have stations" depends on where it sits in a tree.
+	//
+	// Positions are 0, 1000, 2000 rather than a max+step read: nothing exists
+	// yet to read a maximum from.
+	if err := seedDefaultPhases(ctx, qtx, p.WorkspaceID, issue.ID); err != nil {
+		return IssueCreateResult{}, err
+	}
+
 	if err := tx.Commit(ctx); err != nil {
 		return IssueCreateResult{}, fmt.Errorf("commit: %w", err)
 	}
@@ -331,6 +349,34 @@ func (s *IssueService) Create(ctx context.Context, p IssueCreateParams, opts Iss
 	s.maybeEnqueueOnAssign(ctx, issue, p.CreatorType, actorID)
 
 	return IssueCreateResult{Issue: issue, Attachments: attachments, Labels: labels}, nil
+}
+
+// seedDefaultPhases gives a new issue the route every issue starts with.
+//
+// Called inside the create transaction, not after it: an issue that committed
+// without its stations would break the one thing this is for — that EVERY
+// issue has a route, including sub-issues and anything an agent, a channel or
+// an autopilot created. A second round-trip after commit could half-fail and
+// leave exactly the issues nobody would think to check.
+//
+// Sub-issues get one too. A route is a property of an issue, and a sub-issue
+// is an issue; carving out an exception would make "does this have stations"
+// depend on where it sits in a tree.
+//
+// Positions are 0, 1000, 2000 rather than a max+step read — nothing exists yet
+// to read a maximum from.
+func seedDefaultPhases(ctx context.Context, qtx *db.Queries, workspaceID, issueID pgtype.UUID) error {
+	for i, name := range issuephase.DefaultRoute {
+		if _, err := qtx.CreateIssuePhase(ctx, db.CreateIssuePhaseParams{
+			WorkspaceID: workspaceID,
+			IssueID:     issueID,
+			Name:        name,
+			Position:    int32(i) * issuephase.PositionStep,
+		}); err != nil {
+			return fmt.Errorf("seed issue phase %q: %w", name, err)
+		}
+	}
+	return nil
 }
 
 // validateIssueLabels checks that every requested label exists in the
