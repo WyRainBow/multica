@@ -53,10 +53,27 @@ type ExecOptions struct {
 	// conversation, independent of ResumeSessionID (which a fallback retry may
 	// clear). When it is true but the backend ends up on a fresh thread — the
 	// live resume RPC was rejected, or a transport failure forced a fresh retry —
-	// the backend surfaces a continuity notice to the user instead of silently
+	// the backend surfaces a continuity notice instead of silently
 	// restarting. Currently honoured by the codex backend (MUL-4424).
-	ResumeExpected   bool
-	ExtraArgs        []string        // daemon-wide default CLI arguments appended before CustomArgs; currently read by claude and codex backends only
+	ResumeExpected bool
+	// ResumeContinuityNotice is the text to prepend to the first turn when
+	// ResumeExpected holds but the backend lands on a fresh thread anyway. The
+	// caller owns the wording because only it knows what the surface lost — an
+	// issue's comments and a Slack channel's history survive and can be re-read,
+	// a web chat's and a Feishu channel's cannot — and that difference decides
+	// whether the agent should tell the user anything at all (MUL-5722).
+	//
+	// Empty means say nothing, and the caller MUST leave it empty when its own
+	// prompt already carries the notice. That is what keeps a turn from paying
+	// for the same paragraph twice: the daemon injects it whenever it already
+	// knows the resume is gone, and the backend covers only the case the daemon
+	// cannot see — a live resume RPC rejected mid-run.
+	ResumeContinuityNotice string
+	// ExtraArgs is honoured only by backends that opt in by reading it; the
+	// rest ignore it. Deliberately not enumerated here — the previous list
+	// went stale as backends were added, which is how MULTICA_QWENPAW_ARGS
+	// shipped plumbed but dropped. Grep for ExtraArgs to see today's set.
+	ExtraArgs        []string        // daemon-wide default CLI arguments appended before CustomArgs
 	CustomArgs       []string        // per-agent CLI arguments appended after ExtraArgs
 	QwenpawWorkspace string          // per-task QwenPaw workspace directory (passed as --workspace to qwenpaw acp); empty when not applicable
 	McpConfig        json.RawMessage // if non-nil, MCP server config to pass via --mcp-config
@@ -215,6 +232,16 @@ type Config struct {
 	RuntimeID      string
 	DaemonVersion  string
 	CodexVersion   string
+	// BuiltinRuntime reports that ExecutablePath is the provider's own
+	// discovered binary rather than a custom runtime profile's command. A
+	// custom profile keeps its protocol family as the provider, so the
+	// provider name cannot distinguish the two: `protocol_family: hermes`
+	// with `command_name: jcode` arrives as "hermes" while being an
+	// unrelated implementation. Backends use this to scope
+	// compatibility exceptions that were verified against a specific
+	// vendor's binary; it defaults to false so an unset caller fails
+	// closed onto standard behavior.
+	BuiltinRuntime bool
 }
 
 // New creates a Backend for the given agent type.

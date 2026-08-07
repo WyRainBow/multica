@@ -34,11 +34,12 @@
   "queue": {
     "title_other": "대기 중인 메시지 {{count}}개",
     "clear": "모두 지우기",
-    "send_now": "지금 보내기",
-    "send_now_unavailable": "현재 답변이 시작되면 지금 보낼 수 있습니다",
-    "send_now_unavailable_toast": "지금 보낼 수 없습니다. 대기열을 새로 고치는 중입니다.",
+    "steer": "지시",
+    "steer_unavailable": "현재 답변이 시작되면 지시할 수 있습니다",
+    "steer_unavailable_toast": "현재는 지시할 수 없습니다. 대기열을 새로 고치는 중입니다.",
     "edit": "대기 중인 메시지 편집",
     "remove": "대기열에서 삭제",
+    "more": "추가 대기열 작업",
     "fallback": "대기 중인 메시지",
     "action_failed_toast": "대기 중인 메시지를 업데이트하지 못했습니다"
   },
@@ -145,6 +146,26 @@
     "list_open": "열린 태스크를 우선순위별로 정리해 줘",
     "summarize_today": "오늘 내가 한 일을 요약해 줘",
     "plan_next": "다음에 할 일을 계획해 줘"
+  },
+  "onboarding_cards": {
+    "aria_label": "시작 방법",
+    "cta": "시작",
+    "board": {
+      "title": "몇 분 만에 태스크 보드 완성",
+      "desc": "목표를 한 줄로 알려주세요. 프로젝트를 만들고 태스크로 나눠 우선순위까지 정리합니다.",
+      "prompt": "지금 목표를 프로젝트 보드로 정리해 줘"
+    },
+    "delegate": {
+      "title": "먼저 하나 맡겨 보기",
+      "desc": "예를 들어 간단한 리서치 — 결과는 태스크와 리포트로 돌아옵니다.",
+      "prompt": "하나 맡길게: 간단한 리서치를 하고 결과를 리포트로 정리해 줘"
+    },
+    "digest": {
+      "title": "데일리 리포트가 알아서 도착",
+      "desc": "매일 워크스페이스 진행 상황을 모아 인박스로 보냅니다.",
+      "prompt": "매일 아침 워크스페이스 진행 상황을 요약하는 자동화를 만들어 줘"
+    },
+    "digest_badge": "매일 9:00"
   },
   "no_agent_banner": "채팅을 시작하려면 에이전트가 필요합니다.",
   "archived_agent_banner": "{{name}}은(는) 보관되었습니다. 이 대화는 읽기 전용입니다.",

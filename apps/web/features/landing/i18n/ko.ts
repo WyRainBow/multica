@@ -118,7 +118,7 @@ export function createKoDict(allowSignup: boolean): LandingDict {
           {
             title: "처음 실행할 때 자동 등록",
             description:
-              "Multica는 Antigravity, Claude Code, CodeBuddy, Codex, Cursor, Copilot, Hermes, Kimi, Reasonix, Kiro CLI, OpenCode, OpenClaw, Pi, Qoder, Trae CLI 등 15개 지원 도구를 스캔해 이미 설치된 것을 런타임으로 자동 등록합니다.",
+              "Multica는 Antigravity, Claude Code, CodeBuddy, Codex, Copilot, Cursor, DevEco Code, Grok, Hermes, Kimi, Kiro CLI, OpenClaw, OpenCode, Pi, Qoder, Qoder CN, Qwen Code, QwenPaw, Reasonix, Trae CLI 등 20개 지원 도구를 스캔해 이미 설치된 것을 런타임으로 자동 등록합니다.",
           },
         ],
       },
@@ -193,7 +193,7 @@ export function createKoDict(allowSignup: boolean): LandingDict {
         {
           question: "Multica는 어떤 코딩 에이전트를 지원하나요?",
           answer:
-            "Multica는 Antigravity, Claude Code, CodeBuddy, Codex, Cursor, Copilot, Hermes, Kimi, Reasonix, Kiro CLI, OpenCode, OpenClaw, Pi, Qoder, Trae CLI 등 15개 코딩 도구를 기본 지원합니다. 데몬이 이미 설치된 CLI를 자동으로 찾아 각각 런타임으로 등록합니다. 오픈소스이므로 직접 백엔드를 추가할 수도 있습니다.",
+            "Multica는 Antigravity, Claude Code, CodeBuddy, Codex, Copilot, Cursor, DevEco Code, Grok, Hermes, Kimi, Kiro CLI, OpenClaw, OpenCode, Pi, Qoder, Qoder CN, Qwen Code, QwenPaw, Reasonix, Trae CLI 등 20개 코딩 도구를 기본 지원합니다. 데몬이 이미 설치된 CLI를 자동으로 찾아 각각 런타임으로 등록합니다. 오픈소스이므로 직접 백엔드를 추가할 수도 있습니다.",
         },
         {
           question: "셀프 호스팅만 가능한가요, 클라우드 버전도 있나요?",
@@ -268,6 +268,70 @@ export function createKoDict(allowSignup: boolean): LandingDict {
         fixes: "버그 수정",
       },
       entries: [
+        {
+          version: "0.4.20",
+          date: "2026-08-06",
+          title: "DingTalk 봇, Mika와 함께하는 첫 시작, 실행별 토큰 비용",
+          changes: [],
+          features: [
+            "에이전트를 DingTalk에 둘 수 있어요. DM이나 그룹에서 @로 부르면 됩니다.",
+            "가입을 마치면 Mika가 기다리고, 첫 태스크를 시작할 카드도 함께 나옵니다.",
+            "실행 기록에 각 실행의 비용과 태스크 전체 합계가 표시됩니다.",
+            "댓글 알림을 껐어도 @로 이름을 부른 알림은 그대로 옵니다.",
+            "휴대폰 채팅이 전체 화면으로 열리고, 입력창이 키보드 위에 놓입니다.",
+            "multica나 Agent CLI를 바꿔 두면 다시 시작하지 않아도 그대로 반영됩니다.",
+          ],
+          improvements: [
+            "에이전트가 매번 읽는 지시가 짧아져, 그만큼을 실제 작업에 씁니다.",
+            "추론 강도가 없는 런타임은 값이 잘못됐다는 대신 그 사실을 알려 줍니다.",
+            "휴대폰에서 태스크 상세와 논의 목록이 화면을 더 넓게 씁니다.",
+            "실행 기록 제목이 줄바꿈되지 않고 늘 한 줄로 유지됩니다.",
+          ],
+          fixes: [
+            "채팅에서 /issue로 보낸 이미지가 새 태스크의 첨부로 함께 들어갑니다.",
+            "한 번의 로그인 실패로 태스크가 영구히 막히지 않습니다.",
+            "사용자 지정 런타임의 모델 목록이 해당 런타임의 프로그램에서 채워집니다.",
+            "데스크톱이 터미널 CLI가 가진 설정을 건드리지 않습니다.",
+            "OpenCode 세션이 도구 호출 실패 후에도 계속 이어집니다.",
+            "Windows의 Pi 에이전트가 프롬프트에서 실패하지 않고 안정적으로 시작합니다.",
+            "Kimi, Grok, Kiro, Qoder, Trae CLI 등의 사용량과 비용도 기록됩니다.",
+          ],
+        },
+        {
+          version: "0.4.19",
+          date: "2026-08-05",
+          title: "프롬프트 추가 경량화, 새 런타임과 채팅 메시지 대기열",
+          changes: [],
+          features: [
+            "에이전트가 실행 중에도 보낼 수 있고, 메시지는 차례대로 처리됩니다.",
+            "대기 중인 메시지는 즉시 전송, 편집, 삭제, 한 번에 비우기가 됩니다.",
+            "Reasonix 런타임을 지원해, 바로 작업을 맡길 수 있습니다.",
+            "QwenPaw으로도 에이전트를 실행할 수 있습니다.",
+            "이미지를 열고 화살표 키로 앞뒤 이미지를 넘겨 볼 수 있습니다.",
+            "태스크 헤더에 모든 논의가 나열돼, 찾아서 바로 그 자리로 이동합니다.",
+            "중국어, 일본어, 한국어에서 일상적인 표현에 맞춘 용어를 씁니다.",
+          ],
+          improvements: [
+            "에이전트가 매번 읽는 지시가 짧아져, 그만큼을 실제 작업에 씁니다.",
+            "공유 채널의 에이전트가 여러 사람과 이야기하고 있음을 압니다.",
+            "Copilot 사용량에 실제 사용한 모델이 표시되고, 토큰 수가 없을 때도 알려 줍니다.",
+            "휴대폰의 태스크 상세가 넓은 여백 대신 화면 너비를 씁니다.",
+            "데스크톱에서 탭을 닫으면 바로 전에 보던 탭으로 돌아갑니다.",
+            "하위 태스크가 없는 태스크는 구독 해제가 한 번의 클릭으로 끝납니다.",
+            "셀프 호스팅 문서에 데스크톱이 서버 주소를 읽는 파일을 명시했습니다.",
+            "데스크톱에서 아무 성과도 없던 백그라운드 진단을 없앴습니다.",
+          ],
+          fixes: [
+            "긴 Codex 대화가 다시 이어지고, 매번 실패하지 않습니다.",
+            "컨텍스트를 다 쓴 실행은 분명하게 실패하고, 빈 답변을 주지 않습니다.",
+            "예약한 자동 운행이 다음 깨우기를 기다리지 않고 제때 시작합니다.",
+            "채팅에서 /issue로 태스크를 만들어도 같은 명령이 두 번 실행되지 않습니다.",
+            "이름이 비슷한 스킬이 QwenPaw에서 서로를 덮어쓰지 않습니다.",
+            "대기 중인 대화의 첫 메시지가 줄을 서지 않고 바로 표시됩니다.",
+            "대기 중인 메시지가 보낸 순서대로 대화 기록에 들어갑니다.",
+            "깨진 페이지 때문에 열리지 않던 문서 사이트가 다시 열립니다.",
+          ],
+        },
         {
           version: "0.4.18",
           date: "2026-08-04",
@@ -1572,7 +1636,7 @@ export function createKoDict(allowSignup: boolean): LandingDict {
           title: "더 똑똑한 환영 흐름과 실시간 작업 신호",
           changes: [],
           features: [
-            "신규 사용자는 Multica Helper가 워크스페이스 소개, 둘러보기, 환영 페이지 만들기까지 함께 진행해 주는 새 온보딩 흐름을 경험하게 됩니다.",
+            "신규 사용자는 Mika와 대화하며 실제 첫 태스크를 완료하고 필요할 때만 specialist를 추가하는 온보딩 흐름을 경험합니다.",
             "태스크 목록에서 어떤 에이전트가 작업 중인지 표시되며, 세부 정보 보기와 \"작업 중\" 필터도 함께 제공됩니다.",
             "하위 태스크가 완료되면 상위 태스크에도 플랫폼 업데이트가 남고, 알맞은 담당자에게도 알림이 갑니다.",
           ],

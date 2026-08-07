@@ -397,6 +397,18 @@ UPDATE chat_message
 SET channel_media_pending_until = NULL
 WHERE id = $1 AND chat_session_id = $2;
 
+-- name: UpdateChatMessageContentForChannelMedia :execrows
+-- Channel messages are immutable user turns. Media resolution may finish after
+-- the initial append, so materialize stable inline attachment references in the
+-- same transaction that binds those attachments. The provenance and role guards
+-- prevent this narrow post-append path from rewriting ordinary web/agent rows.
+UPDATE chat_message
+SET content = sqlc.arg(content)
+WHERE id = sqlc.arg(id)
+  AND chat_session_id = sqlc.arg(chat_session_id)
+  AND role = 'user'
+  AND channel_ingested;
+
 -- name: LinkChatMessageToTask :exec
 UPDATE chat_message
 SET task_id = $2
@@ -804,6 +816,19 @@ WITH retired_sessions AS (
     FROM agent_task_queue r
     WHERE r.chat_session_id = $1
       AND r.retired_session_id IS NOT NULL
+), resume_overflow_at AS (
+    -- completed_at alone, where the issue-side twin coalesces four columns:
+    -- this query already selects and orders by bare completed_at throughout,
+    -- so the cutoff has to be measured on the same clock as the values it is
+    -- compared against. Change both halves together if that ever moves.
+    SELECT MAX(t.completed_at) AS at
+    FROM agent_task_queue t
+    WHERE t.chat_session_id = $1
+      AND t.status = 'failed'
+      AND (
+        COALESCE(t.failure_reason, '') = 'codex_resume_oversized'
+        OR (COALESCE(t.error, '') ILIKE '%thread/resume failed%' AND COALESCE(t.error, '') ILIKE '%token too long%')
+      )
 ), latest_per_session AS (
     SELECT DISTINCT ON (t.session_id)
         t.session_id, t.work_dir, t.runtime_id, t.status, t.failure_reason, t.error, t.completed_at
@@ -819,11 +844,27 @@ WHERE session_id NOT IN (SELECT session_id FROM retired_sessions)
     status IN ('completed', 'cancelled')
     OR (
       status = 'failed'
-      AND COALESCE(failure_reason, '') NOT IN ('iteration_limit', 'agent_fallback_message', 'api_invalid_request', 'codex_semantic_inactivity', 'agent_error.context_overflow')
+      AND COALESCE(failure_reason, '') NOT IN ('iteration_limit', 'agent_fallback_message', 'api_invalid_request', 'codex_semantic_inactivity', 'agent_error.context_overflow', 'codex_resume_oversized')
       AND NOT (COALESCE(error, '') ILIKE '%400%' AND COALESCE(error, '') ILIKE '%invalid_request_error%')
+      -- Mirrors the GetLastTaskSession auth-resolution guard: a provider that
+      -- cannot resolve its auth method fails deterministically on resume, and
+      -- the classification is agent_error.unknown (resume-safe), so only this
+      -- text guard keeps the dead session from being replayed. This and
+      -- GetLastTaskSession must move together.
+      -- Keep in sync with ResumeUnsafeFailure and GetLastTaskSession.
+      AND NOT (COALESCE(error, '') ILIKE '%could not resolve authentication method%')
       AND NOT (COALESCE(error, '') ~* 'must not be empty|must be non-?empty|must have non-?empty|non-?empty content|cannot be empty|should not be empty'
                AND COALESCE(error, '') ~* 'role[^a-z0-9]{0,2}assistant|assistant message|message at position|messages\.[0-9]|messages\[[0-9]')
     )
+  )
+  -- MUL-5722, mirroring GetLastTaskSession: an overflowed resume records no
+  -- session, so exclude by time instead of by matching the failed row. Note
+  -- this only guards the FALLBACK — the claim handler reads
+  -- chat_session.session_id first, so a pointer still naming the oversized
+  -- thread has to be cleared at fail time (see FailTask) to be covered.
+  AND (
+    (SELECT at FROM resume_overflow_at) IS NULL
+    OR completed_at > (SELECT at FROM resume_overflow_at)
   )
 ORDER BY completed_at DESC
 LIMIT 1;
@@ -1133,6 +1174,22 @@ WHERE task_id = $1 AND role = 'assistant'
 ORDER BY created_at DESC
 LIMIT 1;
 
+-- name: TaskHasOnboardingKickoffInput :one
+-- Whether this input batch is the product-authored onboarding kickoff. The
+-- opening it produces renders the starter cards instead of suggestion chips
+-- (MUL-5765), so the quick-actions pass skips that turn.
+--
+-- $1 is the INPUT-OWNING task id — COALESCE(task.chat_input_task_id, task.id),
+-- i.e. chatInputOwnerID — never a retry clone's own id. The whole retry chain
+-- consumes the root's input batch (MUL-4351), so only the root owns the
+-- kickoff user row; passing a child's id here silently answers false.
+SELECT EXISTS (
+    SELECT 1 FROM chat_message
+    WHERE task_id = $1
+      AND role = 'user'
+      AND message_kind = 'onboarding_kickoff'
+);
+
 -- name: GetLatestAssistantChatMessageForSession :one
 -- The session's most recent assistant turn, used as the regeneration target
 -- when the user clicks "refresh" on the quick-actions row (MUL-5149). Only rows
@@ -1153,3 +1210,17 @@ WHERE id = (
     LIMIT 1
 )
 RETURNING *;
+
+-- name: GetOldestActiveChatSessionForCreatorAgent :one
+-- Identity for "this member's conversation with this agent", independent of
+-- the session title. Mika's onboarding session used to be matched on its
+-- localized title from the client, which made the lookup both racy and
+-- language-dependent. Oldest wins so the answer stays stable once a member
+-- has opened more than one session with the same agent.
+SELECT * FROM chat_session
+WHERE workspace_id = $1
+  AND creator_id = $2
+  AND agent_id = $3
+  AND status = 'active'
+ORDER BY created_at ASC
+LIMIT 1;

@@ -118,7 +118,7 @@ export function createJaDict(allowSignup: boolean): LandingDict {
           {
             title: "初回起動時に自動検出",
             description:
-              "Multica は Antigravity、Claude Code、CodeBuddy、Codex、Cursor、Copilot、Hermes、Kimi、Reasonix、Kiro CLI、OpenCode、OpenClaw、Pi、Qoder、Trae CLI という15種類の対応ツールをスキャンし、見つかったものをそれぞれランタイムとして登録します。",
+              "Multica は Antigravity、Claude Code、CodeBuddy、Codex、Copilot、Cursor、DevEco Code、Grok、Hermes、Kimi、Kiro CLI、OpenClaw、OpenCode、Pi、Qoder、Qoder CN、Qwen Code、QwenPaw、Reasonix、Trae CLI という20種類の対応ツールをスキャンし、見つかったものをそれぞれランタイムとして登録します。",
           },
         ],
       },
@@ -139,7 +139,7 @@ export function createJaDict(allowSignup: boolean): LandingDict {
         {
           title: "CLI をインストールしてマシンを接続",
           description:
-            "multica setup を実行すると、OAuth の手順を案内し、デーモンを起動し、15種類の対応コーディングツール(Antigravity、Claude Code、CodeBuddy、Codex、Cursor、Copilot、Hermes、Kimi、Reasonix、Kiro CLI、OpenCode、OpenClaw、Pi、Qoder、Trae CLI)をスキャンします。すでにインストール済みのものは、自動的にランタイムとして登録されます。",
+            "multica setup を実行すると、OAuth の手順を案内し、デーモンを起動し、20種類の対応コーディングツール(Antigravity、Claude Code、CodeBuddy、Codex、Copilot、Cursor、DevEco Code、Grok、Hermes、Kimi、Kiro CLI、OpenClaw、OpenCode、Pi、Qoder、Qoder CN、Qwen Code、QwenPaw、Reasonix、Trae CLI)をスキャンします。すでにインストール済みのものは、自動的にランタイムとして登録されます。",
         },
         {
           title: "最初のエージェントを作成",
@@ -193,7 +193,7 @@ export function createJaDict(allowSignup: boolean): LandingDict {
         {
           question: "Multica はどのコーディングエージェントに対応していますか?",
           answer:
-            "Multica は、Antigravity、Claude Code、CodeBuddy、Codex、Cursor、Copilot、Hermes、Kimi、Reasonix、Kiro CLI、OpenCode、OpenClaw、Pi、Qoder、Trae CLI の15種類のコーディングツールに標準対応しています。デーモンが、すでにインストール済みの CLI を自動検出し、それぞれをランタイムとして登録します。オープンソースなので、独自のバックエンドを追加することもできます。",
+            "Multica は、Antigravity、Claude Code、CodeBuddy、Codex、Copilot、Cursor、DevEco Code、Grok、Hermes、Kimi、Kiro CLI、OpenClaw、OpenCode、Pi、Qoder、Qoder CN、Qwen Code、QwenPaw、Reasonix、Trae CLI の20種類のコーディングツールに標準対応しています。デーモンが、すでにインストール済みの CLI を自動検出し、それぞれをランタイムとして登録します。オープンソースなので、独自のバックエンドを追加することもできます。",
         },
         {
           question: "セルフホストが必須ですか、それともクラウド版もありますか?",
@@ -269,6 +269,70 @@ export function createJaDict(allowSignup: boolean): LandingDict {
         fixes: "バグ修正",
       },
       entries: [
+        {
+          version: "0.4.20",
+          date: "2026-08-06",
+          title: "DingTalk ボット、Mika による初回ガイド、実行ごとのトークン費用",
+          changes: [],
+          features: [
+            "エージェントを DingTalk に置けます。DM でも、グループで @ でも使えます。",
+            "登録を終えると Mika が待っていて、最初のタスクを始めるカードも並びます。",
+            "実行記録に各実行の費用と、タスク全体の合計が表示されます。",
+            "コメント通知をミュートしても、@ で名前を呼ばれた通知は届きます。",
+            "スマートフォンのチャットが全画面で開き、入力欄がキーボードの上に来ます。",
+            "multica や Agent CLI を差し替えると、再起動なしでそのまま反映されます。",
+          ],
+          improvements: [
+            "エージェントが毎回読み込む指示が短くなり、その分を作業に使えます。",
+            "推論の強さを持たないランタイムは、値が不正ではなくその旨を伝えます。",
+            "スマートフォンのタスク詳細と議論の一覧が、画面をより広く使います。",
+            "実行記録の見出しが折り返さず、常に 1 行に収まります。",
+          ],
+          fixes: [
+            "チャットの /issue で送った画像が、新しいタスクの添付として届きます。",
+            "1 回のサインイン失敗でタスクが永久に詰まることがなくなりました。",
+            "カスタム ランタイムのモデル一覧が、そのランタイム自身のプログラムから埋まります。",
+            "デスクトップが、ターミナルの CLI が持つ設定に触れなくなりました。",
+            "OpenCode のセッションが、ツール呼び出しの失敗後も続きます。",
+            "Windows の Pi エージェントが、プロンプトで失敗せず安定して起動します。",
+            "Kimi・Grok・Kiro・Qoder・Trae CLI などの使用量と費用も記録されます。",
+          ],
+        },
+        {
+          version: "0.4.19",
+          date: "2026-08-05",
+          title: "プロンプトをさらに軽量化、新しいランタイムとチャットのメッセージ キュー",
+          changes: [],
+          features: [
+            "エージェントの実行中でも送信でき、メッセージは順番に処理されます。",
+            "待機中のメッセージは、即時送信・編集・削除・一括クリアができます。",
+            "Reasonix ランタイムに対応し、そのまま作業を任せられます。",
+            "QwenPaw でもエージェントを動かせるようになりました。",
+            "画像を開いたあと、矢印キーで前後の画像をたどれます。",
+            "タスクのヘッダーに議論の一覧が並び、検索してそのまま該当箇所へ移動できます。",
+            "中国語・日本語・韓国語で、日常的な言い方に合わせた用語になりました。",
+          ],
+          improvements: [
+            "エージェントが毎回読み込む指示が短くなり、その分を作業に使えます。",
+            "共有チャネルのエージェントが、相手が複数人であることを把握します。",
+            "Copilot の使用量に実際のモデルが表示され、トークン数が取れない場合も分かります。",
+            "スマートフォンのタスク詳細が、余白ではなく画面の幅を使います。",
+            "デスクトップでタブを閉じると、直前に見ていたタブに戻ります。",
+            "サブタスクのないタスクは、購読解除が 1 回のクリックで済みます。",
+            "セルフホストのドキュメントに、デスクトップがサーバー アドレスを読むファイルを明記しました。",
+            "デスクトップから、何の成果も出なかった背景診断を取り除きました。",
+          ],
+          fixes: [
+            "長い Codex の会話が再開できるようになり、毎回失敗することがなくなりました。",
+            "コンテキストを使い切った実行は明確に失敗し、空の回答を返しません。",
+            "スケジュールしたオートパイロットが、次の起動を待たずに時間どおり始まります。",
+            "チャットの /issue でタスクを作っても、同じコマンドが二重に実行されません。",
+            "名前が似ているスキルが QwenPaw で互いを上書きしなくなりました。",
+            "待機中の会話の最初のメッセージが、キューで待たずにすぐ表示されます。",
+            "待機中のメッセージが、送信した順に会話の記録へ入ります。",
+            "壊れたページで開けなくなっていたドキュメント サイトが、また表示されます。",
+          ],
+        },
         {
           version: "0.4.18",
           date: "2026-08-04",
@@ -1547,7 +1611,7 @@ export function createJaDict(allowSignup: boolean): LandingDict {
           title: "より賢いウェルカム体験とリアルタイムの作業シグナル",
           changes: [],
           features: [
-            "新規ユーザーは、Multica Helper がワークスペースの紹介、ツアー、ウェルカムページ作成まで案内する新しいオンボーディング体験を利用できます。",
+            "新規ユーザーは Mika との対話で実際の最初のタスクを完了し、必要な場合だけ specialist を追加するオンボーディングを利用できます。",
             "タスク一覧でどのエージェントが作業中かが表示され、詳細表示や「作業中」フィルターも利用できます。",
             "子タスクが完了すると親タスクにもプラットフォームによる更新が残り、適切な担当者にも通知が届きます。",
           ],
