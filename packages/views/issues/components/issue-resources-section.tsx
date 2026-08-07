@@ -20,6 +20,7 @@ import { copyText } from "@multica/ui/lib/clipboard";
 import { useT, useTimeAgo } from "../../i18n";
 import { IssueResourceDialog } from "./issue-resource-dialog";
 import { resourceHost, resourceLabel } from "./resource-label";
+import feishuLogo from "./feishu-logo.png";
 
 /**
  * Pages that live outside Multica but belong next to this issue: a design doc,
@@ -89,6 +90,68 @@ export function IssueResourcesSection({ issueId }: { issueId: string }) {
   );
 }
 
+// Feishu — official mark, shipped as a PNG next to this file. Bundlers hand an
+// import back as a string or as { src }, depending on the app; same shim
+// provider-logo.tsx uses.
+function staticAssetSrc(asset: string | { src: string }): string {
+  return typeof asset === "string" ? asset : asset.src;
+}
+const feishuLogoSrc = staticAssetSrc(feishuLogo);
+
+/**
+ * A brand mark where we have one, the site's own favicon otherwise, and the
+ * generic link glyph behind both.
+ *
+ * The bundled mark wins for Feishu because a self-hosted tenant
+ * (hellotalk.feishu.cn) serves its own favicon, which may be a company logo or
+ * nothing at all — the product is still Feishu, and the row should say so.
+ * Matched by suffix for exactly that reason: the host is a tenant subdomain,
+ * not feishu.cn itself.
+ *
+ * Fetched straight from the host rather than through a favicon service: the
+ * browser is asking the same site the row points at, so nothing about which
+ * documents someone attaches leaks to a third party — and on an internal host
+ * the request rides the session that is already there.
+ *
+ * A favicon needs no authorisation even when the page behind it does, which is
+ * why an icon is fetchable where a title is not: a Feishu doc returns a login
+ * page to an anonymous reader, but /favicon.ico is served to anyone.
+ *
+ * onError, not a probe: there is no way to ask whether a host has a favicon
+ * without requesting it, so the fallback is the failure path. The generic icon
+ * sits underneath the whole time, so a slow or missing favicon shows a link
+ * glyph rather than an empty gap that reflows the row.
+ */
+function ResourceIcon({ host }: { host: string }) {
+  const [failed, setFailed] = useState(false);
+  if (host.endsWith("feishu.cn") || host.endsWith("larksuite.com")) {
+    return (
+      <img
+        src={feishuLogoSrc}
+        alt=""
+        aria-hidden
+        className="size-3.5 shrink-0 rounded-[2px] object-contain"
+      />
+    );
+  }
+  if (!host || failed) {
+    return <Link2 className="size-3.5 shrink-0 text-muted-foreground" />;
+  }
+  return (
+    <span className="relative size-3.5 shrink-0">
+      <Link2 className="absolute inset-0 size-3.5 text-muted-foreground" />
+      <img
+        src={`https://${host}/favicon.ico`}
+        alt=""
+        aria-hidden
+        loading="lazy"
+        onError={() => setFailed(true)}
+        className="absolute inset-0 size-3.5 rounded-[2px] object-contain"
+      />
+    </span>
+  );
+}
+
 function ResourceRow({
   resource,
   timeAgo,
@@ -105,7 +168,7 @@ function ResourceRow({
 
   return (
     <li className="group flex items-center gap-2 rounded-lg border bg-card px-3 py-2 transition-colors hover:border-foreground/20">
-      <Link2 className="size-3.5 shrink-0 text-muted-foreground" />
+      <ResourceIcon host={host} />
       {/* rel: a resource is a URL someone pasted, so the target page is not
           trusted with a handle on this tab. */}
       <a
