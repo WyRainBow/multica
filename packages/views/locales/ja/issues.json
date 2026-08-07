@@ -684,5 +684,22 @@
     "delete_confirm_body_other": "このフェーズの {{count}} 件のコメントも削除されます。元に戻せません。",
     "delete_action": "削除",
     "cancel": "キャンセル"
+  },
+  "resources": {
+    "title": "リソース",
+    "add": "リンクを追加",
+    "empty": "リソースはまだありません。",
+    "add_title": "リンクを追加",
+    "edit_title": "リソースを編集",
+    "url_placeholder": "https://…",
+    "title_placeholder": "タイトル（任意）",
+    "save": "保存",
+    "cancel": "キャンセル",
+    "save_failed": "リソースを保存できませんでした",
+    "copy": "リンクをコピー",
+    "copied": "リンクをコピーしました",
+    "open": "新しいタブで開く",
+    "rename": "名前を変更",
+    "remove": "削除"
   }
 }

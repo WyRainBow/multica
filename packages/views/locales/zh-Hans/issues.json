@@ -684,5 +684,22 @@
     "delete_confirm_body_other": "这个节点下的 {{count}} 条评论会一并删除、无法恢复。",
     "delete_action": "删除",
     "cancel": "取消"
+  },
+  "resources": {
+    "title": "资源",
+    "add": "添加链接",
+    "empty": "还没有关联任何资源。",
+    "add_title": "添加链接",
+    "edit_title": "编辑资源",
+    "url_placeholder": "https://…",
+    "title_placeholder": "标题（可不填）",
+    "save": "保存",
+    "cancel": "取消",
+    "save_failed": "资源保存失败",
+    "copy": "复制链接",
+    "copied": "已复制链接",
+    "open": "在新标签页打开",
+    "rename": "重命名",
+    "remove": "移除"
   }
 }

@@ -72,6 +72,7 @@ import { ProjectPicker } from "../../projects/components/project-picker";
 import { LocalDirectoryHint } from "../../projects/components/local-directory-hint";
 import { CommentCard } from "./comment-card";
 import { IssueCardsSection } from "../../cards";
+import { IssueResourcesSection } from "./issue-resources-section";
 import { PhaseTrack } from "./phase-track";
 import { phaseAtTime } from "./phase-window";
 import type { IssuePhase } from "@multica/core/types";
@@ -2993,6 +2994,11 @@ export function IssueDetail({ issueId, onDelete, onDone, defaultSidebarOpen = tr
             {descDragOver && <FileDropOverlay />}
           </div>
           )}
+
+          {/* Pages that live elsewhere but belong to this issue. Above the
+              cards section because a resource is a pointer and a card is
+              writing: you reach for the pointer far more often. */}
+          <IssueResourcesSection issueId={id} />
 
           {/* Notes kept about this requirement. Sits below the description and
               above the sub-issues: it is about THIS issue, not about the tree

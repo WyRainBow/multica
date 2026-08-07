@@ -642,6 +642,26 @@ export const CardSchema = z.object({
   updated_at: z.string(),
 }).loose();
 
+export const IssueResourceSchema = z.object({
+  id: z.string(),
+  workspace_id: z.string(),
+  issue_id: z.string(),
+  url: z.string(),
+  // Defaults so an older or partial payload still renders a row rather than
+  // blanking the section: the title falls back to the host in the UI, and the
+  // author is only used for a tooltip.
+  title: z.string().default(""),
+  author_type: z.string().default("member"),
+  author_id: z.string().default(""),
+  position: z.number().default(0),
+  created_at: z.string(),
+  updated_at: z.string(),
+}).loose();
+
+export const IssueResourceListResponseSchema = z.object({
+  resources: z.array(IssueResourceSchema).default([]),
+}).loose();
+
 export const CardListResponseSchema = z.object({
   cards: z.array(CardSchema).default([]),
   total: z.number().default(0),

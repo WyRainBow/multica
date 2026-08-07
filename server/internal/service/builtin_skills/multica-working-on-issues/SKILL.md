@@ -86,31 +86,15 @@ stale).
 multica issue pull-requests <issue-id> --output json
 ```
 
-Returns `{"pull_requests": [...]}`. Each element exposes:
+Returns `{"pull_requests": [...]}`. The three answers you usually want:
+"is it merged?" is `state == "merged"` (or `merged_at != null`); "is it still a
+draft?" is `state == "draft"`; coarse CI status is `checks_conclusion`
+(`passed` / `failed` / `pending` / `null`).
 
-- `number`, `html_url`, `title`
-- `state` — the PR lifecycle as a **single enum**, one of `merged`, `closed`,
-  `draft`, `open`. There is no separate `draft` or `merged` boolean in the
-  response; the server folds them into `state` (merged wins, then closed, then
-  draft, else open).
-- `merged_at` — non-null once merged; a second confirmation of `state: merged`.
-- `provider` — `github`, `forgejo`, `gitea`, or `gitlab`.
-- `mergeable_state` — mirrors GitHub (`clean` / `dirty` surfaced; other values
-  round-trip as unknown; retained for compatibility).
-- GitHub API snapshot fields: `snapshot_available`, `mergeable`,
-  `merge_state_status`, `checks_rollup`, `checks_total`, `checks_passed`,
-  `checks_failed`, `checks_running`, `failed_check_names`,
-  `snapshot_fetched_at`, and `snapshot_stale`. `snapshot_available == true`
-  means the feature is enabled and the snapshot matches the PR's current head.
-  Only then does `checks_rollup == null` mean "no checks"; false means the
-  snapshot feature is disabled, has not fetched yet, or only has an old head.
-- `checks_conclusion` — coarse CI compatibility status: `passed`, `failed`,
-  `pending`, or `null`. GitHub derives it from the current API snapshot;
-  Forgejo/Gitea/GitLab derive it from webhook commit statuses. Backed by the
-  provider-appropriate check counts.
-
-So "is it merged?" is `state == "merged"` (or `merged_at != null`); "is it still
-a draft?" is `state == "draft"`; coarse CI status is `checks_conclusion`.
+`state` is a SINGLE enum — `merged`, `closed`, `draft`, `open` — with no
+separate draft or merged boolean beside it. Every field on the element, and the
+snapshot rules behind `checks_rollup`, are in
+`references/pull-request-response.md`.
 
 If the command returns no linked PRs after a PR was opened, the link scanner did
 not observe a routable issue key in the PR title/body/branch — or the only match
@@ -394,12 +378,33 @@ so the default resolves to nothing and the issue is created unassigned exactly
 as before. Keep passing `--assignee <agent>` when handing work to an agent —
 that is still the only way the issue reaches one.
 
+## Resources: a page that lives somewhere else
+
+A design doc, a meeting note, a vendor page — anything whose home is outside
+Multica but belongs next to this issue.
+
+```bash
+multica issue resource add COC-1 "https://example.feishu.cn/docx/abc" --title "沟通会纪要"
+multica issue resource list COC-1
+multica issue resource rename COC-1 <resource-id> "新标题"
+multica issue resource remove COC-1 <resource-id>
+```
+
+The title is TYPED, never fetched — the documents worth attaching return a
+login page to an anonymous request. Left out, the row reads as host and path.
+http(s) only; the server rejects the rest, because the row is clickable.
+
+Use this rather than a link in the description: a body link cannot be listed or
+removed without editing prose, and a finished body is frozen so it could not be
+added at all. A resource CAN be attached to a finished issue — filing something
+next to a record is not editing it.
+
 ## Cards: a note that is not an issue
 
-A retrospective, a lesson learned, a decision worth keeping — none of those is
-work to be tracked, and filing them as issues gives them a status nobody will
-ever move. Write a card instead: a title plus Markdown, owned by the
-workspace, with an optional link to the issue it came out of.
+A retrospective, a lesson learned, a decision worth keeping is not work to be
+tracked, and filing it as an issue gives it a status nobody will move. Write a
+card: title plus Markdown, owned by the workspace, optionally linked to the
+issue it came from.
 
 ```bash
 multica card add --title "COC-97 踩坑" --content-stdin < notes.md
@@ -409,9 +414,8 @@ multica card list --issue COC-97        # only cards linked to that issue
 multica card get <card-id>
 ```
 
-Pipe the body in rather than passing `--content` inline for anything longer
-than a sentence — a retrospective is a document, and inline content mangles
-newlines.
+Pipe the body in for anything longer than a sentence — inline `--content`
+mangles newlines.
 
 ## Mark a throwaway issue as a test
 

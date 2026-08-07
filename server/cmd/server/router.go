@@ -1166,6 +1166,17 @@ func NewRouterWithOptions(pool *pgxpool.Pool, hub *realtime.Hub, bus *events.Bus
 					// Phases — the stations a requirement passes through.
 					// Containers, not statuses: what happened during a
 					// stretch hangs underneath it.
+					// Resources — external pages attached to this issue.
+					// Not attachments (those are files we store) and not PR
+					// links (those only ever point at a PR).
+					r.Route("/resources", func(r chi.Router) {
+						r.Get("/", h.ListIssueResources)
+						r.Post("/", h.CreateIssueResource)
+						r.Route("/{resourceId}", func(r chi.Router) {
+							r.Put("/", h.UpdateIssueResource)
+							r.Delete("/", h.DeleteIssueResource)
+						})
+					})
 					r.Route("/phases", func(r chi.Router) {
 						r.Get("/", h.ListIssuePhases)
 						r.Post("/", h.CreateIssuePhase)
