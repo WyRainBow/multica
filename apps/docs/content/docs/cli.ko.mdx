@@ -89,6 +89,8 @@ multica workspace member invite admin@example.com --role admin
 multica issue list
 multica issue get MUL-123
 multica issue search "로그인 실패"
+# 이슈 전체가 아니라 한 대목만 읽기: 앞뒤 끝을 인용
+multica issue get MUL-123 --quote-start "라우팅" --quote-end "당분간은."
 
 # 생성 및 수정
 multica issue create --title "로그인 실패 수정"

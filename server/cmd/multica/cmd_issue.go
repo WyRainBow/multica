@@ -515,6 +515,16 @@ func init() {
 
 	// issue get
 	issueGetCmd.Flags().String("output", "json", "Output format: table or json")
+	issueGetCmd.Flags().String("quote-start", "",
+		"Return only a span of the description instead of the whole issue: the text the span starts with, copied verbatim")
+	issueGetCmd.Flags().String("quote-end", "",
+		"Text the span ends with, copied verbatim. Must land in exactly one place after the start, "+
+			"so a bare \"。\" is rejected rather than silently ending the span at the first sentence. "+
+			"Omit to return just the --quote-start text")
+	issueGetCmd.Flags().String("quote-prefix", "",
+		"Text immediately before the passage, used to pick between several matches")
+	issueGetCmd.Flags().String("quote-suffix", "",
+		"Text immediately after the passage, used to pick between several matches")
 
 	// issue pull-requests
 	issuePullRequestsCmd.Flags().String("output", "table", "Output format: table or json")
@@ -894,6 +904,16 @@ func runIssueGet(cmd *cobra.Command, args []string) error {
 	// both output modes without becoming a field a JSON consumer has to parse
 	// around.
 	warnTerminalIssueIsARecord(issue)
+
+	// Checked before the full payload is printed: asking for a span and getting
+	// the whole description back would be indistinguishable from a long quote.
+	spec, quoting, err := quoteSpecFromFlags(cmd)
+	if err != nil {
+		return err
+	}
+	if quoting {
+		return printIssueQuote(cmd, issue, spec)
+	}
 
 	output, _ := cmd.Flags().GetString("output")
 	if output == "table" {

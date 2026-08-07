@@ -89,6 +89,8 @@ multica workspace member invite admin@example.com --role admin
 multica issue list
 multica issue get MUL-123
 multica issue search "login failure"
+# Read one passage instead of the whole issue: quote its edges
+multica issue get MUL-123 --quote-start "Routing" --quote-end "for now."
 
 # Create and update
 multica issue create --title "Fix login failure"

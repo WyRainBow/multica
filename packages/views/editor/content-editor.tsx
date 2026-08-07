@@ -174,6 +174,13 @@ interface ContentEditorBaseProps {
    */
   currentIssueId?: string;
   /**
+   * Human-readable key (COC-45) of the issue whose description this editor
+   * holds. Set only by the issue description — its presence adds a "copy a
+   * quote handle" action, which is meaningless in a comment composer where the
+   * text is an unsaved draft nothing could resolve against.
+   */
+  quoteIssueKey?: string;
+  /**
    * Inline-comment anchors to paint as highlights. Re-read on every decoration
    * pass, so a comment arriving over the websocket highlights without
    * remounting the editor.
@@ -387,6 +394,7 @@ const ContentEditor = forwardRef<ContentEditorRef, ContentEditorProps>(
       onUploadingChange,
       showBubbleMenu = true,
       currentIssueId,
+      quoteIssueKey,
       commentAnchors,
       onCommentAnchorClick,
       onOutlineChange,
@@ -1047,7 +1055,11 @@ const ContentEditor = forwardRef<ContentEditorRef, ContentEditorProps>(
         >
           <EditorContent className="flex flex-1 flex-col" editor={editor} />
           {showBubbleMenu && (
-            <EditorBubbleMenu editor={editor} currentIssueId={currentIssueId} />
+            <EditorBubbleMenu
+              editor={editor}
+              currentIssueId={currentIssueId}
+              quoteIssueKey={quoteIssueKey}
+            />
           )}
           <LinkHoverCard {...hover} />
         </div>

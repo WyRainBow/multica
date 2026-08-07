@@ -221,6 +221,12 @@ list table and on the app's comment card is a handle for humans, never a value
 to retype. The response carries `issue_id` and `parent_id`, so one comment
 reaches its issue and thread root without a search.
 
+## Reading one passage of a description
+
+`multica issue get <id> --quote-start "..." --quote-end "..."` returns that span alone,
+erroring rather than guessing when edges are ambiguous — locating a passage yourself costs
+the whole body and can land on the wrong one. `references/quoting-a-passage.md`.
+
 ## Phases — filing what happened under the station it happened in
 
 A long issue's comments arrive in one flat run — comment 3 and comment 30 can

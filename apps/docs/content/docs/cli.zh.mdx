@@ -89,6 +89,8 @@ multica workspace member invite admin@example.com --role admin
 multica issue list
 multica issue get MUL-123
 multica issue search "登录失败"
+# 只读正文的一段，而不是整份 issue：引用它的首尾
+multica issue get MUL-123 --quote-start "路由决策" --quote-end "暂时如此。"
 
 # 创建和修改
 multica issue create --title "修复登录失败"
