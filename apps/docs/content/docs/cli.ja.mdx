@@ -89,6 +89,8 @@ multica workspace member invite admin@example.com --role admin
 multica issue list
 multica issue get MUL-123
 multica issue search "ログイン失敗"
+# issue 全体ではなく一節だけを読む：前後の端を引用する
+multica issue get MUL-123 --quote-start "ルーティング" --quote-end "現時点では。"
 
 # 作成と更新
 multica issue create --title "ログイン失敗を修正"

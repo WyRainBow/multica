@@ -31,6 +31,12 @@
       "tooltip": "Comment on selection",
       "placeholder": "Add a comment...",
       "create_failed": "Failed to add comment"
+    },
+    "quote_handle": {
+      "tooltip": "Copy a command that reads this passage",
+      "copied": "Copied — paste it to an agent to have it read just this passage",
+      "copy_failed": "Copy failed",
+      "no_handle": "Could not build a handle for this selection — try selecting a whole sentence"
     }
   },
   "image": {

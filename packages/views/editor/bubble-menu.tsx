@@ -76,7 +76,10 @@ import {
   FilePlus,
   Loader2,
   MessageSquare,
+  ClipboardCopy,
 } from "lucide-react";
+import { copyText } from "@multica/ui/lib/clipboard";
+import { buildQuoteHandle } from "./quote-handle";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -555,15 +558,122 @@ function CreateSubIssueButton({
 }
 
 // ---------------------------------------------------------------------------
+// Copy Quote Handle
+// ---------------------------------------------------------------------------
+
+/**
+ * The runs of text actually covered by the selection, one per text node.
+ *
+ * Per node rather than one flattened string, because an edge has to exist
+ * verbatim in the stored Markdown: the editor renders `**已交付**` as `已交付`,
+ * so an edge spanning that boundary would be text that only exists on screen.
+ * Taking each edge from inside a single run keeps it real.
+ */
+function selectedTextRuns(editor: Editor, from: number, to: number): string[] {
+  const runs: string[] = [];
+  editor.state.doc.nodesBetween(from, to, (node, pos) => {
+    if (!node.isText || !node.text) return;
+    const part = node.text.slice(
+      Math.max(from, pos) - pos,
+      Math.min(to, pos + node.nodeSize) - pos,
+    );
+    if (part.trim()) runs.push(part);
+  });
+  return runs;
+}
+
+/** How much text before the selection is offered as a tie-breaker. Only used
+ *  when the edges alone match more than one passage. */
+const QUOTE_CONTEXT_CHARS = 60;
+
+/**
+ * Copies a one-line command that returns just this passage, for pasting to an
+ * agent.
+ *
+ * The alternative — telling an agent "review the routing section of COC-45" —
+ * makes it read the whole description and locate the passage itself. That is
+ * not merely wasteful: when it picks the wrong span, the review comes back
+ * confident and nothing downstream can tell. The handle removes the guess.
+ */
+function CopyQuoteHandleButton({
+  editor,
+  issueKey,
+}: {
+  editor: Editor;
+  issueKey: string;
+}) {
+  const { t } = useT("editor");
+
+  const handleClick = useCallback(() => {
+    const { from, to } = editor.state.selection;
+    if (from === to) return;
+
+    const runs = selectedTextRuns(editor, from, to);
+    if (runs.length === 0) return;
+
+    const doc = editor.state.doc;
+    const handle = buildQuoteHandle({
+      issueKey,
+      // The stored Markdown, which is what the CLI matches. Measuring against
+      // the rendering instead is how a handle ends up pointing at nothing:
+      // `## 工作目标` is on screen as `工作目标`, and its neighbours differ by
+      // characters that exist in only one of the two.
+      markdown: editor.getMarkdown(),
+      before: doc.textBetween(Math.max(0, from - QUOTE_CONTEXT_CHARS), from, " ", " "),
+      after: doc.textBetween(to, Math.min(doc.content.size, to + QUOTE_CONTEXT_CHARS), " ", " "),
+      firstNodeText: runs[0]!,
+      lastNodeText: runs[runs.length - 1]!,
+      selected: doc.textBetween(from, to, " ", " "),
+    });
+    if (!handle) {
+      toast.error(t(($) => $.bubble_menu.quote_handle.no_handle));
+      return;
+    }
+
+    void copyText(handle).then((ok) => {
+      if (ok) toast.success(t(($) => $.bubble_menu.quote_handle.copied));
+      else toast.error(t(($) => $.bubble_menu.quote_handle.copy_failed));
+    });
+  }, [editor, issueKey, t]);
+
+  return (
+    <Tooltip>
+      <TooltipTrigger
+        render={
+          <Toggle
+            size="sm"
+            pressed={false}
+            onPressedChange={handleClick}
+            onMouseDown={(e) => e.preventDefault()}
+          />
+        }
+      >
+        <ClipboardCopy className="size-3.5" />
+      </TooltipTrigger>
+      <TooltipContent side="top" sideOffset={8}>
+        {t(($) => $.bubble_menu.quote_handle.tooltip)}
+      </TooltipContent>
+    </Tooltip>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Main Bubble Menu — @floating-ui/dom + portal to body
 // ---------------------------------------------------------------------------
 
 function EditorBubbleMenu({
   editor,
   currentIssueId,
+  quoteIssueKey,
 }: {
   editor: Editor;
   currentIssueId?: string;
+  // Set only by the issue description, and set to the human-readable key
+  // (COC-45). Its presence is what says "this editor holds the text a quote
+  // handle would resolve against" — a comment composer also has
+  // currentIssueId, but quoting a draft nobody has saved would produce a
+  // handle that resolves to nothing.
+  quoteIssueKey?: string;
 }) {
   const { t } = useT("editor");
   const [visible, setVisible] = useState(false);
@@ -753,6 +863,9 @@ function EditorBubbleMenu({
                   </TooltipTrigger>
                   <TooltipContent side="top" sideOffset={8}>{t(($) => $.bubble_menu.comment.tooltip)}</TooltipContent>
                 </Tooltip>
+                {quoteIssueKey && (
+                  <CopyQuoteHandleButton editor={editor} issueKey={quoteIssueKey} />
+                )}
               </>
             )}
           </div>

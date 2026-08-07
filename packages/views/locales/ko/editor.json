@@ -31,6 +31,12 @@
       "tooltip": "선택 영역에 댓글",
       "placeholder": "댓글 입력…",
       "create_failed": "댓글 추가에 실패했습니다"
+    },
+    "quote_handle": {
+      "tooltip": "이 대목을 읽는 명령 복사",
+      "copied": "복사됨 —— 에이전트에 붙여넣으면 이 대목만 읽습니다",
+      "copy_failed": "복사 실패",
+      "no_handle": "이 선택 범위로는 핸들을 만들 수 없습니다 —— 문장 전체를 선택해 보세요"
     }
   },
   "image": {

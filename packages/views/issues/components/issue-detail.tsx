@@ -2961,6 +2961,11 @@ export function IssueDetail({ issueId, onDelete, onDone, defaultSidebarOpen = tr
               // the image markdown and its attachment_ids bind (MUL-3254).
               flushPendingOnUnmount
               currentIssueId={id}
+              // The identifier, not the UUID: this ends up in a command line a
+              // person pastes into a chat, where COC-45 says which issue and a
+              // UUID says nothing. Falls back to the UUID, which the CLI
+              // resolves just as well, for an issue with no identifier yet.
+              quoteIssueKey={issue.identifier || id}
               onOutlineChange={setDescOutline}
               commentAnchors={descriptionCommentAnchors}
               onCommentAnchorClick={handleCommentAnchorClick}

@@ -248,6 +248,7 @@ comment-triggered runs otherwise must not change status unless asked.
 | Enforced at the update entry point | `server/internal/handler/issue.go:2894` |
 | Handler tests (7 cases) | `server/internal/handler/issue_freeze_test.go` |
 | `issue get` prints the record notice on stderr | `server/cmd/multica/cmd_issue.go:894,948` (`warnTerminalIssueIsARecord`) |
+| `issue get --quote-start/--quote-end/--quote-prefix/--quote-suffix` | `server/cmd/multica/cmd_issue.go:518-525` (flags), `server/cmd/multica/cmd_issue_quote.go` (`locateQuote`, `matchLenAt`, `quoteSpecFromFlags`, `printIssueQuote`) |
 | CLI mirror of the terminal status set | `server/cmd/multica/cmd_issue.go:929` (`terminalIssueStatuses`) |
 | Notice tests, incl. the "do not call it expired" guard | `server/cmd/multica/cmd_issue_terminal_notice_test.go` |
 | Read-only body + both hints in the app | `packages/views/issues/components/issue-detail.tsx:1990,2923` |

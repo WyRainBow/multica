@@ -31,6 +31,12 @@
       "tooltip": "对选中内容评论",
       "placeholder": "写下评论…",
       "create_failed": "评论失败"
+    },
+    "quote_handle": {
+      "tooltip": "复制引用（供 Agent 只读这一段）",
+      "copied": "已复制 —— 粘给 Agent、它只会读这一段",
+      "copy_failed": "复制失败",
+      "no_handle": "这段选区生成不出句柄 —— 试试选中一句完整的话"
     }
   },
   "image": {
