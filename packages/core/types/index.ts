@@ -257,3 +257,4 @@ export { ISSUE_FILTER_CATEGORIES, defaultIssueFilterModes } from "./issue";
 
 export type { IssuePhase } from "./issue";
 export type { Card, CreateCardRequest, UpdateCardRequest, CardListResponse } from "./card";
+export type { IssueResource, CreateIssueResourceRequest, UpdateIssueResourceRequest } from "./issue-resource";

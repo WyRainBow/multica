@@ -68,7 +68,10 @@ var workspaceDeletionManifest = map[string]workspaceDeleteAction{
 	"issue_label":                     workspaceDelete,
 	// A phase is a container inside one issue, so it cannot outlive the
 	// workspace that issue belonged to.
-	"issue_phase":                    workspaceDelete,
+	"issue_phase": workspaceDelete,
+	// A link attached to an issue. The page it points at is elsewhere; the
+	// attachment is ours and goes with the workspace.
+	"issue_resource":                 workspaceDelete,
 	"issue_property":                 workspaceDelete,
 	"issue_pull_request":             workspaceDelete,
 	"issue_reaction":                 workspaceDelete,

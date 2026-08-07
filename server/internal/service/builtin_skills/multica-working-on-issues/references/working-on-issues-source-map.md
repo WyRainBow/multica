@@ -265,6 +265,30 @@ Nothing links a finished issue to whatever replaced it — relations are only
 plus parent/child. A successor has to be recorded by hand as the
 `superseded_by` metadata key, which is where the notice points.
 
+## `multica issue resource` — external pages attached to an issue
+
+| Behavior | File:line |
+|---|---|
+| CLI group `issue resource list/add/rename/remove` | `server/cmd/multica/cmd_issue_resource.go:23` |
+| Untitled rows fall back to host + path | `server/cmd/multica/cmd_issue_resource.go` (`resourceLabel`) |
+| API routes (`/api/issues/{id}/resources`) | `server/cmd/server/router.go:1172` |
+| Create handler, position append | `server/internal/handler/issue_resource.go:97` |
+| http(s)-only URL check | `server/internal/handler/issue_resource.go:67` (`normalizeResourceURL`) |
+| Resource id scoped to the issue in the path | `server/internal/handler/issue_resource.go:248` |
+| Table + index | `server/migrations/273_issue_resource.up.sql`, `274_issue_resource_index.up.sql` |
+| UI section and row | `packages/views/issues/components/issue-resources-section.tsx` |
+| Tests | `server/internal/handler/issue_resource_test.go`, `packages/views/issues/components/resource-label.test.ts` |
+
+The scheme check is a security boundary, not tidiness: the row renders as a
+clickable link, so `javascript:` or `data:` in that column would run in the
+browser of whoever opens the issue. No title is fetched from the target page —
+the documents worth attaching return a login page to an anonymous request, so a
+fetched title would be wrong exactly where it is needed.
+
+Attaching a resource works on a FINISHED issue. The freeze covers the title and
+description; filing something next to a record is not editing the record, which
+is the same line comments already sit on.
+
 ## `multica card` — notes that are not issues
 
 | Behavior | File:line |

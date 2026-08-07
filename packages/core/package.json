@@ -33,6 +33,8 @@
     "./issues/canonical-id": "./issues/canonical-id.ts",
     "./cards/queries": "./cards/queries.ts",
     "./cards/mutations": "./cards/mutations.ts",
+    "./issue-resources/queries": "./issue-resources/queries.ts",
+    "./issue-resources/mutations": "./issue-resources/mutations.ts",
     "./issues/queries": "./issues/queries.ts",
     "./issues/mutations": "./issues/mutations.ts",
     "./issues/timeline-sort": "./issues/timeline-sort.ts",

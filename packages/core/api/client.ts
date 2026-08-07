@@ -1,5 +1,8 @@
 import type {
   Card,
+  IssueResource,
+  CreateIssueResourceRequest,
+  UpdateIssueResourceRequest,
   CardListResponse,
   IssuePhase,
   CreateCardRequest,
@@ -205,6 +208,8 @@ import {
   IssueSchema,
   CardSchema,
   CardListResponseSchema,
+  IssueResourceSchema,
+  IssueResourceListResponseSchema,
   IssuePhaseSchema,
   IssuePhasesResponseSchema,
   ParentIssuesResponseSchema,
@@ -1071,6 +1076,47 @@ export class ApiClient {
     const raw = await this.fetch<unknown>(`/api/cards${query ? `?${query}` : ""}`);
     return parseWithFallback(raw, CardListResponseSchema, { cards: [], total: 0 }, {
       endpoint: "GET /api/cards",
+    });
+  }
+
+  async listIssueResources(issueId: string): Promise<IssueResource[]> {
+    const raw = await this.fetch<unknown>(`/api/issues/${issueId}/resources`);
+    const parsed = parseWithFallback(raw, IssueResourceListResponseSchema, { resources: [] }, {
+      endpoint: "GET /api/issues/:id/resources",
+    });
+    return parsed.resources;
+  }
+
+  async createIssueResource(
+    issueId: string,
+    body: CreateIssueResourceRequest,
+  ): Promise<IssueResource | null> {
+    const raw = await this.fetch<unknown>(`/api/issues/${issueId}/resources`, {
+      method: "POST",
+      body: JSON.stringify(body),
+    });
+    return parseWithFallback(raw, IssueResourceSchema, null, {
+      endpoint: "POST /api/issues/:id/resources",
+    });
+  }
+
+  async updateIssueResource(
+    issueId: string,
+    resourceId: string,
+    body: UpdateIssueResourceRequest,
+  ): Promise<IssueResource | null> {
+    const raw = await this.fetch<unknown>(`/api/issues/${issueId}/resources/${resourceId}`, {
+      method: "PUT",
+      body: JSON.stringify(body),
+    });
+    return parseWithFallback(raw, IssueResourceSchema, null, {
+      endpoint: "PUT /api/issues/:id/resources/:resourceId",
+    });
+  }
+
+  async deleteIssueResource(issueId: string, resourceId: string): Promise<void> {
+    await this.fetch<unknown>(`/api/issues/${issueId}/resources/${resourceId}`, {
+      method: "DELETE",
     });
   }
 

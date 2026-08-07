@@ -709,5 +709,22 @@
     "delete_confirm_body_other": "Its {{count}} comments are deleted with it. This cannot be undone.",
     "delete_action": "Delete",
     "cancel": "Cancel"
+  },
+  "resources": {
+    "title": "Resources",
+    "add": "Add link",
+    "empty": "No resources attached yet.",
+    "add_title": "Add a link",
+    "edit_title": "Edit resource",
+    "url_placeholder": "https://…",
+    "title_placeholder": "Title (optional)",
+    "save": "Save",
+    "cancel": "Cancel",
+    "save_failed": "Could not save the resource",
+    "copy": "Copy link",
+    "copied": "Link copied",
+    "open": "Open in new tab",
+    "rename": "Rename",
+    "remove": "Remove"
   }
 }
