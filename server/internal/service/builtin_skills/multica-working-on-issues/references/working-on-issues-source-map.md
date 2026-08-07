@@ -15,7 +15,7 @@ at the bottom before relying on an exact line.
 | Fetches the description and resolves the offset | `server/cmd/multica/cmd_issue.go:2088` (`locateAnchorInDescription`) |
 | Character-based search + occurrence selection | `server/cmd/multica/cmd_issue.go:2121` (`anchorOffsetInText`) |
 | Server-side validation of the anchor | `server/internal/handler/comment.go:1473` (`parseCommentAnchor`) |
-| Columns | `server/migrations/270_comment_anchor.up.sql` |
+| Columns | `server/migrations/287_comment_anchor.up.sql` |
 
 The offset is in CHARACTERS, not bytes — the editor re-locates anchors in the
 same coordinate system, and a byte offset lands mid-character on any CJK
@@ -276,7 +276,7 @@ plus parent/child. A successor has to be recorded by hand as the
 | Create handler, position append | `server/internal/handler/issue_resource.go:97` |
 | http(s)-only URL check | `server/internal/handler/issue_resource.go:67` (`normalizeResourceURL`) |
 | Resource id scoped to the issue in the path | `server/internal/handler/issue_resource.go:248` |
-| Table + index | `server/migrations/273_issue_resource.up.sql`, `274_issue_resource_index.up.sql` |
+| Table + index | `server/migrations/290_issue_resource.up.sql`, `291_issue_resource_index.up.sql` |
 | UI section and row | `packages/views/issues/components/issue-resources-section.tsx` |
 | Tests | `server/internal/handler/issue_resource_test.go`, `packages/views/issues/components/resource-label.test.ts` |
 
