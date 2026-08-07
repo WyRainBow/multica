@@ -120,12 +120,16 @@ FLAGS
 EXAMPLES
   $ multica login
   $ multica issue list --output json
+  $ multica issue create --title "..." --description-stdin < notes.md
+  $ multica issue comment add COC-1 --phase 评审 --content "..."
+  $ multica card add --title "..." --content-stdin < retro.md
   $ multica daemon start
-  $ multica agent list --output json
 
 ENVIRONMENT VARIABLES
   MULTICA_SERVER_URL    Override the default server URL
   MULTICA_WORKSPACE_ID  Set the active workspace
+  MULTICA_TOKEN         Authenticate without a stored login
+  MULTICA_DEBUG         Print full error details on failure
 
 LEARN MORE
   Use ` + "`multica <command> <subcommand> --help`" + ` for more information about a command.

@@ -502,6 +502,35 @@ hand back root-only pages until the caller reaches the start of the
 thread / issue. Incremental polling stops at the first page whose
 cursor target falls before the watermark.
 
+### Phases
+
+A phase is a station inside one issue — a container holding the comments
+written while the issue was there. Every new issue is created with
+`开始 / 评审 / 冻结` already on it.
+
+```bash
+multica issue phase list <issue-id>            # NAME, STATE, COMMENTS, ENTERED, COMPLETED
+multica issue phase add <issue-id> "评审 2"     # another round; lands beside 评审
+multica issue phase enter <issue-id> 评审       # record arrival
+multica issue phase complete <issue-id> 评审    # record departure
+multica issue phase rename <issue-id> 评审 复审
+multica issue phase delete <issue-id> 评审 --force   # deletes its comments too
+```
+
+`<phase>` is the NAME — case-insensitive, a unique prefix is enough, and the
+full UUID also works. `complete` requires `enter` first (409 otherwise), and
+state is derived from the two timestamps rather than stored.
+
+File a comment under a station, or read only what was said there:
+
+```bash
+multica issue comment add <issue-id> --phase 评审 --content "..."
+multica issue comment list <issue-id> --phase 评审
+```
+
+A reply with no `--phase` joins the comment it answers, so a threaded
+discussion stays in one station without restating it.
+
 ### Metadata
 
 Per-issue metadata is a small KV map agents use to track pipeline state (PR number, pipeline status, waiting_on, ...). Keys match `^[a-zA-Z_][a-zA-Z0-9_.-]{0,63}$`, values are primitives (string / number / bool), max 50 keys per issue, blob capped at 8KB.
@@ -639,6 +668,37 @@ multica issue create --title "Login bug" --project <project-id>
 multica issue update <issue-id> --project <project-id>
 multica issue list --project <project-id>
 ```
+
+## Cards
+
+A card is a free-form note that is not an issue: a title plus Markdown, owned
+by the workspace, with no status, assignee or route. Use one for a
+retrospective, a lesson learned, a decision worth keeping.
+
+```bash
+multica card add --title "COC-97 踩坑" --content-stdin < notes.md
+multica card add --title "..." --kind 文档 --issue COC-97
+
+multica card list                      # newest first
+multica card list --search 踩坑         # title AND body, whole workspace
+multica card list --kind 文档           # one tab
+multica card list --kind=               # the uncategorised ones
+multica card list --issue COC-97        # cards linked to that issue
+multica card kinds                     # which kinds exist, with counts
+
+multica card get <card-id>
+multica card update <card-id> --content-file new.md
+multica card update <card-id> --kind 想法
+multica card update <card-id> --detach   # remove the issue link
+multica card delete <card-id>
+```
+
+Pipe the body in rather than passing `--content` inline for anything longer
+than a sentence — inline content mangles newlines.
+
+`kind` is free text and becomes a tab on the cards page. Run `card kinds`
+before inventing a name so a second card about the same thing reuses 文档
+rather than adding 档案 as a third tab.
 
 ## Setup
 
