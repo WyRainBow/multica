@@ -518,7 +518,9 @@ func init() {
 	issueGetCmd.Flags().String("quote-start", "",
 		"Return only a span of the description instead of the whole issue: the text the span starts with, copied verbatim")
 	issueGetCmd.Flags().String("quote-end", "",
-		"Text the span ends with, copied verbatim. Omit to return just the --quote-start text")
+		"Text the span ends with, copied verbatim. Must land in exactly one place after the start, "+
+			"so a bare \"。\" is rejected rather than silently ending the span at the first sentence. "+
+			"Omit to return just the --quote-start text")
 	issueGetCmd.Flags().String("quote-prefix", "",
 		"Text immediately before the passage, used to pick between several matches")
 	issueGetCmd.Flags().String("quote-suffix", "",

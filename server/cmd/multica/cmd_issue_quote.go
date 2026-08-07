@@ -66,10 +66,27 @@ func locateQuote(text string, spec quoteSpec) (quoteSpan, error) {
 	prefixRunes := []rune(prefix)
 	suffixRunes := []rune(suffix)
 
+	// Every place --quote-end could land, found once rather than per start.
+	// Enumerated in full because taking the first one silently is the bug this
+	// function exists to prevent, only moved from the start to the end: an end
+	// of "。" has dozens of candidates, and the shortest span looks exactly
+	// like the intended one to whoever reads the result.
+	type endMatch struct{ at, length int }
+	var endMatches []endMatch
+	if end != "" {
+		for j := 0; j < len(haystack); j++ {
+			if l := matchLenAt(haystack, j, endRunes); l >= 0 {
+				endMatches = append(endMatches, endMatch{at: j, length: l})
+			}
+		}
+	}
+
 	var spans []quoteSpan
 	startHits := 0
 	endMissing := 0
+	capped := false
 
+collect:
 	for i := 0; i < len(haystack); i++ {
 		startLen := matchLenAt(haystack, i, startRunes)
 		if startLen < 0 {
@@ -79,19 +96,38 @@ func locateQuote(text string, spec quoteSpec) (quoteSpan, error) {
 		if prefix != "" && !precededBy(haystack[:i], prefixRunes) {
 			continue
 		}
-		spanEnd := i + startLen
-		if end != "" {
-			offset, endLen := indexRunes(haystack[spanEnd:], endRunes)
-			if offset < 0 {
-				endMissing++
+		from := i + startLen
+
+		if end == "" {
+			if suffix != "" && !followedBy(haystack[from:], suffixRunes) {
 				continue
 			}
-			spanEnd += offset + endLen
-		}
-		if suffix != "" && !followedBy(haystack[spanEnd:], suffixRunes) {
+			spans = append(spans, quoteSpan{Start: i, End: from, Text: string(haystack[i:from])})
 			continue
 		}
-		spans = append(spans, quoteSpan{Start: i, End: spanEnd, Text: string(haystack[i:spanEnd])})
+
+		reached := false
+		for _, m := range endMatches {
+			if m.at < from {
+				continue
+			}
+			reached = true
+			spanEnd := m.at + m.length
+			if suffix != "" && !followedBy(haystack[spanEnd:], suffixRunes) {
+				continue
+			}
+			spans = append(spans, quoteSpan{Start: i, End: spanEnd, Text: string(haystack[i:spanEnd])})
+			// Past two, the exact number changes nothing — it is already an
+			// error — and the bound keeps a one-character quote from scanning
+			// the description once per match.
+			if len(spans) >= maxQuoteSpanCandidates {
+				capped = true
+				break collect
+			}
+		}
+		if !reached {
+			endMissing++
+		}
 	}
 
 	switch {
@@ -107,11 +143,41 @@ func locateQuote(text string, spec quoteSpec) (quoteSpan, error) {
 			"--quote-start matched %d time(s), but none of them is surrounded by the given "+
 				"--quote-prefix/--quote-suffix; copy that text verbatim from around the passage", startHits)
 	case len(spans) > 1:
-		return quoteSpan{}, fmt.Errorf(
-			"the quote matches %d spans in the description; add --quote-prefix with the text just "+
-				"before the passage (or --quote-suffix with the text just after) to say which one", len(spans))
+		return quoteSpan{}, ambiguousQuoteError(spans, capped)
 	}
 	return spans[0], nil
+}
+
+// maxQuoteSpanCandidates bounds the search. Two is already an error, so the
+// only thing a higher count buys is a more precise message.
+const maxQuoteSpanCandidates = 32
+
+// ambiguousQuoteError names the edge that is actually ambiguous, because the
+// two have different fixes: a repeated start needs surrounding context, while a
+// repeated end needs a longer end — no amount of --quote-prefix would change
+// where a span STOPS.
+func ambiguousQuoteError(spans []quoteSpan, capped bool) error {
+	count := fmt.Sprintf("%d", len(spans))
+	if capped {
+		count = fmt.Sprintf("at least %d", len(spans))
+	}
+
+	sameStart := true
+	for _, s := range spans[1:] {
+		if s.Start != spans[0].Start {
+			sameStart = false
+			break
+		}
+	}
+	if sameStart {
+		return fmt.Errorf(
+			"--quote-end matches %s places after the start, so the passage has no single ending; "+
+				"copy more of the passage's last line into --quote-end, or add --quote-suffix with "+
+				"the text just after it", count)
+	}
+	return fmt.Errorf(
+		"the quote matches %s spans in the description; add --quote-prefix with the text just "+
+			"before the passage (or --quote-suffix with the text just after) to say which one", count)
 }
 
 func isQuoteSpace(r rune) bool {
@@ -151,17 +217,6 @@ func matchLenAt(haystack []rune, at int, needle []rune) int {
 		n++
 	}
 	return h - at
-}
-
-// indexRunes returns the offset of the first loose match of needle within
-// haystack and how much it covers, or (-1, 0).
-func indexRunes(haystack, needle []rune) (int, int) {
-	for i := 0; i < len(haystack); i++ {
-		if l := matchLenAt(haystack, i, needle); l >= 0 {
-			return i, l
-		}
-	}
-	return -1, 0
 }
 
 // The prefix must run right up to the passage, ignoring whitespace between

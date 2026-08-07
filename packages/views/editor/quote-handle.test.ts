@@ -149,6 +149,17 @@ describe("countQuoteSpans", () => {
     expect(countQuoteSpans(DOC, "附录", "背景说明")).toBe(0);
   });
 
+  // Every landing place for the end is its own span. Counting only the nearest
+  // would let the button emit a handle the CLI then rejects — or worse, one it
+  // resolves to a truncated passage.
+  it("counts each place the end could land, not just the nearest", () => {
+    expect(countQuoteSpans(DOC, "概述", "。")).toBeGreaterThan(1);
+  });
+
+  it("counts one when the end lands in exactly one place", () => {
+    expect(countQuoteSpans(DOC, "概述", "讲进域资格。")).toBe(1);
+  });
+
   it("counts by characters, so CJK does not skew the scan", () => {
     expect(countQuoteSpans("中文前缀 target 中文后缀 target", "target", "")).toBe(2);
   });

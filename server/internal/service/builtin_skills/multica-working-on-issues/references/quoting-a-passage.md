@@ -23,6 +23,13 @@ multica issue get COC-45 \
 | `--quote-prefix` | Text immediately BEFORE the passage. Only needed to disambiguate. |
 | `--quote-suffix` | Text immediately AFTER it. Same purpose. |
 
+**Both edges must land in exactly one place.** A bare `--quote-end "。"` is
+rejected, not resolved to the first sentence end — copy enough of the
+passage's last line to be unique, or pin what follows it with
+`--quote-suffix`. The two edges fail differently and the error says which:
+a repeated START needs surrounding context, a repeated END needs a longer end,
+and no amount of `--quote-prefix` changes where a span stops.
+
 The response is the span, plus `identifier`, `title` and the character offsets
 it was cut at. The rest of the description is not returned.
 
@@ -40,17 +47,23 @@ prose. Flags need no escaping.
 
 ## It refuses rather than guesses
 
-Zero matches and several matches are both errors:
+Zero matches and several matches are both errors, on either edge:
 
 ```
 the quote matches 2 spans in the description; add --quote-prefix with the text
 just before the passage (or --quote-suffix with the text just after) to say
 which one
+
+--quote-end matches 27 places after the start, so the passage has no single
+ending; copy more of the passage's last line into --quote-end, or add
+--quote-suffix with the text just after it
 ```
 
 Returning the first of several candidates is the one outcome worth engineering
 against — the caller is usually an agent about to review whatever comes back,
 and a confident review of the wrong passage looks exactly like a correct one.
+A truncated span is that same failure: an end that stops at the first sentence
+of a ten-paragraph section returns something that reads complete.
 
 An edge flag without `--quote-start` is also an error, not an ignored flag:
 ignoring it would print the whole description, which reads like a quote that

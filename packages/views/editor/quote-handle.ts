@@ -89,17 +89,28 @@ export function countQuoteSpans(markdown: string, start: string, end: string): n
   const endChars = Array.from(endText);
   let count = 0;
 
+  // Every landing place for the end counts as its own span, matching
+  // locateQuote: an end of "。" has a candidate at the close of every sentence,
+  // and taking the nearest silently would hand back a truncated passage that
+  // reads exactly like a complete one.
+  const endAt: number[] = [];
+  if (endChars.length > 0) {
+    for (let j = 0; j < hay.length; j++) {
+      if (matchLenAt(hay, j, endChars) >= 0) endAt.push(j);
+    }
+  }
+
   for (let i = 0; i < hay.length; i++) {
     const startLen = matchLenAt(hay, i, startChars);
     if (startLen < 0) continue;
-    if (endChars.length > 0) {
-      let found = false;
-      for (let j = i + startLen; j < hay.length && !found; j++) {
-        if (matchLenAt(hay, j, endChars) >= 0) found = true;
-      }
-      if (!found) continue;
+    if (endChars.length === 0) {
+      count++;
+      continue;
     }
-    count++;
+    for (const j of endAt) {
+      if (j >= i + startLen) count++;
+    }
+    if (count > 1) return count; // already ambiguous; the exact number is moot
   }
   return count;
 }

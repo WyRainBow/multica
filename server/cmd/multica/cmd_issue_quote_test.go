@@ -73,6 +73,69 @@ func TestLocateQuote_RefusesToGuessBetweenSeveralMatches(t *testing.T) {
 	}
 }
 
+// A short end like "。" has a candidate at the close of every sentence.
+// Silently taking the nearest one hands back a truncated passage that reads
+// exactly like a complete one — the same failure as guessing between starts,
+// moved to the other edge.
+func TestLocateQuote_RefusesToGuessBetweenSeveralEndings(t *testing.T) {
+	// "。" closes three sentences after this start.
+	_, err := locateQuote(quoteDoc, quoteSpec{Start: "# 概述", End: "。"})
+	if err == nil {
+		t.Fatalf("expected an error when the end has several candidates")
+	}
+	if !strings.Contains(err.Error(), "--quote-end") {
+		t.Fatalf("error should name --quote-end, not the start: %v", err)
+	}
+	// The fix for a repeated end is a longer end, never surrounding context on
+	// the start — saying otherwise sends the caller down a road that cannot work.
+	if strings.Contains(err.Error(), "--quote-prefix with the text just before") {
+		t.Fatalf("error offers a fix that cannot change where a span stops: %v", err)
+	}
+}
+
+// Two ways out of an ambiguous ending, both of which the generated handles
+// can produce: a longer end, or pinning the text that follows the passage.
+func TestLocateQuote_ResolvesAnAmbiguousEnding(t *testing.T) {
+	if _, err := locateQuote(quoteDoc, quoteSpec{Start: "# 概述", End: "。"}); err == nil {
+		t.Fatalf("precondition: this end should be ambiguous")
+	}
+
+	longer, err := locateQuote(quoteDoc, quoteSpec{Start: "# 概述", End: "讲进域资格。"})
+	if err != nil {
+		t.Fatalf("a longer end should resolve it: %v", err)
+	}
+	if !strings.HasSuffix(longer.Text, "讲进域资格。") {
+		t.Fatalf("span = %q", longer.Text)
+	}
+
+	pinned, err := locateQuote(quoteDoc, quoteSpec{
+		Start:  "# 概述",
+		End:    "。",
+		Suffix: "## 路由决策链路",
+	})
+	if err != nil {
+		t.Fatalf("a suffix should resolve it: %v", err)
+	}
+	if !strings.HasSuffix(pinned.Text, "背景说明。") {
+		t.Fatalf("suffix picked the wrong ending: %q", pinned.Text)
+	}
+}
+
+// A repeated start and a repeated end need different fixes, so they must not
+// share one message.
+func TestLocateQuote_NamesTheStartWhenItIsTheStartThatRepeats(t *testing.T) {
+	_, err := locateQuote(quoteDoc, quoteSpec{Start: "路由决策链路"})
+	if err == nil {
+		t.Fatalf("expected an error for a repeated start")
+	}
+	if !strings.Contains(err.Error(), "--quote-prefix") {
+		t.Fatalf("a repeated start should be fixed with context: %v", err)
+	}
+	if strings.Contains(err.Error(), "--quote-end matches") {
+		t.Fatalf("error blames the end for a repeated start: %v", err)
+	}
+}
+
 func TestLocateQuote_PrefixPicksBetweenSeveralMatches(t *testing.T) {
 	span, err := locateQuote(quoteDoc, quoteSpec{
 		Start:  "路由决策链路",
