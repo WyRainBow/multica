@@ -222,149 +222,48 @@ the whole body and can land on the wrong one. `references/quoting-a-passage.md`.
 
 ## Phases — filing what happened under the station it happened in
 
-A long issue's comments arrive in one flat run — comment 3 and comment 30 can
-belong to different stretches of work and nothing says so. A PHASE is a
-container inside one issue holding the comments written while it was there.
-Not a status: `status` forgets the route, a phase stays. **Every new issue is
-created with 开始 → 评审 → 冻结 already on it** — file into those rather than
-building a route first. Review recurs as `评审 2`, `评审 3`, each its own.
+A phase is a container inside one issue holding the comments written while the
+work was there — comment 3 and comment 30 otherwise arrive in one flat run with
+nothing saying they belong to different stretches. Not a status: `status`
+forgets the route, a phase stays.
 
 ```bash
-multica issue phase list <id>                      # NAME, STATE, COMMENTS, ENTERED, COMPLETED
-multica issue phase add <id> 评审
-multica issue phase enter <id> 评审                # record arrival
-multica issue phase complete <id> 评审             # record departure
 multica issue comment add <id> --phase 评审 --content "..."
-multica issue comment list <id> --phase 评审
+multica issue phase list <id>
 ```
 
-Rules that will bite you if you assume otherwise:
+**Every new issue is created with 开始 → 评审 → 冻结 already on it** — file into
+those rather than building a route first. `<phase>` is the NAME, matched
+exact-first so `评审` still resolves once `评审 2` exists.
 
-- **`<phase>` is the NAME** — case-insensitive, unique prefix accepted, full
-  UUID also works. Exact-first, so `评审` still resolves once `评审 2` exists.
-- **Names are unique per issue**; a duplicate returns **409** rather than two
-  stations that read the same.
-- **`complete` requires `enter` first** (**409** otherwise) — completing an
-  unentered phase records a route the work never took. `enter` on an entered
-  phase keeps the FIRST arrival and clears completion: coming back is not
-  starting over.
-- **State is derived**, never stored: completed → `done`, entered → `current`,
-  neither → `pending`.
-- **A reply joins the comment it answers.** `--parent` with no `--phase` takes
-  the parent's station, so you never have to restate it; pass `--phase` on the
-  reply only to put it somewhere else.
-- **Deleting a phase deletes its comments**, so the CLI needs `--force` once it
-  holds any. `phase list` shows that count — it is the only warning you get.
-- **`comment list --phase` filters client-side**, so it is rejected with
-  `--recent` / `--tail` / `--thread` / `--before`: those pick a window first,
-  and the result would read as "everything in this phase" while being a slice.
+Three that bite: a reply with `--parent` and no `--phase` inherits its parent's
+station; deleting a phase deletes its comments; and an issue predating the
+feature has no route, which is **not a bug to fix** — drop the flag rather than
+fabricating stations the work never took. Commands, the 409 rules, and how
+activities are placed: `references/phases.md`.
 
-Activities (status changes, description edits) carry no phase field. The UI
-places them by TIME into whichever phase was current; the CLI does not group
-them at all.
+## An issue that ended: frozen, archived, deleted
 
-Issues predating this feature have no route — **not a bug to fix**. Adding
-stations an issue never used fabricates a history rather than recovering one;
-add one only when someone is about to file into it. `--phase` on such an issue
-fails with "add one with `multica issue phase add`" — that message is for a
-person deciding to start a route, not an instruction to you. Drop the flag and
-comment without it.
+Once an issue is `done` or `cancelled`, its **title and description are frozen**
+— the endpoint returns 409, and that covers `issue update` too. Everything else
+still works: comments, status, labels, metadata, relationships. The lock opens
+by leaving the terminal status, in a separate request from the rewrite. Found a
+mistake in a finished issue? **Ask the user first** — never reopen on your own.
 
-## A finished issue's title and description are frozen
+Reading one has its own rule, and it is the expensive one: a finished issue says
+**what was true when it finished**, accurate about the past and silent about the
+present. Do not treat its description as current state; do not discount it
+either, because why a decision was made is usually written nowhere else. Nothing
+points at whatever replaced it — check `superseded_by` in metadata.
 
-Once an issue is `done` or `cancelled`, `PUT /api/issues/{id}` refuses any
-request carrying `title` or `description` and returns **409**. That covers
-`multica issue update --title/--description` too — the CLI goes through the
-same endpoint.
+**Archiving is a different dimension from status.** `status` says how the work
+ended; archived says whether the card is still in view. Do NOT reach for
+`cancelled` to get a shipped issue off the board — archive it, and it keeps the
+status it ended on. Archiving takes the whole sub-issue subtree; **deleting does
+not**, and `--force` orphans the children instead.
 
-A finished issue records what was true when it finished. The description is a
-single current value, not a history, so a later edit leaves no way to tell
-which version anyone acted on.
-
-Everything else still works on a finished issue, and deliberately so: comments,
-status, archiving, labels, metadata, reactions and relationships. A late
-sibling finishing still posts its system comment on a done parent.
-
-The lock opens by leaving the terminal status — the check reads the issue's
-CURRENT status, so `done → in_progress` carries no body field and passes, and
-the body is writable from the next request on. One request that both reopens
-and rewrites is still refused; do it in two.
-
-Found a mistake in a finished issue? Ask the user first, then either reopen →
-correct → close again, or file the correction as a new issue. Do not reopen on
-your own initiative.
-
-### Reading one: it is a record, not the current state
-
-The freeze is a rule about writing. Reading has its own, and it is the one
-that costs you if you get it wrong: a finished issue describes **what was true
-when it finished** — accurate about the past, silent about the present. A
-design it describes may have been replaced last month and it neither knows
-that nor says so. When `status` is `done` or `cancelled`:
-
-- **Do not treat the description as current state.** Verify against the code,
-  the config, or a live check first. `multica issue get` prints this on stderr.
-- **Do not discount it either.** Why a decision was made and what was rejected
-  is usually written down nowhere else and is still true. "Finished" is not
-  "wrong"; skimming past a closed issue re-litigates settled decisions.
-- **No automatic pointer to whatever replaced it.** Relations are only
-  `blocks` / `blocked_by` / `related` plus parent/child — none means
-  "superseded by". A recorded successor is a metadata key, so check
-  `multica issue metadata list <id>` for `superseded_by`, and when you finish
-  an issue that replaces an older one, record it there:
-
-  ```bash
-  multica issue metadata set <old-id> --key superseded_by --value COC-99
-  ```
-
-## Archiving is not a status
-
-`archived` is a separate dimension from `status`, and the two answer different
-questions:
-
-- **`status`** — how the work ended: `done`, `cancelled`, `blocked`.
-- **archived** — whether the card should still be in view.
-
-Do NOT reach for `cancelled` to get a finished issue off the board. Cancelling
-records that the work was abandoned, which is wrong for something that shipped,
-and the distinction is unrecoverable afterwards. Archive it instead: the issue
-keeps whatever status it ended on.
-
-```bash
-multica issue archive <id>      # takes the issue AND its sub-issue subtree out of view
-multica issue unarchive <id>    # brings the same subtree back
-multica issue list --include-archived
-```
-
-Two consequences worth knowing before you use it:
-
-- **The whole subtree moves.** Archiving a requirement archives every sub-issue
-  under it, at any depth. Archive a mid-tree node and only that node's own
-  subtree goes; ancestors are untouched.
-- **Archived issues stay readable.** `issue get <id>` still returns an archived
-  issue; only list/board surfaces hide it. Links from other issues keep working.
-
-Re-archiving an already-archived issue is a `409`, not a silent no-op — the
-original `archived_at` is preserved so "when did this leave the board" stays
-answerable.
-
-### Deleting is not archiving
-
-```bash
-multica issue delete <id>           # permanent; refuses if the issue has sub-issues
-multica issue delete <id> --force   # deletes it anyway, ORPHANING its sub-issues
-```
-
-Delete destroys the issue with its comments, reactions and attachments, and it
-cannot be undone. Reach for `archive` unless the issue should genuinely stop
-existing.
-
-The one consequence worth knowing before you use `--force`: sub-issues are
-**not** deleted with their parent. The parent link is `ON DELETE SET NULL`, so
-they survive as top-level issues with no parent. `delete` refuses by default
-when children exist precisely so that becomes a decision rather than something
-you discover afterwards. If you want a whole tree gone from view, archive it —
-archiving takes the subtree; deleting does not.
+Full rules — the two-request reopen, superseded_by, subtree behaviour, and what
+delete destroys: `references/issue-endings.md`.
 
 ## `issue create` assigns to the caller unless told otherwise
 
@@ -487,6 +386,16 @@ stated dependencies are met; if a description conflicts with the parent's
 breakdown, leave it `backlog` and comment to confirm first.
 
 ## References
+
+Each section above points at the file carrying its full rules. In one place:
+
+| File | Covers |
+| --- | --- |
+| `references/phases.md` | Stations, the 409 rules, where activities land |
+| `references/comment-threads.md` | Thread shape, which comment to resolve, the reopen gap |
+| `references/quoting-a-passage.md` | Reading one span of a description, and anchored comments |
+| `references/issue-endings.md` | Frozen bodies, archiving vs status, what delete destroys |
+| `references/pull-request-response.md` | Every field on a linked PR, and the checks snapshot |
 
 `references/working-on-issues-source-map.md` — accurate `file:line` for every
 contract above: the `pull-requests` CLI and route, the PR response field list,
