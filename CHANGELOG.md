@@ -1,0 +1,176 @@
+# 这个 fork 加了什么
+
+[multica-ai/multica](https://github.com/multica-ai/multica) 的 fork，按一个人 + 几个 Agent 的日常用法改的。
+
+**只记功能** —— 用得到的能力。修 bug、重构、改文档、调迁移编号不在这里，那些在 git 历史里。
+按主题分，不按时间；每条都能在这个仓库里找到对应实现。
+
+---
+
+## 需求的过程往哪儿放
+
+一条长周期需求，过程只有正文和评论两个地方能记。正文越写越长，评论有时间顺序但**没有归属**——第 3 条和第 30 条可能属于完全不同的阶段。
+
+### 节点（phase）
+
+一条 issue 内部的站点。**每条新建 issue 自带 `开始 / 评审 / 冻结`**，子 issue 也有；评审可以多轮（`评审 2`、`评审 3`），每轮是独立容器。
+
+- 点一个节点，评论和动态只剩那一站的
+- 写评论时选中某站，一次请求就归进去
+- 已有评论可以事后**归到节点**（根评论的 ⋯ 菜单）
+- **回复自动继承父评论的节点**，不用重复指定
+- 动态（状态变更、描述更新）没有节点字段，**按发生时间**落到当时正当值的那一站
+
+```bash
+multica issue phase list <id>
+multica issue phase add <id> "评审 2"
+multica issue comment add <id> --phase 评审 --content "..."
+multica issue comment list <id> --phase 评审
+```
+
+### 讨论的形态与结论
+
+- **一条 thread = 一个讨论**：顶层评论起一个话题，回应用 `--parent` 挂在下面
+- **结论**：`comment resolve` 标记结论所在那条，界面显示绿色「结论」，CLI 的 TYPE 列显示 `resolution`
+- 已解决的 thread 在完整读取时**折叠成「根 + 结论」**，不必为已经结束的讨论付 token
+- **置顶**：`comment pin` 把「该先读哪条」浮到时间线最顶上，只能置顶根评论
+- **回复不会派活**：本 fork 关掉了隐式评论路由，回复 agent 的评论不会唤醒它，要它行动必须显式 `@`
+
+```bash
+multica issue comment resolve <结论那条的ID>
+multica issue comment pin <根评论ID>
+```
+
+### 描述变更看得见
+
+- 动态里不再只说「更新了描述」，而是「更新了描述（+49 −6），改动：验收条件、非目标 等 3 处」
+- 编辑区底部显示正文字符数，跟 `multica issue get` 返回的口径一致，也就是 Agent 读进去的量
+- 时间显示精确到时分秒，不是「24 分钟前」
+
+---
+
+## 长文档怎么读、怎么标注
+
+### 目录大纲
+
+issue 描述左侧的固定目录，跟着编辑实时更新、可收起。用容器查询判断宽度，右侧属性面板展开时自动让位。
+
+### 划词评论
+
+选中正文的一段发起评论 → 正文里高亮 → 点高亮跳到评论 → 评论里显示引用的原文 → 点引用跳回正文。定位不到时退化成普通评论，不丢数据。
+
+CLI 也能划词：
+
+```bash
+multica issue comment add <id> --anchor "<原文片段>" --content "..."
+```
+
+### 引用一段交给 Agent
+
+选中正文一段 → 气泡菜单点剪贴板图标 → 得到一行命令，粘给 Agent，它**只读这一段**。
+
+```bash
+multica issue get <id> --quote-start "起始文字" --quote-end "结束文字"
+```
+
+引用的是**首尾**不是整段，所以选 1000 字生成的句柄只有几十字。**歧义会报错不会猜** —— 匹配到多处、边不存在、结束串在起始串之前，全部拦住。实测一份 19207 字符的正文，取一节 414 字符。
+
+---
+
+## 归档、冻结、挂起
+
+### 归档是独立维度
+
+不是 status 的一个值。归档整棵子树一起走，`done` / `cancelled` 记录的仍然是工作**怎么结束的**。
+
+```bash
+multica issue archive <id>
+multica issue list --include-archived
+```
+
+### 终态冻结
+
+`done` / `cancelled` 的 issue，**标题和正文只读**（服务端 409）。终态记录的是它结束时的样子，事后改会让「以哪一版为准」无从判断。改回未完成即解锁。
+
+正文里会写明它是一份记录，不是现状。
+
+### 挂起（park）
+
+做需求时冒出的优化点，从父 issue 里摘出来变成顶层待规划，**并记住来源**。这样父需求归档时不会把它一起带走。父 issue 上有反向视图「从这里挂起的」。
+
+---
+
+## 列表和筛选
+
+- **按父 issue 的子树筛选** —— 只看某条需求下面的全部后代
+- **反向筛选** —— 「不是这个状态 / 不是这个人」，不只是正选
+- **拖拽排序** —— 表格里拖行调整同级顺序
+- **拖拽改父级** —— 把一行拖进另一行，变成它的子 issue
+- 新建 issue **默认指派给创建者**
+
+---
+
+## 卡片
+
+不是 issue 的随手记：想法、文档、踩坑记录。
+
+- 按**时间线**排列，不是网格
+- 按内容**搜索**，几个月后还找得到
+- **Tab 按 kind 分**，而且 kind 是从已写的内容里派生的，不是固定枚举 —— 填不上的 tab 比没有 tab 更糟
+
+```bash
+multica card add --title "..." --kind "想法" --content "..."
+multica card kinds
+multica card list --search "关键词"
+```
+
+---
+
+## 资源
+
+issue 上挂外部页面 —— 设计稿、会议纪要、供应商文档。不是写进正文的链接：写进正文的链接没法列举、计数、删除，而且 issue 完成后正文冻结，那时连加都加不了。
+
+飞书链接显示飞书图标，其余站点取它自己的 favicon。
+
+```bash
+multica issue resource add <id> --url "https://..." --title "..."
+multica issue resource list <id>
+```
+
+---
+
+## 署名
+
+- 终端里的写入自动记在 **Claude / Codex** 名下，不显示成 cocoyu ——「谁写的」和「用谁的权限」分开
+- 动态行也显示是哪个 Agent 改的
+- opencode 终端的写入记在 **DeepSeek** 名下
+
+---
+
+## CLI
+
+除了上面各节提到的，还有：
+
+```bash
+multica issue delete <id>              # 永久删除，有子 issue 时默认拒绝
+multica issue create --test            # 标题加 [测试] 前缀，跟真实工作分开
+multica issue comment get <comment-id> # 只读一条，不拉整个 thread
+```
+
+---
+
+## 网页
+
+浏览器标签页显示当前页面的名字，不再是一律「Multica」。
+
+---
+
+## 本地怎么跑（不用 Docker）
+
+见 README。这台机器的 PostgreSQL 是 Homebrew 装的，跑在 **5433**，所以 `make start` 那条走不通 —— 它会去找 Docker 容器。
+
+```bash
+set -a && . ./.env && set +a
+(cd server && go run ./cmd/server) &
+pnpm dev:web
+```
