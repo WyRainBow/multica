@@ -1,6 +1,6 @@
 ---
 name: multica-working-on-issues
-description: "Use when acting on a Multica issue beyond what the brief covers: PR linking vs close intent, reading a linked PR's real state, metadata keys, status-change side effects, sub-issue todo vs backlog."
+description: "Use when acting on a Multica issue beyond what the brief covers: PR linking vs close intent, reading a linked PR's real state, comment threads and when to resolve one, metadata keys, status-change side effects, sub-issue todo vs backlog."
 user-invocable: false
 allowed-tools: Bash(multica *), Bash(git *), Bash(gh *)
 ---
@@ -178,35 +178,25 @@ on it. These are the contracts, not advice:
 
 ## Commenting on one passage of the description
 
-An ordinary comment is about the issue. An INLINE comment is about a specific
-passage of its description — use it when the thing you are saying only makes
-sense next to particular words: explaining a paragraph, questioning one
-sentence, flagging a term.
+`multica issue comment add <id> --anchor "<passage verbatim>" --content "..."`
+attaches a comment to specific words instead of to the issue. Copy the passage
+exactly — a near-miss is a hard error, not a warning, because the alternative is
+a comment that silently highlights nothing. Repeats are disambiguated with
+`--anchor-occurrence`, never by widening the passage until it happens to be
+unique. Details: `references/quoting-a-passage.md`.
 
-```bash
-multica issue comment add <id> --anchor "V1 结论" --content "..."
-multica issue comment add <id> --anchor "V1 结论" --anchor-occurrence 2 --content "..."
-```
+## Comment threads: one question, one conclusion
 
-`--anchor` takes the passage VERBATIM out of the current description. The CLI
-locates it and computes the offset for you; do not try to supply one. Two rules
-follow from that:
+A thread is a discussion. One atomic question per TOP-LEVEL comment, replies
+carry the rounds, a DIFFERENT question opens a new top-level comment. When it
+concludes, resolve the comment that HOLDS the conclusion — resolving the root
+when the conclusion is in a reply hides that conclusion from every default read,
+because a root-resolved thread folds to the root alone.
 
-- **Copy, do not paraphrase.** A passage that does not appear exactly is a hard
-  error, not a warning. That is deliberate: without it you would file a comment
-  that silently highlights nothing, and the mistake would only surface later as
-  "the feature is broken".
-- **Disambiguate repeats with `--anchor-occurrence`.** When the passage occurs
-  more than once, the error tells you how many times it occurs; pick the one
-  you meant rather than widening the passage until it is unique.
-
-The comment then behaves like any other: @mentions trigger, replies thread
-under it, it can be resolved. The anchor only adds *where in the description*
-it is about.
-
-If the description is later edited so the passage no longer appears, the
-comment survives and simply stops highlighting. Nothing is lost, so prefer an
-anchored comment whenever the passage is what you are talking about.
+Resolve at the end, not along the way: a new reply does not reopen a thread
+whose conclusion is a reply, so replies added after that are invisible with
+nothing warning anyone. Review ROUNDS are phases, not threads. Full rules and
+the reopen gap: `references/comment-threads.md`.
 
 ## Reading one comment you were handed
 

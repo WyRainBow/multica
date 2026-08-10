@@ -6,6 +6,25 @@ after the latest `main` merge; the prior skill cited pre-merge lines that have
 since moved (see the "drifted" column). Re-confirm with the verification command
 at the bottom before relying on an exact line.
 
+## Comment threads — resolve, fold, reopen
+
+| Behavior | File:line |
+|---|---|
+| `comment resolve` / `unresolve` handler | `server/internal/handler/comment.go:3727` |
+| One resolution per thread; resolving a second clears the first, atomically | `server/internal/handler/comment.go:3740` (`ClearOtherThreadResolutions`) |
+| Root-resolved folds to the root ALONE — every reply dropped | `server/internal/handler/comment_fold_test.go:91` |
+| Reply-resolved keeps root + that reply | `server/internal/handler/comment_fold_test.go:69` |
+| CLI sends `fold=true` only on complete-thread reads | `server/cmd/multica/cmd_issue.go:593` |
+| Auto-reopen fires only when the comment passed in carries `resolved_at` | `server/internal/service/task.go:5139` (`AutoUnresolveThreadOnReply`) |
+| …and the handler passes the thread ROOT | `server/internal/handler/comment.go:2019` |
+
+The last two rows are the reopen gap: a conclusion living on a REPLY is never
+cleared by a new reply, so replies added after it stay hidden from every default
+read. Unresolve the comment that actually carries `resolved_at` first.
+
+| Implicit comment routing is off in this fork | `server/internal/handler/comment.go:2096` (`implicitCommentRoutingEnabled`) |
+|---|---|
+
 ## `multica issue comment add --anchor` — comment on one passage
 
 | Behavior | File:line |

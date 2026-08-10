@@ -87,9 +87,41 @@ The button is absent on a finished issue (`done` / `cancelled`), whose
 description renders read-only with no selection toolbar. The flags still work
 there; they just have to be written by hand.
 
+## Writing back to a passage: anchored comments
+
+The mirror of reading a span is commenting on one. An ordinary comment is about
+the issue; an INLINE comment is about specific words of its description — use it
+when what you are saying only makes sense next to them: explaining a paragraph,
+questioning a sentence, flagging a term.
+
+```bash
+multica issue comment add <id> --anchor "V1 结论" --content "..."
+multica issue comment add <id> --anchor "V1 结论" --anchor-occurrence 2 --content "..."
+```
+
+`--anchor` takes the passage VERBATIM out of the current description. The CLI
+locates it and computes the offset; never supply one. Two rules follow:
+
+- **Copy, do not paraphrase.** A passage that does not appear exactly is a hard
+  error, not a warning. Deliberate: without it you would file a comment that
+  silently highlights nothing, and the mistake would surface much later as "the
+  feature is broken".
+- **Disambiguate repeats with `--anchor-occurrence`.** When the passage occurs
+  more than once the error says how many times; pick the one you meant rather
+  than widening the passage until it happens to be unique.
+
+The comment then behaves like any other — replies thread under it, it can be
+resolved. The anchor only adds *where in the description* it is about.
+
+If the description is later edited so the passage no longer appears, the comment
+survives and stops highlighting. Nothing is lost, so prefer an anchored comment
+whenever a passage is what you are talking about.
+
+Note the two are independent mechanisms: reading a span uses a quote, writing to
+one uses an anchor. A quote is consumed immediately; an anchor persists on the
+comment.
+
 ## Related
 
 - Reading one comment instead of a thread: `multica issue comment get <id>`.
-- Attaching a review to the passage it is about, rather than the issue as a
-  whole: `multica issue comment add <id> --anchor "..."`. Reading uses a quote,
-  writing uses an anchor; the two are independent.
+- How a thread is shaped and when to resolve it: `references/comment-threads.md`.
