@@ -1,8 +1,8 @@
 "use client";
 
-import { memo, useCallback, useEffect, useRef, useState, type ReactNode } from "react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import type { IssuePhase } from "@multica/core/types";
-import { CheckCircle2, ChevronRight, ListChevronsDownUp, Copy, Loader2, MoreHorizontal, Pencil, Pin, RotateCcw, Trash2, Waypoints } from "lucide-react";
+import { CheckCircle2, ChevronRight, CornerDownRight, ListChevronsDownUp, Copy, Loader2, MoreHorizontal, Pencil, Pin, RotateCcw, Trash2, Waypoints } from "lucide-react";
 import { toast } from "sonner";
 import { Card } from "@multica/ui/components/ui/card";
 import { Button } from "@multica/ui/components/ui/button";
@@ -121,9 +121,12 @@ interface CommentCardProps {
   onToggleReaction: (commentId: string, emoji: string) => void;
   /** Resolve/unresolve any comment in this thread (commentId = the target row). */
   onResolveToggle?: (commentId: string, resolved: boolean) => void;
+  /** Pin/unpin this THREAD. Only the root card renders it — a pin means
+   *  "start here", and a reply is not somewhere a reader starts, so
+   *  CommentRow (which renders replies) never receives it. */
+  onPinToggle?: (commentId: string, pinned: boolean) => void;
   /** Pin/unpin this thread. Passed only for thread ROOTS — a pin means
    *  "start here", and a reply is not somewhere a reader starts. */
-  onPinToggle?: (commentId: string, pinned: boolean) => void;
   /**
    * When non-null, the thread root is currently rendered as a resolved-but-
    * expanded card. Pass a "Collapse" affordance into the header so the user
@@ -584,7 +587,7 @@ function CommentRow({
   onSetPhase,
   onToggleReaction,
   onResolveToggle,
-  onPinToggle,
+  replyingTo,
 }: {
   issueId: string;
   entry: TimelineEntry;
@@ -602,9 +605,14 @@ function CommentRow({
   onSetPhase?: (commentId: string, phaseId: string | null) => void;
   onToggleReaction: (commentId: string, emoji: string) => void;
   onResolveToggle?: (commentId: string, resolved: boolean) => void;
+  /** Who this reply answers — the author of its parent comment. Derived by
+   *  the card from parent_id, because a reply carries the id but not the
+   *  person, and a flat thread reads as everyone talking past each other
+   *  without it. Absent when the parent is the thread root, which is
+   *  directly above and needs no label. */
+  replyingTo?: { actorType: string; actorId: string };
   /** Pin/unpin this thread. Passed only for thread ROOTS — a pin means
    *  "start here", and a reply is not somewhere a reader starts. */
-  onPinToggle?: (commentId: string, pinned: boolean) => void;
 }) {
   const { t } = useT("issues");
   const exactTime = useExactTime();
@@ -637,6 +645,14 @@ function CommentRow({
         <span className="cursor-pointer text-body font-medium">
           {getActorName(entry.actor_type, entry.actor_id)}
         </span>
+        {replyingTo && (
+          <span className="flex shrink-0 items-center gap-1 text-caption text-muted-foreground">
+            <CornerDownRight className="h-3 w-3" />
+            {t(($) => $.comment.replying_to, {
+              name: getActorName(replyingTo.actorType, replyingTo.actorId),
+            })}
+          </span>
+        )}
         {/* Which station this was said at. Shown on the comment itself, not
             only on the track: the timeline is read top to bottom far more
             often than it is filtered, and without this a reader scrolling the
@@ -669,13 +685,6 @@ function CommentRow({
         {isResolution && (
           <span className="text-caption font-medium text-success">
             {t(($) => $.comment.resolve.resolution_badge)}
-          </span>
-        )}
-
-        {entry.pinned_at && (
-          <span className="flex items-center gap-1 text-caption font-medium text-muted-foreground">
-            <Pin className="h-3 w-3" />
-            {t(($) => $.comment.pin.badge)}
           </span>
         )}
 
@@ -748,17 +757,6 @@ function CommentRow({
                       {t(($) => $.comment.resolve.resolve_with_comment_action)}
                     </DropdownMenuItem>
                   )}
-                </>
-              )}
-              {onPinToggle && (
-                <>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={() => onPinToggle(entry.id, !entry.pinned_at)}>
-                    <Pin className="h-3.5 w-3.5" />
-                    {entry.pinned_at
-                      ? t(($) => $.comment.pin.unpin_action)
-                      : t(($) => $.comment.pin.pin_action)}
-                  </DropdownMenuItem>
                 </>
               )}
               {(canEditEntry || canDeleteEntry) && (
@@ -908,6 +906,7 @@ function CommentCardImpl({
   onSetPhase,
   onToggleReaction,
   onResolveToggle,
+  onPinToggle,
   onCollapseResolved,
   expandedResolvedIds,
   onResolvedExpandChange,
@@ -918,6 +917,28 @@ function CommentCardImpl({
     phases?.find((phase) => phase.id === entry.phase_id) ?? null;
   const exactTime = useExactTime();
   const { getActorName } = useActorName();
+
+  // Who each reply answers. Derived here rather than on the row because only
+  // the card holds the whole thread: a reply carries parent_id, and the person
+  // behind that id is another entry in this same list.
+  //
+  // Skipped when the parent is the thread root — the root is what the card is,
+  // it sits directly above, and labelling every first-level reply "replying to
+  // <root author>" would be noise on the common case rather than a signal on
+  // the interesting one: a reply that answers ANOTHER reply, which is where a
+  // flat render otherwise reads as everyone talking past each other.
+  const replyingToByCommentId = useMemo(() => {
+    const byId = new Map(replies.map((r) => [r.id, r]));
+    const out = new Map<string, { actorType: string; actorId: string }>();
+    for (const reply of replies) {
+      const parentId = reply.parent_id;
+      if (!parentId || parentId === entry.id) continue;
+      const parent = byId.get(parentId);
+      if (!parent) continue;
+      out.set(reply.id, { actorType: parent.actor_type, actorId: parent.actor_id });
+    }
+    return out;
+  }, [replies, entry.id]);
   const isCollapsed = useCommentCollapseStore((s) => s.isCollapsed(issueId, entry.id));
   const toggleCollapse = useCommentCollapseStore((s) => s.toggle);
   const open = !isCollapsed;
@@ -1038,6 +1059,16 @@ function CommentCardImpl({
               </Tooltip>
               <CommentIdChip id={entry.id} />
 
+              {/* Shown whether the card is open or collapsed: a pin is how a
+                  reader finds this thread in the first place, so hiding it
+                  behind expansion would defeat it. */}
+              {entry.pinned_at && (
+                <span className="flex shrink-0 items-center gap-1 text-caption font-medium text-muted-foreground">
+                  <Pin className="h-3 w-3" />
+                  {t(($) => $.comment.pin.badge)}
+                </span>
+              )}
+
               {!open && contentPreview && (
                 <span className="min-w-0 flex-1 truncate text-caption text-muted-foreground">
                   {contentPreview}
@@ -1120,6 +1151,17 @@ function CommentCardImpl({
                                 {t(($) => $.comment.resolve.resolve_thread_action)}
                               </>
                             )}
+                          </DropdownMenuItem>
+                        </>
+                      )}
+                      {onPinToggle && (
+                        <>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem onClick={() => onPinToggle(entry.id, !entry.pinned_at)}>
+                            <Pin className="h-3.5 w-3.5" />
+                            {entry.pinned_at
+                              ? t(($) => $.comment.pin.unpin_action)
+                              : t(($) => $.comment.pin.pin_action)}
                           </DropdownMenuItem>
                         </>
                       )}
@@ -1298,6 +1340,7 @@ function CommentCardImpl({
                     onSetPhase={onSetPhase}
                     onToggleReaction={onToggleReaction}
                     onResolveToggle={onResolveToggle}
+                    replyingTo={replyingToByCommentId.get(resolutionReply.id)}
                   />
                 </div>
               )}
@@ -1339,6 +1382,7 @@ function CommentCardImpl({
                     onSetPhase={onSetPhase}
                     onToggleReaction={onToggleReaction}
                     onResolveToggle={onResolveToggle}
+                    replyingTo={replyingToByCommentId.get(reply.id)}
                   />
                 </div>
               ))}

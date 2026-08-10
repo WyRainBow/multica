@@ -473,7 +473,8 @@
       "badge": "固定中",
       "pin_failed": "固定できませんでした",
       "unpin_failed": "固定を解除できませんでした"
-    }
+    },
+    "replying_to": "{{name}} への返信"
   },
   "reply": {
     "placeholder": "返信を残す..."

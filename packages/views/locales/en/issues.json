@@ -488,7 +488,8 @@
       "badge": "Pinned",
       "pin_failed": "Could not pin",
       "unpin_failed": "Could not unpin"
-    }
+    },
+    "replying_to": "replying to {{name}}"
   },
   "reply": {
     "placeholder": "Leave a reply..."

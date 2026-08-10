@@ -473,7 +473,8 @@
       "badge": "고정됨",
       "pin_failed": "고정하지 못했습니다",
       "unpin_failed": "고정을 해제하지 못했습니다"
-    }
+    },
+    "replying_to": "{{name}}에게 답장"
   },
   "reply": {
     "placeholder": "답글 남기기..."

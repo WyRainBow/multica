@@ -473,7 +473,8 @@
       "badge": "置顶",
       "pin_failed": "置顶失败",
       "unpin_failed": "取消置顶失败"
-    }
+    },
+    "replying_to": "回复 {{name}}"
   },
   "reply": {
     "placeholder": "回复..."
