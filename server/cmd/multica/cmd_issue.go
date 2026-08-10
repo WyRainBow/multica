@@ -313,16 +313,43 @@ var issueCommentDeleteCmd = &cobra.Command{
 
 var issueCommentResolveCmd = &cobra.Command{
 	Use:   "resolve <comment-id>",
-	Short: "Resolve a comment thread",
-	Args:  exactArgs(1),
-	RunE:  runIssueCommentResolve,
+	Short: "Mark a comment as its thread's conclusion",
+	Long: `Mark a comment as its thread's conclusion.
+
+Pass the comment that HOLDS the conclusion, not the thread root. A resolved
+thread folds on the default reads, and what survives depends on which comment
+you passed:
+
+  a reply     root + that reply
+  the root    the root ALONE — every reply is dropped
+
+So resolving the root when the conclusion sits in a reply hides the conclusion
+from every later reader. Resolve the root only when the root already says it, or
+the thread is a dead end worth no conclusion.
+
+Resolve at the END. A new reply does NOT reopen a thread whose conclusion is a
+reply, so replies added afterwards stay hidden with nothing warning anyone — run
+` + "`comment unresolve`" + ` on the resolved comment first if the discussion reopens.
+
+A thread holds at most one conclusion: resolving a second comment clears the
+first.`,
+	Args: exactArgs(1),
+	RunE: runIssueCommentResolve,
 }
 
 var issueCommentUnresolveCmd = &cobra.Command{
 	Use:   "unresolve <comment-id>",
-	Short: "Unresolve a comment thread",
-	Args:  exactArgs(1),
-	RunE:  runIssueCommentUnresolve,
+	Short: "Reopen a thread by clearing its conclusion",
+	Long: `Reopen a thread by clearing its conclusion.
+
+Pass the comment that actually carries the conclusion — ` + "`comment list`" + ` shows it
+with type ` + "`resolution`" + `. Reopening the wrong one is a silent no-op.
+
+Needed because replying does not always reopen: the automatic reopen only fires
+when the THREAD ROOT is the resolved comment. When a reply holds the conclusion,
+new replies are hidden from the default reads until this command clears it.`,
+	Args: exactArgs(1),
+	RunE: runIssueCommentUnresolve,
 }
 
 // Subscriber subcommands.
@@ -2232,13 +2259,31 @@ func runIssueCommentList(cmd *cobra.Command, args []string) error {
 			strVal(c, "id"),
 			parentID,
 			actors.actor(strVal(c, "author_type"), strVal(c, "author_id")),
-			strVal(c, "type"),
+			commentTableKind(c),
 			content,
 			created,
 		})
 	}
 	cli.PrintTable(os.Stdout, headers, rows)
 	return nil
+}
+
+// commentTableKind is what the TYPE column says for one comment.
+//
+// The resolution is the one comment in a thread a reader has to be able to
+// find: it is what a folded read keeps, and what the app marks in green. The
+// JSON has carried resolved_at all along, but a table reader could not see it,
+// so a settled thread printed as an undifferentiated list.
+//
+// Folded into TYPE rather than given a column: the row is already six columns
+// wide, and no comment is usefully both a resolution and something else — a
+// reader asking "which one is the conclusion" is not also asking whether it was
+// a system note.
+func commentTableKind(c map[string]any) string {
+	if strVal(c, "resolved_at") != "" {
+		return "resolution"
+	}
+	return strVal(c, "type")
 }
 
 // locateAnchorInDescription finds the character offset of an anchor passage in

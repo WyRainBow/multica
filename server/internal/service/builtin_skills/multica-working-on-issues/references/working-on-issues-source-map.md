@@ -15,6 +15,8 @@ at the bottom before relying on an exact line.
 | Root-resolved folds to the root ALONE — every reply dropped | `server/internal/handler/comment_fold_test.go:91` |
 | Reply-resolved keeps root + that reply | `server/internal/handler/comment_fold_test.go:69` |
 | CLI sends `fold=true` only on complete-thread reads | `server/cmd/multica/cmd_issue.go:593` |
+| `comment list` marks the resolution in the TYPE column | `server/cmd/multica/cmd_issue.go` (`commentTableKind`) |
+| `resolve` / `unresolve` help carry the which-comment rule | `server/cmd/multica/cmd_issue.go:314,340` |
 | Auto-reopen fires only when the comment passed in carries `resolved_at` | `server/internal/service/task.go:5139` (`AutoUnresolveThreadOnReply`) |
 | …and the handler passes the thread ROOT | `server/internal/handler/comment.go:2019` |
 
