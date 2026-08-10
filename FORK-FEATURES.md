@@ -2,6 +2,10 @@
 
 [multica-ai/multica](https://github.com/multica-ai/multica) 的 fork，按一个人 + 几个 Agent 的日常用法改的。
 
+**这不是 Multica 的 changelog。** 官方的发布记录在产品自己的 changelog 页面
+（`apps/web/features/landing/`），本文只列这个 fork 额外做的东西——刻意不叫
+`CHANGELOG.md`，免得哪天上游在根目录加一份时撞名。
+
 **只记功能** —— 用得到的能力。修 bug、重构、改文档、调迁移编号不在这里，那些在 git 历史里。
 按主题分，不按时间；每条都能在这个仓库里找到对应实现。
 

@@ -14,7 +14,7 @@
 ## 这个 fork 改了什么
 
 按主题分、不按时间。每条都在这个仓库的 git 历史里能找到对应提交。
-带命令示例的完整清单见 [CHANGELOG.md](CHANGELOG.md)。
+带命令示例的完整清单见 [FORK-FEATURES.md](FORK-FEATURES.md)。
 
 ### 需求的过程往哪儿放
 
