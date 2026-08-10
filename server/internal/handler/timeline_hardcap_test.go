@@ -538,3 +538,54 @@ func TestListCommentsForIssue_KeepsNewestWindow(t *testing.T) {
 		}
 	}
 }
+
+// The issue page reads the TIMELINE, not the comments endpoint, and the two
+// have separate response structs whose fields are maintained by hand. `pinned_at`
+// shipped on CommentResponse only: the database stored the pin, `comment get`
+// returned it, every test passed, and the UI showed an unpinned thread with a
+// "Pin" action that appeared to do nothing. A field added to one struct and not
+// the other is invisible exactly where it is used.
+func TestListTimeline_CarriesPinnedAt(t *testing.T) {
+	issueID := createIssueForTimeline(t, "timeline carries pinned_at")
+
+	base := time.Now().UTC().Add(-time.Hour).Truncate(time.Second)
+	var pinnedID, plainID string
+	if err := testPool.QueryRow(context.Background(), `
+		INSERT INTO comment (issue_id, workspace_id, author_type, author_id, content, type,
+		                     created_at, updated_at, pinned_at)
+		VALUES ($1, $2, 'member', $3, 'the thread to read first', 'comment', $4, $4, $4)
+		RETURNING id
+	`, issueID, testWorkspaceID, testUserID, base).Scan(&pinnedID); err != nil {
+		t.Fatalf("seed pinned root: %v", err)
+	}
+	if err := testPool.QueryRow(context.Background(), `
+		INSERT INTO comment (issue_id, workspace_id, author_type, author_id, content, type,
+		                     created_at, updated_at)
+		VALUES ($1, $2, 'member', $3, 'an ordinary thread', 'comment', $4, $4)
+		RETURNING id
+	`, issueID, testWorkspaceID, testUserID, base.Add(time.Minute)).Scan(&plainID); err != nil {
+		t.Fatalf("seed plain root: %v", err)
+	}
+
+	entries := decodeTimelineEntries(t, fetchTimelineRecorder(t, issueID, ""))
+	byID := make(map[string]*TimelineEntry, len(entries))
+	for i := range entries {
+		byID[entries[i].ID] = &entries[i]
+	}
+
+	pinned, ok := byID[pinnedID]
+	if !ok {
+		t.Fatal("the pinned comment is missing from the timeline")
+	}
+	if pinned.PinnedAt == nil {
+		t.Fatal("pinned_at was dropped: the app would render a pinned thread as unpinned")
+	}
+
+	plain, ok := byID[plainID]
+	if !ok {
+		t.Fatal("the plain comment is missing from the timeline")
+	}
+	if plain.PinnedAt != nil {
+		t.Errorf("pinned_at = %v on a comment that was never pinned", *plain.PinnedAt)
+	}
+}

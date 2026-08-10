@@ -1537,25 +1537,9 @@ export function IssueDetail({ issueId, onDelete, onDone, defaultSidebarOpen = tr
           return phaseAtTime(issuePhases, e.created_at)?.id === selectedPhaseId;
         })
       : timeline;
-    const unpinnedOrder = visible.filter(
+    const topLevel = visible.filter(
       (e) => e.type === "activity" || !e.parent_id,
     );
-    // Pinned threads float to the very top — above activities too, since the
-    // point of a pin is "read this first" and an activity is not a thing you
-    // read first. Most recently pinned leads, matching the order the CLI and
-    // the API index already use.
-    //
-    // A stable sort with 0 for every unpinned pair: everything not pinned keeps
-    // the position the filter above gave it, so unpinning restores the original
-    // reading order exactly rather than approximately.
-    const topLevel = [...unpinnedOrder].sort((a, b) => {
-      const ap = a.type === "comment" ? a.pinned_at ?? null : null;
-      const bp = b.type === "comment" ? b.pinned_at ?? null : null;
-      if (ap && bp) return bp.localeCompare(ap);
-      if (ap) return -1;
-      if (bp) return 1;
-      return 0;
-    });
     const repliesByParent = new Map<string, TimelineEntry[]>();
     for (const e of visible) {
       if (e.type === "comment" && e.parent_id) {
@@ -1627,7 +1611,30 @@ export function IssueDetail({ issueId, onDelete, onDone, defaultSidebarOpen = tr
       }
     }
 
-    return { threadReplies, groups };
+    // Pinned threads float to the top — above activities too, since the point
+    // of a pin is "read this first" and an activity is not a thing anyone reads
+    // first. Most recently pinned leads.
+    //
+    // Sorted HERE, on the finished groups, and not on topLevel before the two
+    // passes above. Both of those decide by ADJACENCY: coalescing merges
+    // consecutive identical activities, and grouping collects consecutive ones
+    // behind a single connector line. Lifting a comment out of the middle
+    // beforehand makes the activities that surrounded it neighbours, and two
+    // that were minutes apart get silently merged into one. Reordering after
+    // they are settled moves the display without touching what they mean.
+    //
+    // Stable, returning 0 for every unpinned pair, so unpinning restores the
+    // original reading order exactly rather than approximately.
+    const orderedGroups = [...groups].sort((a, b) => {
+      const ap = a.type === "comment" ? a.entries[0]?.pinned_at ?? null : null;
+      const bp = b.type === "comment" ? b.entries[0]?.pinned_at ?? null : null;
+      if (ap && bp) return bp.localeCompare(ap);
+      if (ap) return -1;
+      if (bp) return 1;
+      return 0;
+    });
+
+    return { threadReplies, groups: orderedGroups };
   }, [timeline, selectedPhaseId, issuePhases]);
 
   // Flat array consumed by <Virtuoso>. Recomputed when timelineView.groups

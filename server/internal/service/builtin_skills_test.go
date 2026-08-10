@@ -611,7 +611,14 @@ func splitFrontmatter(content string) (map[string]string, string, bool) {
 	block := rest[:end]
 	body := rest[end:]
 	if nl := strings.Index(body, "\n"); nl >= 0 {
-		body = body[nl+1:] // drop the closing --- line
+		// Drops the newline BEFORE the closing delimiter, not the delimiter
+		// itself — body still starts with the `---` line. So the budget below
+		// is really (maxSkillBodyLines - 1) lines of prose plus that one
+		// separator. Left as is because the number is calibrated against it;
+		// spelled out because "500/500" reads as one line of headroom that is
+		// not there, and the previous wording ("drop the closing --- line")
+		// said the opposite of what the code does.
+		body = body[nl+1:]
 	}
 
 	fm := make(map[string]string)

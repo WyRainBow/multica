@@ -517,6 +517,10 @@ const TimelineEntrySchema = z.object({
   attachments: z.array(AttachmentSchema).optional(),
   source_task_id: z.string().nullable().optional(),
   coalesced_count: z.number().optional(),
+  // Set on a pinned thread root. Declared rather than left to `.loose()` so a
+  // server that stops sending it shows up here instead of as a pin that
+  // silently stops rendering.
+  pinned_at: z.string().nullable().optional(),
 }).loose();
 
 // /timeline returns a flat array of TimelineEntry, oldest first. The
