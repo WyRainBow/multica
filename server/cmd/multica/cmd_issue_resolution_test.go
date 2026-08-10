@@ -68,3 +68,25 @@ func TestUnresolveHelp_ExplainsTheReopenGap(t *testing.T) {
 		}
 	}
 }
+
+// The default route lives in three places that cannot import each other:
+// issuephase.DefaultRoute on the server, PHASE_TEMPLATES in the web app, and
+// this help text. An agent that only runs --help learns the route here, and a
+// stale list sends it to file into stations that do not exist.
+//
+// Pinned on `list` rather than the parent `phase` command because the help
+// template renders Long only on leaf commands — the paragraph on the parent is
+// never shown to anyone.
+func TestPhaseListHelp_NamesTheDefaultRoute(t *testing.T) {
+	long := issuePhaseListCmd.Long
+	for _, station := range []string{"需求梳理", "方案评审", "代码评审", "测试验收", "需求冻结"} {
+		if !strings.Contains(long, station) {
+			t.Errorf("phase list --help does not name %q", station)
+		}
+	}
+	// Why the two reviews are separate is the part that stops someone
+	// "simplifying" them back into one station.
+	if !strings.Contains(long, "different questions of different") {
+		t.Error("phase list --help lost why the two reviews are separate")
+	}
+}

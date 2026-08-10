@@ -24,9 +24,11 @@ var issuePhaseCmd = &cobra.Command{
 	Short: "Work with the phases of an issue",
 	Long: `Work with the phases of an issue.
 
-A phase is a station inside one issue — typically 开始 → 评审 → 冻结, with a
-review recurring as 评审 2, 评审 3. Comments filed under a phase stay grouped
+A phase is a station inside one issue. Comments filed under one stay grouped
 with it, so a long-running issue reads as rounds instead of one flat thread.
+
+The default route and what each station holds: run
+    multica issue phase list --help
 
 <phase> accepts the phase name (case-insensitive, unique prefix is enough) or
 its full UUID.`,
@@ -35,8 +37,30 @@ its full UUID.`,
 var issuePhaseListCmd = &cobra.Command{
 	Use:   "list <issue-id>",
 	Short: "List the phases of an issue",
-	Args:  exactArgs(1),
-	RunE:  runIssuePhaseList,
+	Long: `List the phases of an issue.
+
+Every new issue is created with five stations already on it, sub-issues
+included:
+
+  需求梳理    what this is and why — the reading, the boundaries, the constraints
+  方案评审    whether this is the right thing to build
+  代码评审    whether it was built right
+  测试验收    the acceptance evidence: what was run, and what came back
+  需求冻结    the closing verdict and whatever is left over
+
+The two reviews are separate because they ask different questions of different
+artifacts. One combined station puts both answers in the same pile, which is
+the sorting a phase exists to do.
+
+Either review recurs on its own — 方案评审 2, 代码评审 2 — and the rounds are
+independent: revising the design does not reopen the code review.
+
+Columns are NAME, STATE, COMMENTS, ENTERED, COMPLETED. STATE is derived, never
+stored: completed is done, entered is current, neither is pending. A phase does
+not have to be entered before comments can be filed into it. COMMENTS is the
+only warning you get before ` + "`phase delete`" + `, which takes them with it.`,
+	Args: exactArgs(1),
+	RunE: runIssuePhaseList,
 }
 
 var issuePhaseAddCmd = &cobra.Command{
@@ -169,8 +193,8 @@ func fetchIssuePhases(ctx context.Context, client *cli.APIClient, issueID string
 //
 // Phases are named by hand and scoped to a single issue, so the name is the
 // reference people actually have; the UUID is accepted for scripts that
-// already captured one. Matching is exact-first so a phase named "评审" stays
-// reachable once "评审 2" exists — otherwise adding a round would make the
+// already captured one. Matching is exact-first so a phase named "方案评审"
+// stays reachable once "方案评审 2" exists — otherwise adding a round would make the
 // original ambiguous.
 func resolveIssuePhase(
 	ctx context.Context,
