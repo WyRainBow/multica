@@ -306,11 +306,11 @@ card: title plus Markdown, owned by the workspace, optionally linked to the
 issue it came from.
 
 ```bash
-multica card add --title "COC-97 踩坑" --content-stdin < notes.md
-multica card list                       # newest first
-multica card list --search 踩坑          # title AND body, whole workspace
-multica card list --issue COC-97        # only cards linked to that issue
-multica card get <card-id>
+multica kb add --title "COC-97 踩坑" --content-stdin < notes.md
+multica kb list                       # newest first
+multica kb list --search 踩坑          # title AND body, whole workspace
+multica kb list --issue COC-97        # only cards linked to that issue
+multica kb get <card-id>
 ```
 
 Pipe the body in for anything longer than a sentence — inline `--content`

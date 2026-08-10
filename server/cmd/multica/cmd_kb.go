@@ -13,7 +13,7 @@ import (
 	"github.com/multica-ai/multica/server/internal/cli"
 )
 
-// multica card {list|get|add|update|delete} — free-form notes that are not
+// multica kb {list|get|add|update|delete} — free-form notes that are not
 // issues.
 //
 // A card has a title and Markdown content and nothing else: no status, no
@@ -23,8 +23,8 @@ import (
 // out of is an optional link, not a parent.
 
 var cardCmd = &cobra.Command{
-	Use:   "card",
-	Short: "Work with cards — free-form notes that are not issues",
+	Use:   "kb",
+	Short: "Work with the knowledge base — free-form notes that are not issues",
 	Long: `Work with cards.
 
 A card is a title plus Markdown content, owned by the workspace. Use one for a
@@ -37,34 +37,34 @@ the link is optional and can be removed later with --detach.`,
 
 var cardListCmd = &cobra.Command{
 	Use:   "list",
-	Short: "List cards in the workspace",
+	Short: "List knowledge-base entries",
 	Args:  cobra.NoArgs,
 	RunE:  runCardList,
 }
 
 var cardGetCmd = &cobra.Command{
 	Use:   "get <card-id>",
-	Short: "Read one card",
+	Short: "Read one entry",
 	Args:  exactArgs(1),
 	RunE:  runCardGet,
 }
 
 var cardAddCmd = &cobra.Command{
 	Use:   "add",
-	Short: "Write a card",
+	Short: "Write an entry",
 	Long: `Write a card.
 
 Pipe the body in rather than passing it inline whenever it is more than a
 sentence — a retrospective is a document, and --content mangles newlines:
 
-  multica card add --title "COC-97 踩坑" --content-stdin < notes.md`,
+  multica kb add --title "COC-97 踩坑" --content-stdin < notes.md`,
 	Args: cobra.NoArgs,
 	RunE: runCardAdd,
 }
 
 var cardUpdateCmd = &cobra.Command{
 	Use:   "update <card-id>",
-	Short: "Rewrite a card's title, content, or issue link",
+	Short: "Rewrite an entry's title, content, or issue link",
 	Args:  exactArgs(1),
 	RunE:  runCardUpdate,
 }
@@ -82,7 +82,7 @@ the name to reuse instead of inventing 文档 / 档案 / doc for one thing.`,
 
 var cardDeleteCmd = &cobra.Command{
 	Use:   "delete <card-id>",
-	Short: "Delete a card",
+	Short: "Delete an entry",
 	Args:  exactArgs(1),
 	RunE:  runCardDelete,
 }
@@ -427,7 +427,7 @@ func runCardKinds(cmd *cobra.Command, _ []string) error {
 	for _, k := range resp.Kinds {
 		rows = append(rows, []string{k.Kind, fmt.Sprintf("%d", k.Count)})
 	}
-	cli.PrintTable(os.Stdout, []string{"KIND", "CARDS"}, rows)
+	cli.PrintTable(os.Stdout, []string{"KIND", "ENTRIES"}, rows)
 	return nil
 }
 

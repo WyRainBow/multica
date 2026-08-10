@@ -1,35 +1,30 @@
 {
   "page": {
-    "title": "Cards",
+    "title": "Knowledge base",
     "count_other": "{{count}}",
-    "new": "New card",
-    "search_placeholder": "Search cards...",
+    "new": "Write one",
+    "search_placeholder": "Search the knowledge base...",
     "empty": "Nothing written down yet. Keep whatever is worth coming back to.",
-    "no_matches": "No card matches that search.",
-    "day_count_other": "{{count}} cards",
+    "no_matches": "Nothing matches.",
+    "day_count_other": "{{count}}",
     "all_kinds": "All"
   },
   "card": {
     "edit": "Edit",
     "untitled": "Untitled",
-    "issue_missing": "requirement no longer available"
+    "issue_missing": "The linked issue is gone"
   },
   "editor": {
-    "new_title": "New card",
-    "edit_title": "Edit card",
+    "new_title": "Write one",
+    "edit_title": "Edit",
     "title_placeholder": "Title (optional)",
     "content_placeholder": "Write anything...",
     "save": "Save",
     "cancel": "Cancel",
     "delete_action": "Delete",
-    "delete_confirm": "Delete this card?",
-    "save_failed": "Failed to save the card",
-    "delete_failed": "Failed to delete the card",
+    "delete_confirm": "Delete this entry?",
+    "save_failed": "Could not save",
+    "delete_failed": "Could not delete",
     "kind_placeholder": "Kind"
-  },
-  "issue_section": {
-    "title": "Cards",
-    "add": "Add card",
-    "empty": "Nothing recorded for this requirement yet."
   }
 }

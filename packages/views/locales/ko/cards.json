@@ -1,35 +1,30 @@
 {
   "page": {
-    "title": "카드",
+    "title": "지식 베이스",
     "count_other": "{{count}}개",
-    "new": "새 카드",
-    "search_placeholder": "카드 검색...",
+    "new": "작성",
+    "search_placeholder": "지식 베이스 검색...",
     "empty": "아직 아무것도 없습니다. 나중에 다시 볼 만한 것을 적어 두세요.",
-    "no_matches": "일치하는 카드가 없습니다.",
+    "no_matches": "일치하는 항목이 없습니다.",
     "day_count_other": "{{count}}개",
     "all_kinds": "전체"
   },
   "card": {
     "edit": "편집",
     "untitled": "제목 없음",
-    "issue_missing": "연결된 이슈를 사용할 수 없습니다"
+    "issue_missing": "연결된 issue를 사용할 수 없습니다"
   },
   "editor": {
-    "new_title": "새 카드",
-    "edit_title": "카드 편집",
-    "title_placeholder": "제목(선택)",
-    "content_placeholder": "무엇이든 적어 보세요...",
+    "new_title": "작성",
+    "edit_title": "편집",
+    "title_placeholder": "제목 (선택)",
+    "content_placeholder": "자유롭게 작성하세요...",
     "save": "저장",
     "cancel": "취소",
     "delete_action": "삭제",
-    "delete_confirm": "이 카드를 삭제할까요?",
-    "save_failed": "카드를 저장하지 못했습니다",
-    "delete_failed": "카드를 삭제하지 못했습니다",
+    "delete_confirm": "이 항목을 삭제할까요?",
+    "save_failed": "저장하지 못했습니다",
+    "delete_failed": "삭제하지 못했습니다",
     "kind_placeholder": "종류"
-  },
-  "issue_section": {
-    "title": "카드",
-    "add": "카드 추가",
-    "empty": "이 이슈에는 아직 카드가 없습니다."
   }
 }

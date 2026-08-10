@@ -729,21 +729,21 @@ by the workspace, with no status, assignee or route. Use one for a
 retrospective, a lesson learned, a decision worth keeping.
 
 ```bash
-multica card add --title "COC-97 踩坑" --content-stdin < notes.md
-multica card add --title "..." --kind 文档 --issue COC-97
+multica kb add --title "COC-97 踩坑" --content-stdin < notes.md
+multica kb add --title "..." --kind 文档 --issue COC-97
 
-multica card list                      # newest first
-multica card list --search 踩坑         # title AND body, whole workspace
-multica card list --kind 文档           # one tab
-multica card list --kind=               # the uncategorised ones
-multica card list --issue COC-97        # cards linked to that issue
-multica card kinds                     # which kinds exist, with counts
+multica kb list                      # newest first
+multica kb list --search 踩坑         # title AND body, whole workspace
+multica kb list --kind 文档           # one tab
+multica kb list --kind=               # the uncategorised ones
+multica kb list --issue COC-97        # cards linked to that issue
+multica kb kinds                     # which kinds exist, with counts
 
-multica card get <card-id>
-multica card update <card-id> --content-file new.md
-multica card update <card-id> --kind 想法
-multica card update <card-id> --detach   # remove the issue link
-multica card delete <card-id>
+multica kb get <card-id>
+multica kb update <card-id> --content-file new.md
+multica kb update <card-id> --kind 想法
+multica kb update <card-id> --detach   # remove the issue link
+multica kb delete <card-id>
 ```
 
 Pipe the body in rather than passing `--content` inline for anything longer
