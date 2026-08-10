@@ -531,3 +531,20 @@ UPDATE comment SET
     updated_at = CASE WHEN resolved_at IS NOT NULL THEN now() ELSE updated_at END
 WHERE id = $1
 RETURNING *;
+
+-- name: SetCommentPinned :one
+-- Idempotent both ways. Re-pinning keeps the original pinned_at, so pinning a
+-- second thread does not shuffle the first one's place in the pinned order.
+-- updated_at only moves when the pin state actually changed — an unchanged row
+-- must not look edited to a reader diffing timestamps.
+UPDATE comment SET
+    pinned_at = CASE
+        WHEN @pinned::bool THEN COALESCE(pinned_at, now())
+        ELSE NULL
+    END,
+    updated_at = CASE
+        WHEN (@pinned::bool) = (pinned_at IS NOT NULL) THEN updated_at
+        ELSE now()
+    END
+WHERE id = $1
+RETURNING *;

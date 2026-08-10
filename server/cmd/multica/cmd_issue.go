@@ -337,6 +337,30 @@ first.`,
 	RunE: runIssueCommentResolve,
 }
 
+var issueCommentPinCmd = &cobra.Command{
+	Use:   "pin <comment-id>",
+	Short: "Pin a thread to the top of the issue",
+	Long: `Pin a thread to the top of the issue.
+
+For the discussion someone arriving at this issue should read first. An issue
+worked for a while collects threads faster than anyone re-reads them, and the
+one that matters is rarely the newest.
+
+Roots only — a reply is not somewhere a reader starts. Pinning is separate from
+resolving: resolving answers "is this over", pinning answers "start here", and a
+thread is often both. Pinned threads sort most-recently-pinned first, and
+re-pinning keeps a thread's original place rather than jumping it to the front.`,
+	Args: exactArgs(1),
+	RunE: runIssueCommentPin,
+}
+
+var issueCommentUnpinCmd = &cobra.Command{
+	Use:   "unpin <comment-id>",
+	Short: "Remove a thread's pin",
+	Args:  exactArgs(1),
+	RunE:  runIssueCommentUnpin,
+}
+
 var issueCommentUnresolveCmd = &cobra.Command{
 	Use:   "unresolve <comment-id>",
 	Short: "Reopen a thread by clearing its conclusion",
@@ -512,6 +536,8 @@ func init() {
 	issueCommentCmd.AddCommand(issueCommentDeleteCmd)
 	issueCommentCmd.AddCommand(issueCommentResolveCmd)
 	issueCommentCmd.AddCommand(issueCommentUnresolveCmd)
+	issueCommentCmd.AddCommand(issueCommentPinCmd)
+	issueCommentCmd.AddCommand(issueCommentUnpinCmd)
 
 	issueSubscriberCmd.AddCommand(issueSubscriberListCmd)
 	issueSubscriberCmd.AddCommand(issueSubscriberAddCmd)
@@ -649,7 +675,12 @@ func init() {
 	issueCommentAddCmd.Flags().Bool("content-stdin", false, "Read comment content from stdin (preserves multi-line content verbatim)")
 	issueCommentAddCmd.Flags().String("content-file", "", "Read comment content from a UTF-8 file (preserves multi-line content verbatim; use this on Windows when stdin piping mangles non-ASCII bytes). The path must be inside the current working directory unless --allow-external-file is set.")
 	issueCommentAddCmd.Flags().Bool("allow-external-file", false, "Allow --content-file / --attachment to read a path outside the current working directory. Off by default so a stale file from another run/environment can't be picked up (MUL-4252).")
-	issueCommentAddCmd.Flags().String("parent", "", "Parent comment ID to reply under. A comment-triggered agent task must reply under its trigger comment; omitting --parent to post a top-level comment is rejected")
+	issueCommentAddCmd.Flags().String("parent", "",
+		"Parent comment ID to reply under. Use it whenever this comment ANSWERS an existing one — "+
+			"a verdict on a review, adopting or refuting its findings, a follow-up. A comment can never be "+
+			"re-parented, so two top-level comments where one settles the other stay flat forever. Omit it "+
+			"only for a question nobody asked yet. A comment-triggered agent task must reply under its "+
+			"trigger comment; omitting --parent to post a top-level comment is rejected")
 	issueCommentAddCmd.Flags().String("anchor", "",
 		"Anchor the comment to this exact passage of the issue description (inline comment). "+
 			"The text must appear verbatim in the current description; the CLI locates it and "+
@@ -665,6 +696,8 @@ func init() {
 	// issue comment resolve/unresolve
 	issueCommentResolveCmd.Flags().String("output", "json", "Output format: table or json")
 	issueCommentUnresolveCmd.Flags().String("output", "json", "Output format: table or json")
+	issueCommentPinCmd.Flags().String("output", "json", "Output format: table or json")
+	issueCommentUnpinCmd.Flags().String("output", "json", "Output format: table or json")
 
 	// issue search
 	issueSearchCmd.Flags().Int("limit", 20, "Maximum number of results to return")
@@ -2512,6 +2545,44 @@ func runIssueCommentResolve(cmd *cobra.Command, args []string) error {
 
 func runIssueCommentUnresolve(cmd *cobra.Command, args []string) error {
 	return runIssueCommentResolution(cmd, args[0], false)
+}
+
+func runIssueCommentPin(cmd *cobra.Command, args []string) error {
+	return runIssueCommentPinning(cmd, args[0], true)
+}
+
+func runIssueCommentUnpin(cmd *cobra.Command, args []string) error {
+	return runIssueCommentPinning(cmd, args[0], false)
+}
+
+func runIssueCommentPinning(cmd *cobra.Command, commentID string, pin bool) error {
+	client, err := newAPIClient(cmd)
+	if err != nil {
+		return err
+	}
+
+	ctx, cancel := cli.APIContext(context.Background())
+	defer cancel()
+
+	path := "/api/comments/" + url.PathEscape(commentID) + "/pin"
+	var result map[string]any
+	if pin {
+		if err := client.PostJSON(ctx, path, nil, &result); err != nil {
+			return fmt.Errorf("pin comment: %w", err)
+		}
+		fmt.Fprintf(os.Stderr, "Comment %s pinned.\n", commentID)
+	} else {
+		if err := client.DeleteJSONResponse(ctx, path, &result); err != nil {
+			return fmt.Errorf("unpin comment: %w", err)
+		}
+		fmt.Fprintf(os.Stderr, "Comment %s unpinned.\n", commentID)
+	}
+
+	output, _ := cmd.Flags().GetString("output")
+	if output == "table" {
+		return nil
+	}
+	return cli.PrintJSON(os.Stdout, result)
 }
 
 func runIssueCommentResolution(cmd *cobra.Command, commentID string, resolve bool) error {

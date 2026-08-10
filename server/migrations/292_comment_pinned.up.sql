@@ -1,0 +1,16 @@
+-- Pin a discussion to the top of an issue's timeline.
+--
+-- An issue that has been worked for a while accumulates threads faster than
+-- anyone re-reads them — the busiest here is at 37 top-level comments — and the
+-- one that matters is usually not the newest. Resolving answers "is this over";
+-- it does not answer "start here".
+--
+-- `pinned_at` doubles as the sort key among pinned threads (most recently
+-- pinned first) and as the flag itself (NULL = not pinned), the same shape
+-- chat_session.pinned_at already uses for the conversation list.
+--
+-- One column, shared by everyone, rather than a per-user row like pinned_item:
+-- "this is the thread to read first" is a property of the discussion, not of
+-- the reader. The per-user table exists for issues and projects, where what
+-- someone keeps at hand IS personal.
+ALTER TABLE comment ADD COLUMN IF NOT EXISTS pinned_at TIMESTAMPTZ;

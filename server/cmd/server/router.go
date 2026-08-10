@@ -1510,6 +1510,11 @@ func NewRouterWithOptions(pool *pgxpool.Pool, hub *realtime.Hub, bus *events.Bus
 				r.Put("/phase", h.SetCommentPhase)
 				r.Post("/resolve", h.ResolveComment)
 				r.Delete("/resolve", h.UnresolveComment)
+				// The thread to read first. Separate from resolve because the
+				// two answer different questions — "is this over" vs "start
+				// here" — and a thread is frequently both.
+				r.Post("/pin", h.PinComment)
+				r.Delete("/pin", h.UnpinComment)
 				r.Post("/reactions", h.AddReaction)
 				r.Delete("/reactions", h.RemoveReaction)
 			})

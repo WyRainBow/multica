@@ -2,7 +2,7 @@
 
 import { memo, useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import type { IssuePhase } from "@multica/core/types";
-import { CheckCircle2, ChevronRight, ListChevronsDownUp, Copy, Loader2, MoreHorizontal, Pencil, RotateCcw, Trash2, Waypoints } from "lucide-react";
+import { CheckCircle2, ChevronRight, ListChevronsDownUp, Copy, Loader2, MoreHorizontal, Pencil, Pin, RotateCcw, Trash2, Waypoints } from "lucide-react";
 import { toast } from "sonner";
 import { Card } from "@multica/ui/components/ui/card";
 import { Button } from "@multica/ui/components/ui/button";
@@ -121,6 +121,9 @@ interface CommentCardProps {
   onToggleReaction: (commentId: string, emoji: string) => void;
   /** Resolve/unresolve any comment in this thread (commentId = the target row). */
   onResolveToggle?: (commentId: string, resolved: boolean) => void;
+  /** Pin/unpin this thread. Passed only for thread ROOTS — a pin means
+   *  "start here", and a reply is not somewhere a reader starts. */
+  onPinToggle?: (commentId: string, pinned: boolean) => void;
   /**
    * When non-null, the thread root is currently rendered as a resolved-but-
    * expanded card. Pass a "Collapse" affordance into the header so the user
@@ -581,6 +584,7 @@ function CommentRow({
   onSetPhase,
   onToggleReaction,
   onResolveToggle,
+  onPinToggle,
 }: {
   issueId: string;
   entry: TimelineEntry;
@@ -598,6 +602,9 @@ function CommentRow({
   onSetPhase?: (commentId: string, phaseId: string | null) => void;
   onToggleReaction: (commentId: string, emoji: string) => void;
   onResolveToggle?: (commentId: string, resolved: boolean) => void;
+  /** Pin/unpin this thread. Passed only for thread ROOTS — a pin means
+   *  "start here", and a reply is not somewhere a reader starts. */
+  onPinToggle?: (commentId: string, pinned: boolean) => void;
 }) {
   const { t } = useT("issues");
   const exactTime = useExactTime();
@@ -662,6 +669,13 @@ function CommentRow({
         {isResolution && (
           <span className="text-caption font-medium text-success">
             {t(($) => $.comment.resolve.resolution_badge)}
+          </span>
+        )}
+
+        {entry.pinned_at && (
+          <span className="flex items-center gap-1 text-caption font-medium text-muted-foreground">
+            <Pin className="h-3 w-3" />
+            {t(($) => $.comment.pin.badge)}
           </span>
         )}
 
@@ -734,6 +748,17 @@ function CommentRow({
                       {t(($) => $.comment.resolve.resolve_with_comment_action)}
                     </DropdownMenuItem>
                   )}
+                </>
+              )}
+              {onPinToggle && (
+                <>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={() => onPinToggle(entry.id, !entry.pinned_at)}>
+                    <Pin className="h-3.5 w-3.5" />
+                    {entry.pinned_at
+                      ? t(($) => $.comment.pin.unpin_action)
+                      : t(($) => $.comment.pin.pin_action)}
+                  </DropdownMenuItem>
                 </>
               )}
               {(canEditEntry || canDeleteEntry) && (

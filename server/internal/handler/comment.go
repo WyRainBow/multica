@@ -55,7 +55,11 @@ type CommentResponse struct {
 	// was chosen. Echoed on every read AND on create — the client filters the
 	// timeline by it, so a freshly written comment that came back without it
 	// would vanish from the very phase it was just written into.
-	PhaseID     *string              `json:"phase_id"`
+	PhaseID *string `json:"phase_id"`
+	// PinnedAt marks the thread to read first, and orders the pinned ones
+	// among themselves. Distinct from ResolvedAt: resolving answers "is this
+	// over", pinning answers "start here", and a thread is often both.
+	PinnedAt    *string              `json:"pinned_at"`
 	Reactions   []ReactionResponse   `json:"reactions"`
 	Attachments []AttachmentResponse `json:"attachments"`
 	// Orientation stats — populated only on the roots_only path and omitted in
@@ -125,6 +129,7 @@ func commentToResponse(c db.Comment, reactions []ReactionResponse, attachments [
 		QuickActionID:  uuidToPtr(c.QuickActionID),
 		AnchorText:     textToPtr(c.AnchorText),
 		PhaseID:        uuidToPtr(c.PhaseID),
+		PinnedAt:       timestampToPtr(c.PinnedAt),
 		AnchorOffset:   int4ToPtr(c.AnchorOffset),
 		Reactions:      reactions,
 		Attachments:    attachments,
@@ -3802,6 +3807,67 @@ func (h *Handler) ResolveComment(w http.ResponseWriter, r *http.Request) {
 		slog.Info("comment resolved", append(logger.RequestAttrs(r), "comment_id", cid)...)
 		h.publish(protocol.EventCommentResolved, workspaceID, actorType, actorID, map[string]any{"comment": resp})
 	}
+	writeJSON(w, http.StatusOK, resp)
+}
+
+// PinComment / UnpinComment mark the thread to read first on an issue.
+//
+// Roots only. A pin answers "start here", and a reply is not somewhere a reader
+// starts — it is a line inside a discussion whose beginning is the root. Left
+// open, "pin any comment" would also let the pinned band show fragments whose
+// question is somewhere else on the page.
+func (h *Handler) PinComment(w http.ResponseWriter, r *http.Request) {
+	h.setCommentPinned(w, r, true)
+}
+
+func (h *Handler) UnpinComment(w http.ResponseWriter, r *http.Request) {
+	h.setCommentPinned(w, r, false)
+}
+
+func (h *Handler) setCommentPinned(w http.ResponseWriter, r *http.Request, pinned bool) {
+	comment, workspaceID, actorType, actorID, ok := h.loadCommentForActor(w, r)
+	if !ok {
+		return
+	}
+	if pinned && comment.ParentID.Valid {
+		writeError(w, http.StatusBadRequest,
+			"only a thread root can be pinned; pin the comment this reply is under")
+		return
+	}
+	was := comment.PinnedAt.Valid
+	if was == pinned {
+		// Nothing changed, so nothing is announced: a duplicate pin must not
+		// reorder the band or make the row look edited to a reader diffing
+		// timestamps. The query is idempotent for the same reason.
+		grouped := h.groupReactions(r, []pgtype.UUID{comment.ID})
+		groupedAtt := h.groupAttachments(r, []pgtype.UUID{comment.ID})
+		cid := uuidToString(comment.ID)
+		writeJSON(w, http.StatusOK, commentToResponse(comment, grouped[cid], groupedAtt[cid]))
+		return
+	}
+
+	updated, err := h.Queries.SetCommentPinned(r.Context(), db.SetCommentPinnedParams{
+		ID:     comment.ID,
+		Pinned: pinned,
+	})
+	if err != nil {
+		slog.Warn("set comment pinned failed",
+			append(logger.RequestAttrs(r), "error", err, "comment_id", uuidToString(comment.ID), "pinned", pinned)...)
+		writeError(w, http.StatusInternalServerError, "failed to update comment pin")
+		return
+	}
+
+	grouped := h.groupReactions(r, []pgtype.UUID{updated.ID})
+	groupedAtt := h.groupAttachments(r, []pgtype.UUID{updated.ID})
+	cid := uuidToString(updated.ID)
+	resp := commentToResponse(updated, grouped[cid], groupedAtt[cid])
+
+	event := protocol.EventCommentUnpinned
+	if pinned {
+		event = protocol.EventCommentPinned
+	}
+	slog.Info("comment pin changed", append(logger.RequestAttrs(r), "comment_id", cid, "pinned", pinned)...)
+	h.publish(event, workspaceID, actorType, actorID, map[string]any{"comment": resp})
 	writeJSON(w, http.StatusOK, resp)
 }
 

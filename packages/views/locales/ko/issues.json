@@ -466,7 +466,14 @@
     "anchor_jump": "본문의 해당 위치로 이동",
     "anchor_missing": "원본 텍스트가 수정되었습니다",
     "copy_id_action": "댓글 ID 복사",
-    "copied_id_toast": "댓글 ID를 복사했습니다"
+    "copied_id_toast": "댓글 ID를 복사했습니다",
+    "pin": {
+      "pin_action": "상단 고정",
+      "unpin_action": "고정 해제",
+      "badge": "고정됨",
+      "pin_failed": "고정하지 못했습니다",
+      "unpin_failed": "고정을 해제하지 못했습니다"
+    }
   },
   "reply": {
     "placeholder": "답글 남기기..."

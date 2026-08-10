@@ -481,7 +481,14 @@
     "anchor_jump": "Jump to the highlighted text",
     "anchor_missing": "The highlighted text has been edited",
     "copy_id_action": "Copy comment ID",
-    "copied_id_toast": "Comment ID copied"
+    "copied_id_toast": "Comment ID copied",
+    "pin": {
+      "pin_action": "Pin to top",
+      "unpin_action": "Unpin",
+      "badge": "Pinned",
+      "pin_failed": "Could not pin",
+      "unpin_failed": "Could not unpin"
+    }
   },
   "reply": {
     "placeholder": "Leave a reply..."

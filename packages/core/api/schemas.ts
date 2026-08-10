@@ -614,6 +614,9 @@ export const CommentSchema = z.object({
   // comment has neither.
   anchor_text: z.string().nullable().optional(),
   anchor_offset: z.number().nullable().optional(),
+  // The thread to read first. Optional: a server predating pins omits it, and
+  // an unpinned comment sends null.
+  pinned_at: z.string().nullable().optional(),
 }).loose();
 
 export const IssuePhaseSchema = z.object({

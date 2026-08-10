@@ -187,11 +187,14 @@ unique. Details: `references/quoting-a-passage.md`.
 
 ## Comment threads: one question, one conclusion
 
-A thread is a discussion. One atomic question per TOP-LEVEL comment, replies
-carry the rounds, a DIFFERENT question opens a new top-level comment. When it
-concludes, resolve the comment that HOLDS the conclusion — resolving the root
-when the conclusion is in a reply hides that conclusion from every default read,
-because a root-resolved thread folds to the root alone.
+A thread is a discussion. One atomic question per TOP-LEVEL comment; anything
+ANSWERING an existing comment is a reply — write it with `--parent`, because a
+comment can never be re-parented and two top-level comments where one settles
+the other stay flat forever. A DIFFERENT question opens a new top-level comment.
+
+When it concludes, resolve the comment that HOLDS the conclusion — resolving the
+root when the conclusion is in a reply hides that conclusion from every default
+read, because a root-resolved thread folds to the root alone.
 
 Resolve at the end, not along the way: a new reply does not reopen a thread
 whose conclusion is a reply, so replies added after that are invisible with

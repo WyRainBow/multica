@@ -466,7 +466,14 @@
     "anchor_jump": "本文の該当箇所へ移動",
     "anchor_missing": "元のテキストは編集されました",
     "copy_id_action": "コメント ID をコピー",
-    "copied_id_toast": "コメント ID をコピーしました"
+    "copied_id_toast": "コメント ID をコピーしました",
+    "pin": {
+      "pin_action": "先頭に固定",
+      "unpin_action": "固定を解除",
+      "badge": "固定中",
+      "pin_failed": "固定できませんでした",
+      "unpin_failed": "固定を解除できませんでした"
+    }
   },
   "reply": {
     "placeholder": "返信を残す..."

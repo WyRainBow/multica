@@ -1051,6 +1051,45 @@ export function useResolveComment(issueId: string) {
   });
 }
 
+/**
+ * Pin or unpin a thread.
+ *
+ * Optimistic, unlike create/delete flows: the outcome is entirely local (one
+ * timestamp on one row), the user stays on the page, and a rollback is a single
+ * field. Nothing else in the cache derives from it — ordering is computed at
+ * render time, so a patched row re-sorts on its own.
+ *
+ * Unlike resolving, pinning is NOT exclusive: an issue can carry several pinned
+ * threads, so nothing else needs clearing here.
+ */
+export function usePinComment(issueId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ commentId, pinned }: { commentId: string; pinned: boolean }) =>
+      pinned ? api.pinComment(commentId) : api.unpinComment(commentId),
+    onMutate: async ({ commentId, pinned }) => {
+      await qc.cancelQueries({ queryKey: issueKeys.timeline(issueId) });
+      const prev = qc.getQueryData<TimelineCache>(issueKeys.timeline(issueId));
+      qc.setQueryData<TimelineCache>(issueKeys.timeline(issueId), (old) =>
+        old?.map((e) =>
+          e.id === commentId
+            ? { ...e, pinned_at: pinned ? new Date().toISOString() : null }
+            : e,
+        ),
+      );
+      return { prev };
+    },
+    onError: (_err, _vars, ctx) => {
+      if (ctx?.prev !== undefined) {
+        qc.setQueryData(issueKeys.timeline(issueId), ctx.prev);
+      }
+    },
+    onSettled: () => {
+      qc.invalidateQueries({ queryKey: issueKeys.timeline(issueId) });
+    },
+  });
+}
+
 export function useToggleCommentReaction(issueId: string) {
   const qc = useQueryClient();
   return useMutation({

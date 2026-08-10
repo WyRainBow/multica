@@ -1289,6 +1289,14 @@ export class ApiClient {
     return this.fetch(`/api/comments/${commentId}/resolve`, { method: "DELETE" });
   }
 
+  async pinComment(commentId: string): Promise<Comment> {
+    return this.fetch(`/api/comments/${commentId}/pin`, { method: "POST" });
+  }
+
+  async unpinComment(commentId: string): Promise<Comment> {
+    return this.fetch(`/api/comments/${commentId}/pin`, { method: "DELETE" });
+  }
+
   async addReaction(commentId: string, emoji: string): Promise<Reaction> {
     return this.fetch(`/api/comments/${commentId}/reactions`, {
       method: "POST",

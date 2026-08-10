@@ -1409,7 +1409,7 @@ export function IssueDetail({ issueId, onDelete, onDone, defaultSidebarOpen = tr
   const {
     timeline, loading: timelineLoading,
     submitComment, submitReply,
-    editComment, deleteComment, toggleResolveComment, toggleReaction: handleToggleReaction,
+    editComment, deleteComment, toggleResolveComment, togglePinComment, toggleReaction: handleToggleReaction,
   } = useIssueTimeline(id, user?.id);
 
   // Inline-comment anchors for the description editor. Derived from the
@@ -1537,9 +1537,25 @@ export function IssueDetail({ issueId, onDelete, onDone, defaultSidebarOpen = tr
           return phaseAtTime(issuePhases, e.created_at)?.id === selectedPhaseId;
         })
       : timeline;
-    const topLevel = visible.filter(
+    const unpinnedOrder = visible.filter(
       (e) => e.type === "activity" || !e.parent_id,
     );
+    // Pinned threads float to the very top — above activities too, since the
+    // point of a pin is "read this first" and an activity is not a thing you
+    // read first. Most recently pinned leads, matching the order the CLI and
+    // the API index already use.
+    //
+    // A stable sort with 0 for every unpinned pair: everything not pinned keeps
+    // the position the filter above gave it, so unpinning restores the original
+    // reading order exactly rather than approximately.
+    const topLevel = [...unpinnedOrder].sort((a, b) => {
+      const ap = a.type === "comment" ? a.pinned_at ?? null : null;
+      const bp = b.type === "comment" ? b.pinned_at ?? null : null;
+      if (ap && bp) return bp.localeCompare(ap);
+      if (ap) return -1;
+      if (bp) return 1;
+      return 0;
+    });
     const repliesByParent = new Map<string, TimelineEntry[]>();
     for (const e of visible) {
       if (e.type === "comment" && e.parent_id) {
@@ -2623,6 +2639,7 @@ export function IssueDetail({ issueId, onDelete, onDone, defaultSidebarOpen = tr
             onSetPhase={handleSetCommentPhase}
             onToggleReaction={handleToggleReaction}
             onResolveToggle={handleResolveToggle}
+            onPinToggle={togglePinComment}
             onCollapseResolved={isResolved ? () => toggleResolvedExpand(item.id, false) : undefined}
             expandedResolvedIds={expandedResolved}
             onResolvedExpandChange={toggleResolvedExpand}

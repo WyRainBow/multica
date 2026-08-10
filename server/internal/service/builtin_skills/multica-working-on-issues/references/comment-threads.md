@@ -16,9 +16,28 @@ root            ← one atomic question, as a TOP-LEVEL comment
 | Situation | What to do |
 | --- | --- |
 | Opening a question, a review, a proposal | New TOP-LEVEL comment |
-| Answering, disagreeing, iterating on it | Reply under that root |
+| Answering, disagreeing, iterating on it | **Reply under that root** (`--parent`) |
 | A DIFFERENT question | New top-level comment — never a reply |
 | The discussion has concluded | Resolve the comment holding the conclusion |
+
+### Answering means `--parent`, and the choice is permanent
+
+If your comment responds to an existing one — a verdict on a review, adopting
+or refuting its findings, a follow-up to its question — it is a REPLY. Write it
+with `--parent <that comment id>`. A new top-level comment is for a question
+nobody asked yet.
+
+This is not a matter of tidiness. **A comment cannot be re-parented**:
+`UpdateComment` accepts `content`, `attachment_ids` and `suppress_agent_ids`
+and nothing else. Two top-level comments where one answers the other are flat
+forever — no fold can pair them, no resolution can span them, and a later reader
+sees two unrelated statements with no way to tell that the second settles the
+first. Opening a top-level comment by reflex, because it is what the composer
+offers, is how that happens.
+
+It has already happened: on COC-145 a verification and the verdict adopting it
+were both written top-level, and the link between them now exists only in the
+prose of the second one.
 
 One thread carries one atomic question. Three unrelated topics in one thread
 cannot fold into anything meaningful, because folding keeps the root and one

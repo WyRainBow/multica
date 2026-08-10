@@ -33,6 +33,10 @@ export interface TimelineEntry {
   resolved_at?: string | null;
   resolved_by_type?: CommentAuthorType | null;
   resolved_by_id?: string | null;
+  /** Set on a thread ROOT pinned to the top of the issue. Distinct from
+   *  `resolved_at`: resolving answers "is this over", pinning answers
+   *  "start here". Never set on an activity. */
+  pinned_at?: string | null;
   source_task_id?: string | null;
   /** Set by frontend coalescing when consecutive identical activities are merged. */
   coalesced_count?: number;

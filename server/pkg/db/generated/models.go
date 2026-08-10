@@ -474,6 +474,7 @@ type Comment struct {
 	PhaseID        pgtype.UUID        `json:"phase_id"`
 	AnchorText     pgtype.Text        `json:"anchor_text"`
 	AnchorOffset   pgtype.Int4        `json:"anchor_offset"`
+	PinnedAt       pgtype.Timestamptz `json:"pinned_at"`
 }
 
 type CommentReaction struct {

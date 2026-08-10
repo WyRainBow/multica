@@ -276,7 +276,7 @@ const setCommentPhase = `-- name: SetCommentPhase :one
 UPDATE comment
 SET phase_id = $1, updated_at = now()
 WHERE id = $2 AND workspace_id = $3
-RETURNING id, issue_id, author_type, author_id, content, type, created_at, updated_at, parent_id, workspace_id, resolved_at, resolved_by_type, resolved_by_id, source_task_id, quick_action_id, phase_id, anchor_text, anchor_offset
+RETURNING id, issue_id, author_type, author_id, content, type, created_at, updated_at, parent_id, workspace_id, resolved_at, resolved_by_type, resolved_by_id, source_task_id, quick_action_id, phase_id, anchor_text, anchor_offset, pinned_at
 `
 
 type SetCommentPhaseParams struct {
@@ -307,6 +307,7 @@ func (q *Queries) SetCommentPhase(ctx context.Context, arg SetCommentPhaseParams
 		&i.PhaseID,
 		&i.AnchorText,
 		&i.AnchorOffset,
+		&i.PinnedAt,
 	)
 	return i, err
 }

@@ -466,7 +466,14 @@
     "anchor_jump": "跳转到正文对应位置",
     "anchor_missing": "原文已被修改",
     "copy_id_action": "复制评论 ID",
-    "copied_id_toast": "已复制评论 ID"
+    "copied_id_toast": "已复制评论 ID",
+    "pin": {
+      "pin_action": "置顶",
+      "unpin_action": "取消置顶",
+      "badge": "置顶",
+      "pin_failed": "置顶失败",
+      "unpin_failed": "取消置顶失败"
+    }
   },
   "reply": {
     "placeholder": "回复..."

@@ -40,6 +40,11 @@ vi.mock("@multica/core/issues/mutations", () => ({
     mutate: vi.fn(),
     isPending: false,
   }),
+  usePinComment: () => ({
+    mutateAsync: vi.fn(),
+    mutate: vi.fn(),
+    isPending: false,
+  }),
   useToggleCommentReaction: () => ({
     mutateAsync: vi.fn(),
     mutate: stableHandles.toggleMutate,

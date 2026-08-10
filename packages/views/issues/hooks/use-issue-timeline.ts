@@ -30,6 +30,7 @@ import {
   useUpdateComment,
   useDeleteComment,
   useResolveComment,
+  usePinComment,
   useToggleCommentReaction,
   type ToggleCommentReactionVars,
 } from "@multica/core/issues/mutations";
@@ -83,6 +84,7 @@ export function useIssueTimeline(issueId: string, userId?: string) {
   const { mutateAsync: updateComment } = useUpdateComment(issueId);
   const { mutateAsync: deleteCommentAsync } = useDeleteComment(issueId);
   const { mutateAsync: resolveCommentAsync } = useResolveComment(issueId);
+  const { mutateAsync: pinCommentAsync } = usePinComment(issueId);
   const { mutate: toggleCommentReaction } = useToggleCommentReaction(issueId);
 
   // Reconnect recovery: invalidate so the next render refetches the full
@@ -382,6 +384,23 @@ export function useIssueTimeline(issueId: string, userId?: string) {
     [deleteCommentAsync, t],
   );
 
+  const togglePinComment = useCallback(
+    async (commentId: string, pinned: boolean) => {
+      try {
+        await pinCommentAsync({ commentId, pinned });
+      } catch (err) {
+        toast.error(
+          err instanceof Error && err.message
+            ? err.message
+            : pinned
+              ? t(($) => $.comment.pin.pin_failed)
+              : t(($) => $.comment.pin.unpin_failed),
+        );
+      }
+    },
+    [pinCommentAsync, t],
+  );
+
   const toggleResolveComment = useCallback(
     async (commentId: string, resolved: boolean) => {
       try {
@@ -484,6 +503,7 @@ export function useIssueTimeline(issueId: string, userId?: string) {
     editComment,
     deleteComment,
     toggleResolveComment,
+    togglePinComment,
     toggleReaction,
   };
 }

@@ -29,6 +29,10 @@ export interface Comment {
   resolved_at: string | null;
   resolved_by_type: CommentAuthorType | null;
   resolved_by_id: string | null;
+  /** When this thread was pinned to the top of the issue, if it is.
+   *  Distinct from `resolved_at`: resolving answers "is this over", pinning
+   *  answers "start here", and a thread is often both. Roots only. */
+  pinned_at?: string | null;
   // The description span this comment was written against (inline comments).
   // The description is Markdown, which cannot carry a highlight, so the quoted
   // text travels on the comment and the editor re-locates it at render time.
