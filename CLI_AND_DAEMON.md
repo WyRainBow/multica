@@ -559,7 +559,7 @@ cursor target falls before the watermark.
 
 A phase is a station inside one issue — a container holding the comments
 written while the issue was there. Every new issue is created with
-`开始 / 评审 / 冻结` already on it.
+`需求梳理 / 方案评审 / 代码评审 / 测试验收 / 需求冻结` already on it.
 
 ```bash
 multica issue phase list <issue-id>            # NAME, STATE, COMMENTS, ENTERED, COMPLETED

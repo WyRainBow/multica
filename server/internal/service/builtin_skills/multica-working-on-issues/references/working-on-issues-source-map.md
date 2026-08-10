@@ -377,7 +377,7 @@ as 404 rather than 403 — a permission error would confirm the comment exists.
 
 The CLI resolves a phase NAME to its UUID before every call — the API only
 takes UUIDs, and the name is what a person or an agent actually holds. Matching
-is exact-before-prefix so adding `评审 2` cannot make the existing `评审`
+is exact-before-prefix so adding `方案评审 2` cannot make the existing `方案评审`
 ambiguous.
 
 ## Verification command

@@ -49,23 +49,29 @@ export function phaseState(phase: IssuePhase): PhaseState {
 /**
  * The one ready-made route: what a single issue passes through.
  *
- * Three stations, and the same three whatever the issue is about — a
- * requirement, a design, an implementation all get written, reviewed, and
- * frozen. That sameness is what makes it a property of an issue rather than a
- * process for one kind of work, and properties are what belong in a tool.
+ * The same five whatever the issue is about — a requirement, a design, an
+ * implementation all get specified, reviewed, built, checked and closed. That
+ * sameness is what makes it a property of an issue rather than a process for
+ * one kind of work, and properties are what belong in a tool.
  *
- * An earlier version listed nine: 需求 → 技术方案 → 方案评审 → Spec → Task →
- * Plan → 实施 → 测试验证 → 合并 MR. That is a chain of separate ISSUES, each
- * with its own owner and its own comments, not the life of one — the two were
- * conflated.
+ * The two reviews are named separately on purpose: 方案评审 and 代码评审 ask
+ * different questions of different artifacts — "is this the right thing to
+ * build" versus "is this built right" — and one 评审 station put both in the
+ * same pile, which is the sorting a phase exists to do.
  *
- * These three do overlap with `status` (开始 ≈ in_progress, 评审 ≈ in_review,
- * 冻结 ≈ done), and on their own they would add nothing. What they add is
- * rounds: review happens more than once, status forgets every round but the
- * current one, and a station per round keeps what each asked for.
+ * An earlier version listed nine, down to 合并 MR. That is a chain of separate
+ * ISSUES, each with its own owner and its own comments, not the life of one —
+ * the two were conflated. These five stay inside one issue.
+ *
+ * The ends overlap with `status` (需求梳理 ≈ in_progress, 需求冻结 ≈ done), and
+ * on their own they would add nothing. What they add is rounds: review happens
+ * more than once, status forgets every round but the current one, and a station
+ * per round keeps what each asked for — a second pass appends as 方案评审 2.
+ *
+ * Kept in lockstep with issuephase.DefaultRoute on the server.
  */
 const PHASE_TEMPLATES = [
-  { key: "requirement", names: ["开始", "评审", "冻结"] },
+  { key: "requirement", names: ["需求梳理", "方案评审", "代码评审", "测试验收", "需求冻结"] },
 ] as const;
 
 type TemplateKey = (typeof PHASE_TEMPLATES)[number]["key"];

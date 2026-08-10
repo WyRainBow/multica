@@ -4,27 +4,33 @@ A long issue's comments arrive in one flat run — comment 3 and comment 30 can
 belong to different stretches of work and nothing says so. A PHASE is a
 container inside one issue holding the comments written while it was there.
 
-Not a status: `status` forgets the route, a phase stays. Review recurs as
-`评审 2`, `评审 3`, each its own station.
+Not a status: `status` forgets the route, a phase stays.
+
+**Every new issue is created with 需求梳理 → 方案评审 → 代码评审 → 测试验收 →
+需求冻结 on it**, sub-issues included. The two reviews are separate on purpose:
+方案评审 asks whether this is the right thing to build, 代码评审 whether it was
+built right, and one combined station puts both answers in the same pile.
+
+Either recurs — `方案评审 2`, `代码评审 2` — each its own station.
 
 ## Commands
 
 ```bash
 multica issue phase list <id>                      # NAME, STATE, COMMENTS, ENTERED, COMPLETED
-multica issue phase add <id> 评审
-multica issue phase enter <id> 评审                # record arrival
-multica issue phase complete <id> 评审             # record departure
+multica issue phase add <id> "方案评审 2"
+multica issue phase enter <id> 代码评审                # record arrival
+multica issue phase complete <id> 代码评审             # record departure
 multica issue phase rename <id> <phase> <new-name>
 multica issue phase delete <id> <phase>
-multica issue comment add <id> --phase 评审 --content "..."
-multica issue comment list <id> --phase 评审
+multica issue comment add <id> --phase 代码评审 --content "..."
+multica issue comment list <id> --phase 代码评审
 ```
 
 ## Rules that bite if you assume otherwise
 
 **`<phase>` is the NAME** — case-insensitive, a unique prefix is enough, a full
-UUID also works. Exact match is tried first, so `评审` still resolves once
-`评审 2` exists.
+UUID also works. Exact match is tried first, so `方案评审` still resolves once
+`方案评审 2` exists.
 
 **Names are unique per issue.** A duplicate returns 409 rather than leaving two
 stations that read the same.

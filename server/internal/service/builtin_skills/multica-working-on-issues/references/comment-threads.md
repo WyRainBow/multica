@@ -86,7 +86,7 @@ multica issue comment unresolve <the-resolved-comment-id>
 
 A thread carries one discussion to its end. A second review PASS over revised
 work is not more of that discussion — it is a new one, and the issue's phases
-already model it (`评审`, `评审 2`, `评审 3`).
+already model it (`方案评审`, `方案评审 2`, `代码评审` …).
 
 | Axis | Divides |
 | --- | --- |
