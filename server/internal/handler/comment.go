@@ -42,22 +42,22 @@ type CommentResponse struct {
 	// raw prompt body. It is NOT settable through this endpoint — there is no
 	// request field for it — which is exactly why the card keys off this id
 	// rather than a `type` value the client controls.
-	QuickActionID *string              `json:"quick_action_id,omitempty"`
+	QuickActionID *string `json:"quick_action_id,omitempty"`
 	// AnchorText is the description span this comment was written against
 	// (inline comments). The description is Markdown, which cannot carry a
 	// highlight, so the quoted text travels on the comment and the client
 	// re-locates it at render time. AnchorOffset is a character-offset hint
 	// used to disambiguate when the same text occurs more than once; a
 	// comment whose text no longer appears simply stops highlighting.
-	AnchorText    *string              `json:"anchor_text"`
-	AnchorOffset  *int32               `json:"anchor_offset"`
+	AnchorText   *string `json:"anchor_text"`
+	AnchorOffset *int32  `json:"anchor_offset"`
 	// The station of the issue's route this comment is filed under, when one
 	// was chosen. Echoed on every read AND on create — the client filters the
 	// timeline by it, so a freshly written comment that came back without it
 	// would vanish from the very phase it was just written into.
-	PhaseID *string `json:"phase_id"`
-	Reactions     []ReactionResponse   `json:"reactions"`
-	Attachments   []AttachmentResponse `json:"attachments"`
+	PhaseID     *string              `json:"phase_id"`
+	Reactions   []ReactionResponse   `json:"reactions"`
+	Attachments []AttachmentResponse `json:"attachments"`
 	// Orientation stats — populated only on the roots_only path and omitted in
 	// every other mode, so the default response shape stays byte-identical for
 	// existing callers. ReplyCount is the number of descendants in the thread;
@@ -2053,6 +2053,48 @@ func isClientAuthorableCommentType(t string) bool {
 // any other comment but never triggers an agent.
 const noteCommentPrefix = "/note"
 
+// implicitCommentRoutingEnabled is off in this fork.
+//
+// It gates the MEMBER-driven routes that dispatch an agent nobody named: the
+// author of the comment being replied to (`thread_parent`), whoever was last
+// speaking on the thread (`conversation_continuation`), and the issue's
+// assignee. Two things sit outside it and still work:
+//
+//   - Explicit `@agent` / `@squad`, resolved earlier in the function. Typing a
+//     name is a request; only the implicit paths are removed.
+//   - Squad leader/worker coordination, which returns before this gate. A
+//     worker's result comment still wakes the assigned leader (MUL-4015), so
+//     the leader→worker→leader loop stays closed.
+//
+// Why: a comment thread here is a DISCUSSION, not a dispatch. The intended
+// shape is one thread per topic — a review opens it, the other side replies
+// under it, follow-ups stay in the same thread, a new topic opens a new
+// top-level comment — and the thread is resolved once it concludes, which is
+// also what makes the folded read in `comment list` meaningful. A reply that
+// silently enqueues a run is the opposite of a discussion.
+//
+// The case that forced this: replying "你好" under an agent's comment enqueued a
+// real run. No mention, no assignment, no intent to dispatch anything — the
+// reply's parent simply happened to be agent-authored.
+//
+// Note that agent-to-agent replies were never affected: an agent-authored
+// comment returns in the `actorType != "member"` branch above. So this gate is
+// specifically about a human being unable to answer an agent without hiring it.
+//
+// The Claude / Codex agents in this workspace exist for ATTRIBUTION — so a
+// write from a terminal is signed by the tool that made it, see DetectHarness —
+// not to be dispatched. Clearing their `runtime_id` would also stop this (every
+// route gates on `RuntimeID.Valid`), but it fixes one symptom on two rows and
+// leaves the trap armed for the next agent someone adds.
+//
+// A var rather than a const: a constant false makes the routing below
+// unreachable and `go vet` fails the build. Flip the const to restore upstream
+// behaviour — the var exists so the package's own tests can exercise the
+// routing logic, which is unchanged and still has to be correct.
+const implicitCommentRoutingShipsEnabled = false
+
+var implicitCommentRoutingEnabled = implicitCommentRoutingShipsEnabled
+
 // isNoteComment reports whether content opts out of agent triggering via the
 // reserved /note prefix. The prefix must be the comment's first token, so
 // "/note check expiry", "  /NOTE", and "/note" all match, while "/notes",
@@ -2762,6 +2804,12 @@ func (h *Handler) computeCommentAgentTriggers(ctx context.Context, issue db.Issu
 				return []commentAgentTrigger{trigger}, nil
 			}
 		}
+		return nil, nil
+	}
+
+	// Everything past here is MEMBER-driven implicit routing, which this fork
+	// turns off. See implicitCommentRoutingEnabled.
+	if !implicitCommentRoutingEnabled {
 		return nil, nil
 	}
 

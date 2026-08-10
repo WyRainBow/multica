@@ -36,6 +36,18 @@ const (
 )
 
 func TestMain(m *testing.M) {
+	// This fork ships implicit comment routing OFF (see
+	// implicitCommentRoutingEnabled). The suite runs with it ON because these
+	// tests cover the ROUTING LOGIC, which is unchanged and still has to be
+	// correct — turning it off here would delete that coverage rather than
+	// replace it, and would silently rot the code an upstream merge keeps
+	// touching.
+	//
+	// The fork's own contract — that the switch ships false, and what a member
+	// reply does with it false — is pinned separately in
+	// comment_implicit_routing_test.go, which flips it back for its own cases.
+	implicitCommentRoutingEnabled = true
+
 	ctx := context.Background()
 	dbURL := os.Getenv("DATABASE_URL")
 	if dbURL == "" {
