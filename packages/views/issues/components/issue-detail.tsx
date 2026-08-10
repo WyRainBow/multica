@@ -2880,7 +2880,12 @@ export function IssueDetail({ issueId, onDelete, onDone, defaultSidebarOpen = tr
               />
             </div>
           )}
-          {!titleLazy.ready && (
+          {/* The stand-in exists to hold the title's space until the lazy
+              editor mounts, so it must also stand down when there will never
+              BE an editor. A frozen issue renders its own <h1> above and never
+              activates the lazy one, leaving `ready` false forever — which
+              printed the title twice on every done or cancelled issue. */}
+          {!frozen && !titleLazy.ready && (
             <div
               role="button"
               tabIndex={0}

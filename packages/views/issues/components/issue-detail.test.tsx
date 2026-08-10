@@ -1899,6 +1899,21 @@ describe("IssueDetail (shared)", () => {
     ).toBeInTheDocument();
   });
 
+  // A frozen issue renders its own <h1> and never activates the lazy title
+  // editor, so `titleLazy.ready` stays false forever. The stand-in that holds
+  // the title's space until that editor mounts keyed off `ready` alone, and
+  // printed the heading a second time on every done or cancelled issue.
+  it("prints a finished issue's title once, not twice", async () => {
+    mockApiObj.getIssue.mockResolvedValue({ ...mockIssue, status: "done" });
+
+    renderIssueDetail();
+
+    await screen.findByText(
+      "Finished — the title and description are frozen. Move it out of Done or Cancelled to edit.",
+    );
+    expect(screen.getAllByText(mockIssue.title)).toHaveLength(1);
+  });
+
   // Cancelled is terminal for the same reason done is: it records a decision
   // about how the work ended.
   it("freezes a cancelled issue too", async () => {
