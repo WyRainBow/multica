@@ -474,7 +474,8 @@
       "pin_failed": "置顶失败",
       "unpin_failed": "取消置顶失败"
     },
-    "replying_to": "回复 {{name}}"
+    "replying_to": "回复 {{name}}",
+    "length_other": "{{count}} 字"
   },
   "reply": {
     "placeholder": "回复..."

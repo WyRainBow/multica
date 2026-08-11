@@ -682,6 +682,15 @@ function CommentRow({
         </Tooltip>
         <CommentIdChip id={entry.id} />
 
+        {/* How much there is to read, before deciding to read it. Same rule as
+            the description's counter: hidden at zero, and no threshold colour —
+            long is not the same as bloated. */}
+        {(entry.content?.length ?? 0) > 0 && (
+          <span className="shrink-0 text-caption tabular-nums text-faint-foreground">
+            {t(($) => $.comment.length, { count: entry.content!.length })}
+          </span>
+        )}
+
         {isResolution && (
           <span className="text-caption font-medium text-success">
             {t(($) => $.comment.resolve.resolution_badge)}
@@ -1058,6 +1067,16 @@ function CommentCardImpl({
                 </TooltipContent>
               </Tooltip>
               <CommentIdChip id={entry.id} />
+
+              {/* Shown collapsed as well as open: the preview beside it is
+                  clipped at 80 characters, so it cannot say whether the rest is
+                  two lines or four thousand. That is the number someone needs
+                  to decide whether to open the thread at all. */}
+              {(entry.content?.length ?? 0) > 0 && (
+                <span className="shrink-0 text-caption tabular-nums text-faint-foreground">
+                  {t(($) => $.comment.length, { count: entry.content!.length })}
+                </span>
+              )}
 
               {/* Shown whether the card is open or collapsed: a pin is how a
                   reader finds this thread in the first place, so hiding it

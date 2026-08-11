@@ -489,7 +489,8 @@
       "pin_failed": "Could not pin",
       "unpin_failed": "Could not unpin"
     },
-    "replying_to": "replying to {{name}}"
+    "replying_to": "replying to {{name}}",
+    "length_other": "{{count}} chars"
   },
   "reply": {
     "placeholder": "Leave a reply..."

@@ -144,6 +144,8 @@ import { CommentCard } from "./comment-card";
 // it type-checked, shipped, and rendered nothing. Only a render test catches
 // that class of mistake.
 
+const mockBody = "Original body";
+
 function rootEntry(overrides: Partial<TimelineEntry> = {}): TimelineEntry {
   return {
     id: "comment-1",
@@ -151,7 +153,7 @@ function rootEntry(overrides: Partial<TimelineEntry> = {}): TimelineEntry {
     parent_id: null,
     actor_type: "member",
     actor_id: "user-1",
-    content: "Original body",
+    content: mockBody,
     type: "comment",
     created_at: "2026-07-01T00:00:00Z",
     updated_at: "2026-07-01T00:00:00Z",
@@ -255,5 +257,34 @@ describe("reply — who it answers", () => {
   it("leaves a first-level reply unlabelled — the root is directly above", () => {
     renderRoot(rootEntry(), vi.fn(), [reply("r1", "comment-1", "user-codex")]);
     expect(screen.queryByText(/replying to/i)).not.toBeInTheDocument();
+  });
+});
+
+// A collapsed comment shows a preview clipped at 80 characters, which cannot
+// say whether the rest is two lines or four thousand — and how long a comment
+// is turns out to be what decides whether anyone opens it. The counter is on
+// both the root and the reply headers for that reason.
+describe("comment — how long it is", () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it("shows the character count on a root", () => {
+    renderRoot(rootEntry({ content: "12345" } as Partial<TimelineEntry>), vi.fn());
+    expect(screen.getByText("5 chars")).toBeInTheDocument();
+  });
+
+  it("shows it on a reply too", () => {
+    renderRoot(rootEntry(), vi.fn(), [
+      reply("r1", "comment-1", "user-codex"),
+    ]);
+    // Both rows carry the same body from the fixture, so two nodes is the
+    // proof that the reply header got one as well as the root.
+    expect(screen.getAllByText(`${mockBody.length} chars`)).toHaveLength(2);
+  });
+
+  // A "0 chars" label on an empty comment is noise, the same call the
+  // description's counter makes.
+  it("stays hidden when there is nothing to count", () => {
+    renderRoot(rootEntry({ content: "" } as Partial<TimelineEntry>), vi.fn());
+    expect(screen.queryByText(/chars$/)).not.toBeInTheDocument();
   });
 });

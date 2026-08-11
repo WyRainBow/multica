@@ -474,7 +474,8 @@
       "pin_failed": "固定できませんでした",
       "unpin_failed": "固定を解除できませんでした"
     },
-    "replying_to": "{{name}} への返信"
+    "replying_to": "{{name}} への返信",
+    "length_other": "{{count}} 文字"
   },
   "reply": {
     "placeholder": "返信を残す..."
