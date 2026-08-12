@@ -29,11 +29,16 @@
     "length_other": "{{count}} 文字"
   },
   "issue_section": {
-    "title": "関連ドキュメント"
+    "title": "関連ドキュメント",
+    "empty": "ドキュメントはまだありません。ドキュメント側からリンクしてください。"
   },
   "detail": {
     "not_found": "このドキュメントは存在しないか削除されました。",
     "back": "ドキュメントに戻る",
-    "updated_at": "{{time}} 更新"
+    "updated_at": "{{time}} 更新",
+    "link_issue": "課題をリンク",
+    "link_issue_hint": "タイトルまたはキーで検索して、このドキュメントを所属する課題にリンクします。",
+    "unlink_issue": "リンクを解除",
+    "issue_loading": "リンク中の課題"
   }
 }

@@ -29,11 +29,16 @@
     "length_other": "{{count}} chars"
   },
   "issue_section": {
-    "title": "Documents"
+    "title": "Documents",
+    "empty": "No documents yet. Link one from the document itself."
   },
   "detail": {
     "not_found": "This document does not exist or was deleted.",
     "back": "Back to docs",
-    "updated_at": "updated {{time}}"
+    "updated_at": "updated {{time}}",
+    "link_issue": "Link an issue",
+    "link_issue_hint": "Search by title or key to link this document to the issue it belongs to.",
+    "unlink_issue": "Unlink issue",
+    "issue_loading": "Linked issue"
   }
 }

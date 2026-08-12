@@ -29,11 +29,16 @@
     "length_other": "{{count}} 字"
   },
   "issue_section": {
-    "title": "相关文档"
+    "title": "相关文档",
+    "empty": "还没有文档。在文档里关联到这条 issue。"
   },
   "detail": {
     "not_found": "这篇文档不存在或已被删除。",
     "back": "返回文档",
-    "updated_at": "{{time}} 更新"
+    "updated_at": "{{time}} 更新",
+    "link_issue": "关联 issue",
+    "link_issue_hint": "按标题或编号搜索，把这篇文档关联到它所属的 issue。",
+    "unlink_issue": "取消关联",
+    "issue_loading": "已关联的 issue"
   }
 }

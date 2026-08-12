@@ -2,13 +2,13 @@
 
 import { useCallback, useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowLeft, FileText, Loader2, Trash2 } from "lucide-react";
+import { ArrowLeft, FileText, Link2, Loader2, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
 import { useWorkspaceId } from "@multica/core/hooks";
 import { useWorkspacePaths } from "@multica/core/paths";
 import { cardDetailOptions, cardListOptions } from "@multica/core/docs/queries";
 import { useUpdateCard, useDeleteCard } from "@multica/core/docs/mutations";
-import { issueListOptions } from "@multica/core/issues/queries";
+import { issueDetailOptions } from "@multica/core/issues/queries";
 import { Button } from "@multica/ui/components/ui/button";
 import { Input } from "@multica/ui/components/ui/input";
 import {
@@ -25,6 +25,7 @@ import { ContentEditor, type ContentEditorRef } from "../../editor";
 import type { OutlineHeading } from "../../editor/outline";
 import { DescriptionOutline } from "../../issues/components/description-outline";
 import { AppLink, useNavigation } from "../../navigation";
+import { IssuePickerModal } from "../../modals/issue-picker-modal";
 import { useT, useExactTime } from "../../i18n";
 import { allDocPaths } from "../doc-tree";
 
@@ -56,6 +57,7 @@ export function DocDetail({ docId }: { docId: string }) {
   const [outline, setOutline] = useState<OutlineHeading[]>([]);
   const [scrollEl, setScrollEl] = useState<HTMLElement | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [pickingIssue, setPickingIssue] = useState(false);
 
   // Folder suggestions come from what has already been written, the same source
   // the tree derives from — a fixed list would offer folders nobody files
@@ -67,18 +69,26 @@ export function DocDetail({ docId }: { docId: string }) {
     [all],
   );
 
-  const { data: issues } = useQuery(issueListOptions(wsId));
-  const linkedIssue = useMemo(
-    () => (doc?.issue_id ? issues?.find((i) => i.id === doc.issue_id) : undefined),
-    [doc?.issue_id, issues],
-  );
+  // Fetched by id, not looked up in the issue list. The list is paginated and
+  // excludes archived issues, so a link to either would have silently rendered
+  // nothing — and a link you cannot see is a link you will not trust.
+  const { data: linkedIssue } = useQuery({
+    ...issueDetailOptions(wsId, doc?.issue_id ?? ""),
+    enabled: Boolean(doc?.issue_id),
+  });
 
   const jumpToHeading = useCallback((heading: OutlineHeading) => {
     editorRef.current?.scrollToPosition(heading.pos);
   }, []);
 
   const save = useCallback(
-    (patch: { title?: string; content?: string; kind?: string }) => {
+    // issue_id: an explicit null detaches; omitting it leaves the link alone.
+    (patch: {
+      title?: string;
+      content?: string;
+      kind?: string;
+      issue_id?: string | null;
+    }) => {
       if (!doc) return;
       update.mutate(
         { id: doc.id, ...patch },
@@ -178,14 +188,51 @@ export function DocDetail({ docId }: { docId: string }) {
               ))}
             </datalist>
 
-            {linkedIssue && (
-              <AppLink
-                href={wsPaths.issueDetail(linkedIssue.id)}
-                className="flex min-w-0 items-center gap-1.5 text-caption text-muted-foreground hover:text-foreground"
+            {/* The link was display-only until now: a document could name its
+                issue, but only through the CLI. So the issue page's document
+                section had nothing to list for anyone working in the app, and
+                it renders nothing when empty — the feature read as missing
+                rather than unreachable. */}
+            {doc.issue_id ? (
+              <span className="flex min-w-0 items-center gap-1">
+                <AppLink
+                  href={wsPaths.issueDetail(doc.issue_id)}
+                  className="flex min-w-0 items-center gap-1.5 text-caption text-muted-foreground hover:text-foreground"
+                >
+                  <Link2 className="size-3.5 shrink-0" />
+                  {linkedIssue ? (
+                    <>
+                      <span className="shrink-0 font-medium">
+                        {linkedIssue.identifier}
+                      </span>
+                      <span className="truncate">{linkedIssue.title}</span>
+                    </>
+                  ) : (
+                    // The id is stored; the issue row may still be loading.
+                    // Showing nothing here would look like no link at all.
+                    <span className="truncate">{t(($) => $.detail.issue_loading)}</span>
+                  )}
+                </AppLink>
+                <Button
+                  size="icon-sm"
+                  variant="ghost"
+                  className="size-5 shrink-0 text-muted-foreground hover:text-destructive"
+                  onClick={() => save({ issue_id: null })}
+                  aria-label={t(($) => $.detail.unlink_issue)}
+                >
+                  <X className="size-3" />
+                </Button>
+              </span>
+            ) : (
+              <Button
+                size="sm"
+                variant="ghost"
+                className="h-7 gap-1.5 px-2 text-caption text-muted-foreground"
+                onClick={() => setPickingIssue(true)}
               >
-                <span className="shrink-0 font-medium">{linkedIssue.identifier}</span>
-                <span className="truncate">{linkedIssue.title}</span>
-              </AppLink>
+                <Link2 className="size-3.5" />
+                {t(($) => $.detail.link_issue)}
+              </Button>
             )}
           </div>
 
@@ -213,6 +260,20 @@ export function DocDetail({ docId }: { docId: string }) {
         scrollContainer={scrollEl}
         onJump={jumpToHeading}
         className="absolute bottom-0 left-3 top-24 hidden w-44 pb-4 @[81rem]:flex"
+      />
+
+      {/* The same picker that sets a parent issue and adds a child — it
+          searches server-side, so it finds issues this page never loaded. */}
+      <IssuePickerModal
+        open={pickingIssue}
+        onOpenChange={setPickingIssue}
+        title={t(($) => $.detail.link_issue)}
+        description={t(($) => $.detail.link_issue_hint)}
+        excludeIds={[]}
+        onSelect={(issue) => {
+          save({ issue_id: issue.id });
+          setPickingIssue(false);
+        }}
       />
 
       <AlertDialog open={confirmDelete} onOpenChange={setConfirmDelete}>

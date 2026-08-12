@@ -82,11 +82,23 @@ describe("issue → its documents", () => {
     expect(screen.queryByText("SECRET BODY TEXT")).not.toBeInTheDocument();
   });
 
-  // Most issues need no document, and a permanent "no documents" heading would
-  // be noise on all of them.
-  it("renders nothing at all when there are none", async () => {
-    const { container } = render([]);
-    await new Promise((r) => setTimeout(r, 0));
-    expect(container).toBeEmptyDOMElement();
+  // It used to render nothing when empty, on the theory that a permanent "no
+  // documents" line was noise. But an invisible section cannot be told apart
+  // from a missing feature — and this one was invisible on every issue for as
+  // long as the app had no way to create the link at all. It now shows, the way
+  // the resources section directly above it does.
+  it("still shows the section when there are none", async () => {
+    render([]);
+    expect(
+      await screen.findByText("No documents yet. Link one from the document itself."),
+    ).toBeInTheDocument();
+  });
+
+  // The count is a fact about a non-empty list; "0" next to an empty-state
+  // sentence says the same thing twice.
+  it("omits the count when empty", async () => {
+    render([]);
+    await screen.findByText("No documents yet. Link one from the document itself.");
+    expect(screen.queryByText("0")).not.toBeInTheDocument();
   });
 });
