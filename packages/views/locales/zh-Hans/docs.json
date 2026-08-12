@@ -30,7 +30,11 @@
   },
   "issue_section": {
     "title": "相关文档",
-    "empty": "还没有文档。在文档里关联到这条 issue。"
+    "empty": "还没有文档。",
+    "link": "关联文档",
+    "link_hint": "搜索你的文档，把它挂到这条 issue 上。",
+    "unlink": "取消关联",
+    "link_failed": "关联没改成。"
   },
   "detail": {
     "not_found": "这篇文档不存在或已被删除。",
@@ -40,5 +44,11 @@
     "link_issue_hint": "按标题或编号搜索，把这篇文档关联到它所属的 issue。",
     "unlink_issue": "取消关联",
     "issue_loading": "已关联的 issue"
+  },
+  "picker": {
+    "search_placeholder": "按标题或内容搜索文档…",
+    "searching": "搜索中…",
+    "no_results": "没找到文档。",
+    "already_linked": "已关联别处"
   }
 }

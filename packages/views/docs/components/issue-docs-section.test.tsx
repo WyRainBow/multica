@@ -1,14 +1,21 @@
-import { describe, it, expect, vi } from "vitest";
-import { screen } from "@testing-library/react";
+import { describe, it, expect, vi, beforeEach } from "vitest";
+import { screen, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { Card } from "@multica/core/types";
 import { renderWithI18n } from "../../test/i18n";
 
 const listCardsForIssue = vi.hoisted(() => vi.fn());
+const listCards = vi.hoisted(() => vi.fn());
+const updateMutate = vi.hoisted(() => vi.fn());
 
 vi.mock("@multica/core/api", () => ({
-  api: { listCardsForIssue },
+  api: { listCardsForIssue, listCards },
   dispatchReasonCode: () => undefined,
+}));
+
+vi.mock("@multica/core/docs/mutations", () => ({
+  useUpdateCard: () => ({ mutate: updateMutate }),
 }));
 
 vi.mock("@multica/core/hooks", () => ({
@@ -23,9 +30,13 @@ vi.mock("@multica/core/paths", () => ({
 }));
 
 vi.mock("../../navigation", () => ({
-  AppLink: ({ children, href }: { children: React.ReactNode; href: string }) => (
-    <a href={href}>{children}</a>
-  ),
+  AppLink: ({
+    children,
+    href,
+  }: {
+    children: React.ReactNode;
+    href: string;
+  }) => <a href={href}>{children}</a>,
 }));
 
 import { IssueDocsSection } from "./issue-docs-section";
@@ -46,8 +57,9 @@ function doc(overrides: Partial<Card> = {}): Card {
   } as unknown as Card;
 }
 
-function render(docs: Card[]) {
+function render(docs: Card[], pickable: Card[] = []) {
   listCardsForIssue.mockResolvedValue({ cards: docs });
+  listCards.mockResolvedValue({ cards: pickable, total: pickable.length });
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return renderWithI18n(
     <QueryClientProvider client={qc}>
@@ -55,6 +67,10 @@ function render(docs: Card[]) {
     </QueryClientProvider>,
   );
 }
+
+beforeEach(() => {
+  updateMutate.mockClear();
+});
 
 // A document could always name its issue; the issue could not see back. Half a
 // link is a link you have to remember, which is what having a document store
@@ -90,7 +106,7 @@ describe("issue → its documents", () => {
   it("still shows the section when there are none", async () => {
     render([]);
     expect(
-      await screen.findByText("No documents yet. Link one from the document itself."),
+      await screen.findByText("No documents yet."),
     ).toBeInTheDocument();
   });
 
@@ -98,7 +114,69 @@ describe("issue → its documents", () => {
   // sentence says the same thing twice.
   it("omits the count when empty", async () => {
     render([]);
-    await screen.findByText("No documents yet. Link one from the document itself.");
+    await screen.findByText("No documents yet.");
     expect(screen.queryByText("0")).not.toBeInTheDocument();
+  });
+});
+
+// Attaching used to work only from the document. But which end you are standing
+// on is not something the app gets to decide: reading an issue and remembering
+// the SOP that belongs to it is as common as the reverse.
+describe("attaching from the issue", () => {
+  it("offers the link control even with nothing attached", async () => {
+    render([]);
+    expect(
+      await screen.findByRole("button", { name: "Link a document" }),
+    ).toBeInTheDocument();
+  });
+
+  it("picking a document writes this issue's id onto it", async () => {
+    const user = userEvent.setup();
+    render([], [doc({ id: "doc-9", title: "联调 SOP", issue_id: null })]);
+    await user.click(
+      await screen.findByRole("button", { name: "Link a document" }),
+    );
+    await user.click(await screen.findByText("联调 SOP"));
+    await waitFor(() =>
+      expect(updateMutate).toHaveBeenCalledWith(
+        expect.objectContaining({ id: "doc-9", issue_id: "issue-1" }),
+        expect.anything(),
+      ),
+    );
+  });
+
+  // Offering a document that is already here would be a no-op that looks like
+  // an action.
+  it("does not offer documents already attached", async () => {
+    const user = userEvent.setup();
+    render(
+      [doc({ id: "doc-1", title: "已经挂了的" })],
+      [
+        doc({ id: "doc-1", title: "已经挂了的" }),
+        doc({ id: "doc-9", title: "还没挂的" }),
+      ],
+    );
+    await user.click(
+      await screen.findByRole("button", { name: "Link a document" }),
+    );
+    expect(await screen.findByText("还没挂的")).toBeInTheDocument();
+    // The attached one still shows in the list behind the dialog, so count it:
+    // one occurrence means the row, not a second entry in the picker.
+    expect(screen.getAllByText("已经挂了的")).toHaveLength(1);
+  });
+
+  // Detaching is not deleting — the document is untouched, only its issue_id.
+  it("detaching sends null", async () => {
+    const user = userEvent.setup();
+    render([doc({ id: "doc-1" })]);
+    await user.click(
+      await screen.findByRole("button", { name: "Detach document" }),
+    );
+    await waitFor(() =>
+      expect(updateMutate).toHaveBeenCalledWith(
+        expect.objectContaining({ id: "doc-1", issue_id: null }),
+        expect.anything(),
+      ),
+    );
   });
 });

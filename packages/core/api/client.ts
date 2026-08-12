@@ -1107,10 +1107,16 @@ export class ApiClient {
   // Cards
   // -------------------------------------------------------------------------
 
-  async listCards(params?: { limit?: number; offset?: number }): Promise<CardListResponse> {
+  async listCards(params?: {
+    limit?: number;
+    offset?: number;
+    /** Title-and-body match across the whole workspace, not just this page. */
+    search?: string;
+  }): Promise<CardListResponse> {
     const search = new URLSearchParams();
     if (params?.limit) search.set("limit", String(params.limit));
     if (params?.offset) search.set("offset", String(params.offset));
+    if (params?.search?.trim()) search.set("search", params.search.trim());
     const query = search.toString();
     const raw = await this.fetch<unknown>(`/api/cards${query ? `?${query}` : ""}`);
     return parseWithFallback(raw, CardListResponseSchema, { cards: [], total: 0 }, {

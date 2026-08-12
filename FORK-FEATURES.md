@@ -139,6 +139,8 @@ multica issue list --include-archived
 
 文档可以指定它属于哪条 issue；**issue 页面反过来列出挂在它下面的文档**（只列标题和字数，不展开正文）。单向的链接等于要靠记性，而记性正是文档库要解决的问题。
 
+**两端都能挂、都能摘**：文档页有「关联 issue」，issue 页资源区下面有「关联文档」。你站在哪一端不该由软件决定——看着 issue 想起那份 SOP，和写完 SOP 知道它服务哪条需求，一样常见。搜索走服务端，能找到当前页没加载的东西。一份文档只属于一条 issue，所以挂一份已经挂在别处的会**移动**它，选择列表里会标出来。
+
 ```bash
 multica doc add --title "..." --kind "本地联调/P0 workflow" --content "..."
 multica doc kinds

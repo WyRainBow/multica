@@ -30,7 +30,11 @@
   },
   "issue_section": {
     "title": "Documents",
-    "empty": "No documents yet. Link one from the document itself."
+    "empty": "No documents yet.",
+    "link": "Link a document",
+    "link_hint": "Search your documents and attach one to this issue.",
+    "unlink": "Detach document",
+    "link_failed": "Could not change the link."
   },
   "detail": {
     "not_found": "This document does not exist or was deleted.",
@@ -40,5 +44,11 @@
     "link_issue_hint": "Search by title or key to link this document to the issue it belongs to.",
     "unlink_issue": "Unlink issue",
     "issue_loading": "Linked issue"
+  },
+  "picker": {
+    "search_placeholder": "Search documents by title or content...",
+    "searching": "Searching...",
+    "no_results": "No documents found.",
+    "already_linked": "linked elsewhere"
   }
 }
