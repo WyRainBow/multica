@@ -105,9 +105,7 @@ describe("issue → its documents", () => {
   // the resources section directly above it does.
   it("still shows the section when there are none", async () => {
     render([]);
-    expect(
-      await screen.findByText("No documents yet."),
-    ).toBeInTheDocument();
+    expect(await screen.findByText("No documents yet.")).toBeInTheDocument();
   });
 
   // The count is a fact about a non-empty list; "0" next to an empty-state

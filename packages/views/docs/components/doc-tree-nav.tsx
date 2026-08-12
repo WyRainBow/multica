@@ -97,7 +97,10 @@ function TreeBranch({
               className="grid size-4 shrink-0 place-items-center rounded text-muted-foreground hover:bg-muted"
             >
               <ChevronRight
-                className={cn("size-3 transition-transform", open && "rotate-90")}
+                className={cn(
+                  "size-3 transition-transform",
+                  open && "rotate-90",
+                )}
               />
             </button>
           ) : (

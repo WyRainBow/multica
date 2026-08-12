@@ -104,42 +104,44 @@ export function DocsPage() {
         )}
 
         <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4">
-        {isLoading ? null : filtered.length === 0 ? (
-          <EmptyState
-            hasCards={cards.length > 0}
-            onCreate={() => setCreating(true)}
-          />
-        ) : (
-          // One column, not a grid. A document is prose read one at a time, and
-          // the day headings only mean anything if the reading order is a
-          // single line down the page.
-          //
-          // Left-aligned, not centred. Centring suits a page that is only ever
-          // read; this one is a working list you scan and come back to, and a
-          // column floating in the middle puts it somewhere the eye has to go
-          // looking for. The width cap stays — prose past ~80 characters a line
-          // is harder to read, and that is true wherever the column sits.
-          <div className="w-full max-w-3xl">
-            {groups.map((group) => (
-              <section key={group.day}>
-                <DayHeading date={group.date} count={group.cards.length} />
-                {group.cards.map((card) => (
-                  <TimelineRow key={card.id} at={card.created_at}>
-                    <DocItem
-                      card={card}
-                      issue={
-                        card.issue_id ? issuesById.get(card.issue_id) : undefined
-                      }
-                      onEdit={() => navigation.push(paths.docDetail(card.id))}
-                      onOpenIssue={(identifier) =>
-                        navigation.push(paths.issueDetail(identifier))
-                      }
-                    />
-                  </TimelineRow>
-                ))}
-              </section>
-            ))}
-          </div>
+          {isLoading ? null : filtered.length === 0 ? (
+            <EmptyState
+              hasCards={cards.length > 0}
+              onCreate={() => setCreating(true)}
+            />
+          ) : (
+            // One column, not a grid. A document is prose read one at a time, and
+            // the day headings only mean anything if the reading order is a
+            // single line down the page.
+            //
+            // Left-aligned, not centred. Centring suits a page that is only ever
+            // read; this one is a working list you scan and come back to, and a
+            // column floating in the middle puts it somewhere the eye has to go
+            // looking for. The width cap stays — prose past ~80 characters a line
+            // is harder to read, and that is true wherever the column sits.
+            <div className="w-full max-w-3xl">
+              {groups.map((group) => (
+                <section key={group.day}>
+                  <DayHeading date={group.date} count={group.cards.length} />
+                  {group.cards.map((card) => (
+                    <TimelineRow key={card.id} at={card.created_at}>
+                      <DocItem
+                        card={card}
+                        issue={
+                          card.issue_id
+                            ? issuesById.get(card.issue_id)
+                            : undefined
+                        }
+                        onEdit={() => navigation.push(paths.docDetail(card.id))}
+                        onOpenIssue={(identifier) =>
+                          navigation.push(paths.issueDetail(identifier))
+                        }
+                      />
+                    </TimelineRow>
+                  ))}
+                </section>
+              ))}
+            </div>
           )}
         </div>
       </div>

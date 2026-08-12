@@ -68,7 +68,8 @@ export function DocEditorDialog({
     createCard.isPending || updateCard.isPending || deleteCard.isPending;
   // Either field alone is a card. Only a completely empty one is refused,
   // and that is a stray click rather than a note.
-  const canSave = (title.trim().length > 0 || content.trim().length > 0) && !pending;
+  const canSave =
+    (title.trim().length > 0 || content.trim().length > 0) && !pending;
 
   const save = async () => {
     if (!canSave) return;
@@ -91,7 +92,9 @@ export function DocEditorDialog({
       onClose();
     } catch (err) {
       toast.error(
-        err instanceof Error && err.message ? err.message : t(($) => $.editor.save_failed),
+        err instanceof Error && err.message
+          ? err.message
+          : t(($) => $.editor.save_failed),
       );
     }
   };
@@ -103,7 +106,9 @@ export function DocEditorDialog({
       onClose();
     } catch (err) {
       toast.error(
-        err instanceof Error && err.message ? err.message : t(($) => $.editor.delete_failed),
+        err instanceof Error && err.message
+          ? err.message
+          : t(($) => $.editor.delete_failed),
       );
     }
   };
@@ -118,7 +123,9 @@ export function DocEditorDialog({
       <DialogContent className="sm:max-w-4xl">
         <DialogHeader>
           <DialogTitle>
-            {card ? t(($) => $.editor.edit_title) : t(($) => $.editor.new_title)}
+            {card
+              ? t(($) => $.editor.edit_title)
+              : t(($) => $.editor.new_title)}
           </DialogTitle>
         </DialogHeader>
 
@@ -183,10 +190,19 @@ export function DocEditorDialog({
                   <span className="text-caption text-muted-foreground">
                     {t(($) => $.editor.delete_confirm)}
                   </span>
-                  <Button size="sm" variant="destructive" onClick={remove} disabled={pending}>
+                  <Button
+                    size="sm"
+                    variant="destructive"
+                    onClick={remove}
+                    disabled={pending}
+                  >
                     {t(($) => $.editor.delete_action)}
                   </Button>
-                  <Button size="sm" variant="ghost" onClick={() => setConfirmingDelete(false)}>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => setConfirmingDelete(false)}
+                  >
                     {t(($) => $.editor.cancel)}
                   </Button>
                 </div>
@@ -203,7 +219,12 @@ export function DocEditorDialog({
               ))}
           </div>
           <div className="flex items-center gap-2">
-            <Button size="sm" variant="ghost" onClick={onClose} disabled={pending}>
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={onClose}
+              disabled={pending}
+            >
               {t(($) => $.editor.cancel)}
             </Button>
             <Button size="sm" onClick={save} disabled={!canSave}>

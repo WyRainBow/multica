@@ -5,6 +5,7 @@ import {
   filterDocsByPath,
   kindSegments,
   allDocPaths,
+  docLength,
 } from "./doc-tree";
 
 function doc(kind: string, id = kind): Card {
@@ -63,7 +64,11 @@ describe("buildDocTree", () => {
   });
 
   it("orders siblings by count, then name", () => {
-    const tree = buildDocTree([doc("rare", "1"), doc("common", "2"), doc("common", "3")]);
+    const tree = buildDocTree([
+      doc("rare", "1"),
+      doc("common", "2"),
+      doc("common", "3"),
+    ]);
     expect(tree.map((n) => n.name)).toEqual(["common", "rare"]);
   });
 
@@ -75,8 +80,17 @@ describe("buildDocTree", () => {
 
 describe("filterDocsByPath", () => {
   it("includes everything below the selected folder", () => {
-    const docs = [doc("a", "1"), doc("a/b", "2"), doc("a/b/c", "3"), doc("z", "4")];
-    expect(filterDocsByPath(docs, "a").map((d) => d.id)).toEqual(["1", "2", "3"]);
+    const docs = [
+      doc("a", "1"),
+      doc("a/b", "2"),
+      doc("a/b/c", "3"),
+      doc("z", "4"),
+    ];
+    expect(filterDocsByPath(docs, "a").map((d) => d.id)).toEqual([
+      "1",
+      "2",
+      "3",
+    ]);
   });
 
   // Selecting a parent and being told it is empty, while its subfolders hold
@@ -101,5 +115,23 @@ describe("filterDocsByPath", () => {
 describe("allDocPaths", () => {
   it("lists every folder, parents included", () => {
     expect(allDocPaths([doc("a/b/c")]).sort()).toEqual(["a", "a/b", "a/b/c"]);
+  });
+});
+
+// The count appears in three places in the app and a fourth in `doc list`.
+// They have to agree, or none of them can be quoted.
+describe("docLength", () => {
+  it("counts an astral character once, the way the CLI's rune count does", () => {
+    expect("🎉".length).toBe(2); // what JavaScript would have reported
+    expect(docLength("🎉")).toBe(1);
+  });
+
+  it("matches plain .length for CJK and ASCII", () => {
+    const s = "本地起 P0 workflow 全链路 SOP";
+    expect(docLength(s)).toBe(s.length);
+  });
+
+  it("is 0 for an empty document", () => {
+    expect(docLength("")).toBe(0);
   });
 });

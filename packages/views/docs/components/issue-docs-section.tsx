@@ -12,6 +12,7 @@ import { Button } from "@multica/ui/components/ui/button";
 import { AppLink } from "../../navigation";
 import { useT } from "../../i18n";
 import { DocPickerModal } from "./doc-picker-modal";
+import { docLength } from "../doc-tree";
 
 /**
  * The documents this issue needs, listed on the issue.
@@ -109,7 +110,7 @@ export function IssueDocsSection({ issueId }: { issueId: string }) {
               {/* How much there is to read, the same number the document's own
                   row carries — it is what decides whether to open it now. */}
               <span className="shrink-0 text-caption tabular-nums text-faint-foreground">
-                {t(($) => $.doc.length, { count: doc.content.length })}
+                {t(($) => $.doc.length, { count: docLength(doc.content) })}
               </span>
               <Button
                 size="icon-sm"

@@ -5,6 +5,7 @@ import type { Issue, Card } from "@multica/core/types";
 import { Button } from "@multica/ui/components/ui/button";
 import { ReadonlyContent } from "../../editor";
 import { useT } from "../../i18n";
+import { docLength } from "../doc-tree";
 
 /**
  * One card, as a row in the timeline.
@@ -98,9 +99,14 @@ export function DocItem({
         </button>
       )}
 
-      {(issue || card.issue_id) && (
-        <div className="mt-3 flex items-center gap-2 text-caption text-muted-foreground">
-          {issue ? (
+      {/* Length, next to the requirement chip. The body above is cut at a fixed
+          height, so this is the only thing that says how much is BELOW the cut
+          — a 300-character note and an 11674-character SOP are the same six
+          lines on screen otherwise. Same count the issue page's document list
+          shows, and the same one an agent reads. */}
+      <div className="mt-3 flex items-center gap-2 text-caption text-muted-foreground">
+        {(issue || card.issue_id) &&
+          (issue ? (
             <button
               type="button"
               onClick={() => onOpenIssue(issue.identifier)}
@@ -113,9 +119,13 @@ export function DocItem({
             // set — deleted, or outside this workspace's window. Say so rather
             // than rendering a chip that goes nowhere.
             <span className="shrink-0">{t(($) => $.doc.issue_missing)}</span>
-          )}
-        </div>
-      )}
+          ))}
+        {docLength(card.content) > 0 && (
+          <span className="ml-auto shrink-0 tabular-nums text-faint-foreground">
+            {t(($) => $.doc.length, { count: docLength(card.content) })}
+          </span>
+        )}
+      </div>
     </div>
   );
 }

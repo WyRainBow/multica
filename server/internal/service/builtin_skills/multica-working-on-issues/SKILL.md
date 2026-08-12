@@ -307,7 +307,7 @@ issue it came from.
 
 ```bash
 multica doc add --title "COC-97 踩坑" --content-stdin < notes.md
-multica doc list                       # newest first
+multica doc list                       # newest first; CHARS says how long each is
 multica doc list --search 踩坑          # title AND body, whole workspace
 multica doc list --issue COC-97        # only documents linked to that issue
 multica doc get <doc-id>

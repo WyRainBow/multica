@@ -30,9 +30,13 @@ vi.mock("@multica/core/docs/mutations", () => ({
 }));
 
 vi.mock("../../navigation", () => ({
-  AppLink: ({ children, href }: { children: React.ReactNode; href: string }) => (
-    <a href={href}>{children}</a>
-  ),
+  AppLink: ({
+    children,
+    href,
+  }: {
+    children: React.ReactNode;
+    href: string;
+  }) => <a href={href}>{children}</a>,
   useNavigation: () => ({ push: vi.fn() }),
 }));
 
@@ -56,7 +60,10 @@ vi.mock("../../modals/issue-picker-modal", () => ({
     onSelect: (issue: Issue) => void;
   }) =>
     open ? (
-      <button type="button" onClick={() => onSelect({ id: "issue-7" } as Issue)}>
+      <button
+        type="button"
+        onClick={() => onSelect({ id: "issue-7" } as Issue)}
+      >
         pick COC-7
       </button>
     ) : null,
@@ -100,13 +107,17 @@ beforeEach(() => {
 describe("linking a document to its issue", () => {
   it("offers the link control when the document has no issue", async () => {
     render(card());
-    expect(await screen.findByRole("button", { name: "Link an issue" })).toBeInTheDocument();
+    expect(
+      await screen.findByRole("button", { name: "Link an issue" }),
+    ).toBeInTheDocument();
   });
 
   it("picking an issue writes issue_id", async () => {
     const user = userEvent.setup();
     render(card());
-    await user.click(await screen.findByRole("button", { name: "Link an issue" }));
+    await user.click(
+      await screen.findByRole("button", { name: "Link an issue" }),
+    );
     await user.click(await screen.findByRole("button", { name: "pick COC-7" }));
     await waitFor(() =>
       expect(updateMutate).toHaveBeenCalledWith(
@@ -125,7 +136,9 @@ describe("linking a document to its issue", () => {
       title: "把文档接进 issue",
     } as unknown as Issue);
     render(card({ issue_id: "issue-7" } as Partial<Card>));
-    await user.click(await screen.findByRole("button", { name: "Unlink issue" }));
+    await user.click(
+      await screen.findByRole("button", { name: "Unlink issue" }),
+    );
     await waitFor(() =>
       expect(updateMutate).toHaveBeenCalledWith(
         expect.objectContaining({ id: "doc-1", issue_id: null }),
@@ -152,6 +165,25 @@ describe("linking a document to its issue", () => {
     getIssue.mockImplementation(() => new Promise(() => {}));
     render(card({ issue_id: "issue-7" } as Partial<Card>));
     expect(await screen.findByText("Linked issue")).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Link an issue" })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Link an issue" }),
+    ).not.toBeInTheDocument();
+  });
+});
+
+// The body preview on the list is height-capped and the detail page shows the
+// text itself, so neither said how much there is. It is also the number an
+// agent reads, which makes it the answer to "how much am I handing over".
+describe("document length", () => {
+  it("shows the saved length on open", async () => {
+    render(card({ content: "x".repeat(11674) } as Partial<Card>));
+    expect(await screen.findByText("11674 chars")).toBeInTheDocument();
+  });
+
+  // An empty document showing "0 chars" is a label with nothing to label.
+  it("shows nothing for an empty document", async () => {
+    render(card({ content: "" } as Partial<Card>));
+    await screen.findByTestId("editor");
+    expect(screen.queryByText(/chars/)).not.toBeInTheDocument();
   });
 });

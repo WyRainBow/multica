@@ -322,6 +322,7 @@ is the same line comments already sit on.
 | API routes (`/api/cards`, `/api/issues/{id}/cards`) | `server/cmd/server/router.go:1285,1327` |
 | Handler and validation | `server/internal/handler/card.go` |
 | Tests | `server/cmd/multica/cmd_doc_test.go` |
+| Character count, runes in both CLI and app | `server/cmd/multica/cmd_doc.go` (`cardCharCount`), `packages/views/docs/doc-tree.ts` (`docLength`) |
 | `--kind` is a folder path; a folder query includes its subtree | `server/pkg/db/queries/card.sql` (`ListCardsByKind`), `packages/views/docs/doc-tree.ts` |
 
 `--detach` sends a JSON `null` for `issue_id`; omitting both `--issue` and

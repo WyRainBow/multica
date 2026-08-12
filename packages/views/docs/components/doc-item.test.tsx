@@ -53,3 +53,26 @@ describe("DocItem", () => {
     expect(screen.queryByTestId("rendered-markdown")).not.toBeInTheDocument();
   });
 });
+
+// The body is cut at a fixed height, so a 300-character note and an
+// 11674-character SOP look identical on the list. The count is the only thing
+// that says how much is below the cut.
+describe("DocItem length", () => {
+  it("shows how long the document is", () => {
+    renderCard(makeCard({ content: "x".repeat(11674) }));
+    expect(screen.getByText("11674 chars")).toBeInTheDocument();
+  });
+
+  it("shows nothing for an empty document", () => {
+    renderCard(makeCard({ content: "" }));
+    expect(screen.queryByText(/chars/)).not.toBeInTheDocument();
+  });
+
+  // It sits next to the requirement chip, but a document with no requirement
+  // still has a length — an earlier version of that row only rendered when a
+  // requirement existed.
+  it("shows it on a document with no requirement", () => {
+    renderCard(makeCard({ issue_id: null, content: "12345" }));
+    expect(screen.getByText("5 chars")).toBeInTheDocument();
+  });
+});

@@ -252,3 +252,24 @@ func TestCardList_RefusesSearchWithIssue(t *testing.T) {
 		t.Fatalf("error = %v, want a refusal", err)
 	}
 }
+
+// The count in `doc list` and the count on the document page are quoted as the
+// same number, so they have to be counted the same way: code points, not bytes
+// and not UTF-16 units. See docLength in packages/views/docs/doc-tree.ts.
+func TestCardCharCount_CountsRunesNotBytes(t *testing.T) {
+	const cjk = "本地起 P0 workflow"
+	if got, want := cardCharCount(cjk), len([]rune(cjk)); got != want {
+		t.Fatalf("chars = %d, want %d runes", got, want)
+	}
+	if len(cjk) == len([]rune(cjk)) {
+		t.Fatal("this case proves nothing unless the byte and rune counts differ")
+	}
+	// One character to a person and to the app's code-point count; two UTF-16
+	// units, which is what a naive JavaScript .length would have reported.
+	if got := cardCharCount("🎉"); got != 1 {
+		t.Fatalf("astral char counted as %d, want 1", got)
+	}
+	if got := cardCharCount(""); got != 0 {
+		t.Fatalf("empty content counted as %d, want 0", got)
+	}
+}

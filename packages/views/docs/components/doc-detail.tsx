@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowLeft, FileText, Link2, Loader2, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
@@ -27,7 +27,7 @@ import { DescriptionOutline } from "../../issues/components/description-outline"
 import { AppLink, useNavigation } from "../../navigation";
 import { IssuePickerModal } from "../../modals/issue-picker-modal";
 import { useT, useExactTime } from "../../i18n";
-import { allDocPaths } from "../doc-tree";
+import { allDocPaths, docLength } from "../doc-tree";
 
 /**
  * One document, on a page of its own.
@@ -49,7 +49,11 @@ export function DocDetail({ docId }: { docId: string }) {
   const navigation = useNavigation();
   const exactTime = useExactTime();
 
-  const { data: doc, isPending, isError } = useQuery(cardDetailOptions(wsId, docId));
+  const {
+    data: doc,
+    isPending,
+    isError,
+  } = useQuery(cardDetailOptions(wsId, docId));
   const update = useUpdateCard();
   const remove = useDeleteCard();
 
@@ -58,16 +62,17 @@ export function DocDetail({ docId }: { docId: string }) {
   const [scrollEl, setScrollEl] = useState<HTMLElement | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [pickingIssue, setPickingIssue] = useState(false);
+  // Seeded from what was saved and refreshed on the editor's debounced update,
+  // so it is right on open and settles a moment after typing stops. Counting
+  // per keystroke would mean serializing the whole document on every key.
+  const [length, setLength] = useState(0);
 
   // Folder suggestions come from what has already been written, the same source
   // the tree derives from — a fixed list would offer folders nobody files
   // anything under. Every level, not just the top: the deep paths are exactly
   // the ones nobody wants to retype.
   const { data: all } = useQuery(cardListOptions(wsId));
-  const kindSuggestions = useMemo(
-    () => allDocPaths(all?.cards ?? []),
-    [all],
-  );
+  const kindSuggestions = useMemo(() => allDocPaths(all?.cards ?? []), [all]);
 
   // Fetched by id, not looked up in the issue list. The list is paginated and
   // excludes archived issues, so a link to either would have silently rendered
@@ -76,6 +81,10 @@ export function DocDetail({ docId }: { docId: string }) {
     ...issueDetailOptions(wsId, doc?.issue_id ?? ""),
     enabled: Boolean(doc?.issue_id),
   });
+
+  useEffect(() => {
+    setLength(docLength(doc?.content ?? ""));
+  }, [doc?.content]);
 
   const jumpToHeading = useCallback((heading: OutlineHeading) => {
     editorRef.current?.scrollToPosition(heading.pos);
@@ -118,7 +127,10 @@ export function DocDetail({ docId }: { docId: string }) {
       <div className="flex flex-1 flex-col items-center justify-center gap-3 text-muted-foreground">
         <FileText className="size-10 text-faint-foreground" />
         <p className="text-body">{t(($) => $.detail.not_found)}</p>
-        <AppLink href={wsPaths.docs()} className="text-caption hover:text-foreground">
+        <AppLink
+          href={wsPaths.docs()}
+          className="text-caption hover:text-foreground"
+        >
           {t(($) => $.detail.back)}
         </AppLink>
       </div>
@@ -210,7 +222,9 @@ export function DocDetail({ docId }: { docId: string }) {
                   ) : (
                     // The id is stored; the issue row may still be loading.
                     // Showing nothing here would look like no link at all.
-                    <span className="truncate">{t(($) => $.detail.issue_loading)}</span>
+                    <span className="truncate">
+                      {t(($) => $.detail.issue_loading)}
+                    </span>
                   )}
                 </AppLink>
                 <Button
@@ -242,7 +256,10 @@ export function DocDetail({ docId }: { docId: string }) {
               key={doc.id}
               value={doc.content}
               placeholder={t(($) => $.editor.content_placeholder)}
-              onUpdate={(md) => save({ content: md })}
+              onUpdate={(md) => {
+                setLength(docLength(md));
+                save({ content: md });
+              }}
               debounceMs={1500}
               // Closing the tab must save what was last typed — without the
               // flush, a paste followed by a quick close loses it.
@@ -250,6 +267,17 @@ export function DocDetail({ docId }: { docId: string }) {
               onOutlineChange={setOutline}
             />
           </div>
+
+          {/* How long this document is, the same count the list rows and the
+              issue page show — and the same one an agent reads, so it answers
+              "how much am I about to hand over". Below the body rather than in
+              the header: it is a fact about the text, and it settles a moment
+              after typing stops rather than on every keystroke. */}
+          {length > 0 && (
+            <div className="mt-2 flex justify-end text-caption tabular-nums text-faint-foreground">
+              {t(($) => $.doc.length, { count: length })}
+            </div>
+          )}
         </div>
       </div>
 
@@ -279,7 +307,9 @@ export function DocDetail({ docId }: { docId: string }) {
       <AlertDialog open={confirmDelete} onOpenChange={setConfirmDelete}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>{t(($) => $.editor.delete_action)}</AlertDialogTitle>
+            <AlertDialogTitle>
+              {t(($) => $.editor.delete_action)}
+            </AlertDialogTitle>
             <AlertDialogDescription>
               {t(($) => $.editor.delete_confirm)}
             </AlertDialogDescription>

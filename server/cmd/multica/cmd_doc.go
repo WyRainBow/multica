@@ -6,7 +6,9 @@ import (
 	"fmt"
 	"net/url"
 	"os"
+	"strconv"
 	"strings"
+	"unicode/utf8"
 
 	"github.com/spf13/cobra"
 
@@ -208,7 +210,12 @@ func runCardList(cmd *cobra.Command, _ []string) error {
 	}
 
 	full, _ := cmd.Flags().GetBool("full-id")
-	headers := []string{"ID", "TITLE", "KIND", "ISSUE", "UPDATED"}
+	// CHARS is what an agent needs to decide whether to pull a document's full
+	// body. The list already returns the content, so this costs nothing; without
+	// it a 300-character note and an 11674-character SOP are the same row.
+	// Counted in runes, not bytes — a CJK document would otherwise read as
+	// roughly three times its length.
+	headers := []string{"ID", "TITLE", "KIND", "ISSUE", "CHARS", "UPDATED"}
 	rows := make([][]string, 0, len(resp.Cards))
 	for _, card := range resp.Cards {
 		issue := "—"
@@ -224,6 +231,7 @@ func runCardList(cmd *cobra.Command, _ []string) error {
 			cardTitleForTable(card),
 			kind,
 			issue,
+			strconv.Itoa(cardCharCount(card.Content)),
 			shortTimestamp(card.UpdatedAt),
 		})
 	}
@@ -237,6 +245,16 @@ func runCardList(cmd *cobra.Command, _ []string) error {
 // cardTitleForTable falls back to the opening of the body. A title is optional
 // on the server, and a row of blank cells would make an untitled card
 // unfindable in the one place it is listed.
+// cardCharCount is how long a document is, in characters.
+//
+// Runes, not bytes: a CJK document would otherwise read as roughly three times
+// its length. The app counts code points for the same reason, so the number in
+// `doc list` and the number on the page are the same number — see docLength in
+// packages/views/docs/doc-tree.ts.
+func cardCharCount(content string) int {
+	return utf8.RuneCountInString(content)
+}
+
 func cardTitleForTable(card cardRow) string {
 	title := strings.TrimSpace(card.Title)
 	if title != "" {

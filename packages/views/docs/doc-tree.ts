@@ -123,3 +123,18 @@ export function allDocPaths(cards: readonly Card[]): string[] {
   walk(buildDocTree(cards));
   return out;
 }
+
+/**
+ * How long a document is, in characters.
+ *
+ * Counts CODE POINTS, not UTF-16 units. `"🎉".length` is 2 in JavaScript and 1
+ * everywhere a person counts — and 1 in the CLI, which counts runes. The number
+ * is shown in three places in the app and a fourth in `doc list`; they have to
+ * agree, or none of them can be quoted.
+ *
+ * CJK text is unaffected either way, which is why the divergence hides: the
+ * 11674-character SOP counts identically under both.
+ */
+export function docLength(content: string): number {
+  return [...content].length;
+}
