@@ -316,12 +316,13 @@ is the same line comments already sit on.
 | Behavior | File:line |
 |---|---|
 | `multica doc list/get/add/update/delete` | `server/cmd/multica/cmd_doc.go:25` |
-| `--issue` on list switches endpoint, not query param | `server/cmd/multica/cmd_doc.go:125` |
-| Untitled cards fall back to the body's first line | `server/cmd/multica/cmd_doc.go:198` (`cardTitleForTable`) |
-| `--title` or `--content` required | `server/cmd/multica/cmd_doc.go:246` |
-| API routes (`/api/cards`, `/api/issues/{id}/cards`) | `server/cmd/server/router.go:1123,1162` |
+| `--issue` on list switches endpoint, not query param | `server/cmd/multica/cmd_doc.go:165` |
+| Untitled documents fall back to the body's first line | `server/cmd/multica/cmd_doc.go:240` (`cardTitleForTable`) |
+| `--title` or `--content` required | `server/cmd/multica/cmd_doc.go:298` |
+| API routes (`/api/cards`, `/api/issues/{id}/cards`) | `server/cmd/server/router.go:1285,1327` |
 | Handler and validation | `server/internal/handler/card.go` |
-| Tests | `server/cmd/multica/cmd_card_test.go` |
+| Tests | `server/cmd/multica/cmd_doc_test.go` |
+| `--kind` is a folder path; a folder query includes its subtree | `server/pkg/db/queries/card.sql` (`ListCardsByKind`), `packages/views/docs/doc-tree.ts` |
 
 `--detach` sends a JSON `null` for `issue_id`; omitting both `--issue` and
 `--detach` omits the field. The server reads it as `json.RawMessage` precisely

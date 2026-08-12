@@ -298,23 +298,37 @@ removed without editing prose, and a finished body is frozen so it could not be
 added at all. A resource CAN be attached to a finished issue — filing something
 next to a record is not editing it.
 
-## Cards: a note that is not an issue
+## Documents: writing that is not an issue
 
-A retrospective, a lesson learned, a decision worth keeping is not work to be
+A retrospective, a lesson learned, an SOP you go back to is not work to be
 tracked, and filing it as an issue gives it a status nobody will move. Write a
-card: title plus Markdown, owned by the workspace, optionally linked to the
+document: title plus Markdown, owned by the workspace, optionally linked to the
 issue it came from.
 
 ```bash
 multica doc add --title "COC-97 踩坑" --content-stdin < notes.md
 multica doc list                       # newest first
 multica doc list --search 踩坑          # title AND body, whole workspace
-multica doc list --issue COC-97        # only cards linked to that issue
-multica doc get <card-id>
+multica doc list --issue COC-97        # only documents linked to that issue
+multica doc get <doc-id>
 ```
 
 Pipe the body in for anything longer than a sentence — inline `--content`
 mangles newlines.
+
+`--kind` is a folder PATH, not a flat label. Slashes make levels, and asking
+for a folder returns everything below it:
+
+```bash
+multica doc add --kind "本地联调/P0 workflow" --title "..." --content-stdin < sop.md
+multica doc list --kind 本地联调          # includes 本地联调/P0 workflow
+multica doc kinds                       # every kind that exists, nested ones included
+```
+
+A folder exists exactly as long as a document names it, so there is nothing to
+create first — but read `doc kinds` before inventing a path, because a
+near-duplicate folder is worse than a wrong one: nobody looking in either finds
+both.
 
 ## Mark a throwaway issue as a test
 
