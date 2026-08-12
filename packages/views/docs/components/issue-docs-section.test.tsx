@@ -16,7 +16,10 @@ vi.mock("@multica/core/hooks", () => ({
 }));
 
 vi.mock("@multica/core/paths", () => ({
-  useWorkspacePaths: () => ({ docs: () => "/acme/docs" }),
+  useWorkspacePaths: () => ({
+    docs: () => "/acme/docs",
+    docDetail: (id: string) => `/acme/docs/${id}`,
+  }),
 }));
 
 vi.mock("../../navigation", () => ({

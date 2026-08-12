@@ -30,5 +30,10 @@
   },
   "issue_section": {
     "title": "Documents"
+  },
+  "detail": {
+    "not_found": "This document does not exist or was deleted.",
+    "back": "Back to docs",
+    "updated_at": "updated {{time}}"
   }
 }

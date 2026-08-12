@@ -175,7 +175,7 @@ export function DocsPage() {
                       issue={
                         card.issue_id ? issuesById.get(card.issue_id) : undefined
                       }
-                      onEdit={() => setEditing(card)}
+                      onEdit={() => navigation.push(paths.docDetail(card.id))}
                       onOpenIssue={(identifier) =>
                         navigation.push(paths.issueDetail(identifier))
                       }

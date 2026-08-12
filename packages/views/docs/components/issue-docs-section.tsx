@@ -48,7 +48,7 @@ export function IssueDocsSection({ issueId }: { issueId: string }) {
         {docs.map((doc) => (
           <li key={doc.id}>
             <AppLink
-              href={wsPaths.docs()}
+              href={wsPaths.docDetail(doc.id)}
               className="group flex items-center gap-2 rounded-lg border bg-card px-3 py-2 transition-colors hover:border-foreground/20"
             >
               <FileText className="size-3.5 shrink-0 text-muted-foreground" />
