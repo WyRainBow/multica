@@ -25,6 +25,10 @@
   "doc": {
     "edit": "編集",
     "untitled": "タイトルなし",
-    "issue_missing": "リンク先の issue は利用できません"
+    "issue_missing": "リンク先の issue は利用できません",
+    "length_other": "{{count}} 文字"
+  },
+  "issue_section": {
+    "title": "関連ドキュメント"
   }
 }

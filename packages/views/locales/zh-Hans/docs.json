@@ -25,6 +25,10 @@
   "doc": {
     "edit": "编辑",
     "untitled": "无标题",
-    "issue_missing": "关联的 issue 已不可用"
+    "issue_missing": "关联的 issue 已不可用",
+    "length_other": "{{count}} 字"
+  },
+  "issue_section": {
+    "title": "相关文档"
   }
 }

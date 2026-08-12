@@ -25,6 +25,10 @@
   "doc": {
     "edit": "Edit",
     "untitled": "Untitled",
-    "issue_missing": "The linked issue is gone"
+    "issue_missing": "The linked issue is gone",
+    "length_other": "{{count}} chars"
+  },
+  "issue_section": {
+    "title": "Documents"
   }
 }

@@ -155,10 +155,16 @@ export function DocsPage() {
             onCreate={() => setCreating(true)}
           />
         ) : (
-          // One column, not a grid. A card is prose read one at a time, and
+          // One column, not a grid. A document is prose read one at a time, and
           // the day headings only mean anything if the reading order is a
           // single line down the page.
-          <div className="mx-auto w-full max-w-3xl">
+          //
+          // Left-aligned, not centred. Centring suits a page that is only ever
+          // read; this one is a working list you scan and come back to, and a
+          // column floating in the middle puts it somewhere the eye has to go
+          // looking for. The width cap stays — prose past ~80 characters a line
+          // is harder to read, and that is true wherever the column sits.
+          <div className="w-full max-w-3xl">
             {groups.map((group) => (
               <section key={group.day}>
                 <DayHeading date={group.date} count={group.cards.length} />

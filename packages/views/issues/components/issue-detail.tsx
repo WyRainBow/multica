@@ -72,6 +72,7 @@ import { ProjectPicker } from "../../projects/components/project-picker";
 import { LocalDirectoryHint } from "../../projects/components/local-directory-hint";
 import { CommentCard } from "./comment-card";
 import { IssueResourcesSection } from "./issue-resources-section";
+import { IssueDocsSection } from "../../docs";
 import { PhaseTrack } from "./phase-track";
 import { phaseAtTime } from "./phase-window";
 import type { IssuePhase } from "@multica/core/types";
@@ -3073,6 +3074,12 @@ export function IssueDetail({ issueId, onDelete, onDone, defaultSidebarOpen = tr
               cards section because a resource is a pointer and a card is
               writing: you reach for the pointer far more often. */}
           <IssueResourcesSection issueId={id} />
+
+          {/* Documents this issue needs. Below resources because a resource is
+              a pointer somewhere else and a document is writing that lives
+              here — you reach for the pointer more often, but when you need
+              the document you need all of it. */}
+          <IssueDocsSection issueId={id} />
 
           {/* Sub-issues — Linear-style */}
           {childIssues.length === 0 && (

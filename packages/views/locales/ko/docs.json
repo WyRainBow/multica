@@ -25,6 +25,10 @@
   "doc": {
     "edit": "편집",
     "untitled": "제목 없음",
-    "issue_missing": "연결된 issue를 사용할 수 없습니다"
+    "issue_missing": "연결된 issue를 사용할 수 없습니다",
+    "length_other": "{{count}}자"
+  },
+  "issue_section": {
+    "title": "관련 문서"
   }
 }
