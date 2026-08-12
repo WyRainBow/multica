@@ -8,7 +8,7 @@ import {
   useCreateCard,
   useDeleteCard,
   useUpdateCard,
-} from "@multica/core/cards/mutations";
+} from "@multica/core/docs/mutations";
 import { Button } from "@multica/ui/components/ui/button";
 import { Input } from "@multica/ui/components/ui/input";
 import { ContentEditor } from "../../editor";
@@ -21,9 +21,9 @@ import {
 } from "@multica/ui/components/ui/dialog";
 import { useT } from "../../i18n";
 import { useQuery } from "@tanstack/react-query";
-import { cardListOptions } from "@multica/core/cards/queries";
+import { cardListOptions } from "@multica/core/docs/queries";
 import { useWorkspaceId } from "@multica/core/hooks";
-import { cardKindTabs } from "../card-kinds";
+import { docKindTabs } from "../doc-kinds";
 
 /**
  * Write or edit one card.
@@ -32,7 +32,7 @@ import { cardKindTabs } from "../card-kinds";
  * note is the point, naming it is not, and asking for a name first is the
  * friction that stops people writing anything down.
  */
-export function CardEditorDialog({
+export function DocEditorDialog({
   card,
   issueId,
   onClose,
@@ -43,7 +43,7 @@ export function CardEditorDialog({
   issueId?: string;
   onClose: () => void;
 }) {
-  const { t } = useT("cards");
+  const { t } = useT("docs");
   const createCard = useCreateCard();
   const updateCard = useUpdateCard();
   const deleteCard = useDeleteCard();
@@ -59,7 +59,7 @@ export function CardEditorDialog({
   const wsId = useWorkspaceId();
   const { data: cardList } = useQuery(cardListOptions(wsId));
   const kindSuggestions = useMemo(
-    () => cardKindTabs(cardList?.cards ?? []).map((tab) => tab.kind),
+    () => docKindTabs(cardList?.cards ?? []).map((tab) => tab.kind),
     [cardList],
   );
   const [confirmingDelete, setConfirmingDelete] = useState(false);

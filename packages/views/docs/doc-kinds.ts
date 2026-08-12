@@ -1,7 +1,7 @@
 import type { Card } from "@multica/core/types";
 
 /** A tab on the cards page. `kind` is "" for the全部 tab, which has no filter. */
-export interface CardKindTab {
+export interface DocKindTab {
   kind: string;
   count: number;
 }
@@ -22,7 +22,7 @@ export interface CardKindTab {
  * blank label has nothing to render. They are still reachable by leaving 全部
  * selected.
  */
-export function cardKindTabs(cards: readonly Card[]): CardKindTab[] {
+export function docKindTabs(cards: readonly Card[]): DocKindTab[] {
   const counts = new Map<string, number>();
   for (const card of cards) {
     const kind = card.kind?.trim() ?? "";
@@ -38,7 +38,7 @@ export function cardKindTabs(cards: readonly Card[]): CardKindTab[] {
  * The cards a tab shows. An empty `kind` is the 全部 tab and filters nothing —
  * distinct from a card whose own kind is empty, which 全部 also shows.
  */
-export function filterCardsByKind(cards: readonly Card[], kind: string): Card[] {
+export function filterDocsByKind(cards: readonly Card[], kind: string): Card[] {
   if (!kind) return [...cards];
   return cards.filter((card) => (card.kind?.trim() ?? "") === kind);
 }

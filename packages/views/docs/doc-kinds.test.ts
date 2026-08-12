@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import type { Card } from "@multica/core/types";
-import { cardKindTabs, filterCardsByKind } from "./card-kinds";
+import { docKindTabs, filterDocsByKind } from "./doc-kinds";
 
 function card(id: string, kind: string): Card {
   return {
@@ -17,11 +17,11 @@ function card(id: string, kind: string): Card {
   };
 }
 
-describe("cardKindTabs", () => {
+describe("docKindTabs", () => {
   // Most-used first: a category filed into daily must not sit behind one
   // tried once, which is what alphabetical order would do.
   it("orders by count, then by name", () => {
-    const tabs = cardKindTabs([
+    const tabs = docKindTabs([
       card("a", "文档"),
       card("b", "想法"),
       card("c", "想法"),
@@ -37,25 +37,25 @@ describe("cardKindTabs", () => {
   // Uncategorised gets no tab: 全部 already shows those cards, and a blank
   // label has nothing to render.
   it("gives uncategorised cards no tab of their own", () => {
-    expect(cardKindTabs([card("a", ""), card("b", "  ")])).toEqual([]);
+    expect(docKindTabs([card("a", ""), card("b", "  ")])).toEqual([]);
   });
 
   // A kind typed with a stray space is the same category, not a second tab.
   it("treats surrounding whitespace as the same kind", () => {
-    expect(cardKindTabs([card("a", "文档"), card("b", " 文档 ")])).toEqual([
+    expect(docKindTabs([card("a", "文档"), card("b", " 文档 ")])).toEqual([
       { kind: "文档", count: 2 },
     ]);
   });
 
   it("returns nothing for an empty workspace", () => {
-    expect(cardKindTabs([])).toEqual([]);
+    expect(docKindTabs([])).toEqual([]);
   });
 });
 
-describe("filterCardsByKind", () => {
+describe("filterDocsByKind", () => {
   it("keeps only that kind", () => {
     const cards = [card("a", "文档"), card("b", "想法"), card("c", "文档")];
-    expect(filterCardsByKind(cards, "文档").map((c) => c.id)).toEqual(["a", "c"]);
+    expect(filterDocsByKind(cards, "文档").map((c) => c.id)).toEqual(["a", "c"]);
   });
 
   // The 全部 tab has no filter. Distinct from a card whose own kind is empty,
@@ -63,10 +63,10 @@ describe("filterCardsByKind", () => {
   // "no filter" here rather than "the uncategorised ones".
   it("returns everything for the all tab", () => {
     const cards = [card("a", "文档"), card("b", "")];
-    expect(filterCardsByKind(cards, "").map((c) => c.id)).toEqual(["a", "b"]);
+    expect(filterDocsByKind(cards, "").map((c) => c.id)).toEqual(["a", "b"]);
   });
 
   it("matches a kind stored with stray whitespace", () => {
-    expect(filterCardsByKind([card("a", " 文档 ")], "文档").map((c) => c.id)).toEqual(["a"]);
+    expect(filterDocsByKind([card("a", " 文档 ")], "文档").map((c) => c.id)).toEqual(["a"]);
   });
 });

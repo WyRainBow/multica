@@ -123,9 +123,9 @@ multica issue list --include-archived
 - **Tab 按 kind 分**，而且 kind 是从已写的内容里派生的，不是固定枚举 —— 填不上的 tab 比没有 tab 更糟
 
 ```bash
-multica kb add --title "..." --kind "想法" --content "..."
-multica kb kinds
-multica kb list --search "关键词"
+multica doc add --title "..." --kind "想法" --content "..."
+multica doc kinds
+multica doc list --search "关键词"
 ```
 
 ---

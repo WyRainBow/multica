@@ -1,0 +1,30 @@
+{
+  "page": {
+    "title": "Docs",
+    "count_other": "{{count}}",
+    "new": "New doc",
+    "search_placeholder": "Search docs...",
+    "empty": "No documents yet. Whatever has to stay current belongs here.",
+    "no_matches": "Nothing matches.",
+    "day_count_other": "{{count}}",
+    "all_kinds": "All"
+  },
+  "editor": {
+    "new_title": "New doc",
+    "edit_title": "Edit doc",
+    "title_placeholder": "Title (optional)",
+    "content_placeholder": "Write something...",
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete_action": "Delete",
+    "delete_confirm": "Delete this document?",
+    "save_failed": "Could not save",
+    "delete_failed": "Could not delete",
+    "kind_placeholder": "Kind"
+  },
+  "doc": {
+    "edit": "Edit",
+    "untitled": "Untitled",
+    "issue_missing": "The linked issue is gone"
+  }
+}

@@ -5,18 +5,18 @@ import { useQuery } from "@tanstack/react-query";
 import { Lightbulb, Plus } from "lucide-react";
 import { useWorkspaceId } from "@multica/core/hooks";
 import { useWorkspacePaths } from "@multica/core/paths";
-import { cardListOptions } from "@multica/core/cards/queries";
+import { cardListOptions } from "@multica/core/docs/queries";
 import { issueListOptions } from "@multica/core/issues/queries";
 import type { Issue, Card } from "@multica/core/types";
 import { Button } from "@multica/ui/components/ui/button";
 import { Input } from "@multica/ui/components/ui/input";
 import { useT } from "../../i18n";
 import { useNavigation } from "../../navigation";
-import { CardEditorDialog } from "./card-editor-dialog";
-import { CardItem } from "./card-item";
+import { DocEditorDialog } from "./doc-editor-dialog";
+import { DocItem } from "./doc-item";
 import { cn } from "@multica/ui/lib/utils";
 import { groupCardsByDay } from "../group-by-day";
-import { cardKindTabs, filterCardsByKind } from "../card-kinds";
+import { docKindTabs, filterDocsByKind } from "../doc-kinds";
 
 /**
  * Everything a workspace has learned, newest first.
@@ -63,8 +63,8 @@ function KindTab({
   );
 }
 
-export function CardsPage() {
-  const { t } = useT("cards");
+export function DocsPage() {
+  const { t } = useT("docs");
   const wsId = useWorkspaceId();
   const paths = useWorkspacePaths();
   const navigation = useNavigation();
@@ -91,9 +91,9 @@ export function CardsPage() {
   // Tabs come from every card, not from the search result: a tab that
   // disappeared because the current query matched nothing in it would make
   // the category look deleted.
-  const tabs = useMemo(() => cardKindTabs(cards), [cards]);
+  const tabs = useMemo(() => docKindTabs(cards), [cards]);
   const filtered = useMemo(() => {
-    const inTab = filterCardsByKind(cards, kind);
+    const inTab = filterDocsByKind(cards, kind);
     const query = search.trim().toLowerCase();
     if (!query) return inTab;
     return inTab.filter(
@@ -164,7 +164,7 @@ export function CardsPage() {
                 <DayHeading date={group.date} count={group.cards.length} />
                 {group.cards.map((card) => (
                   <TimelineRow key={card.id} at={card.created_at}>
-                    <CardItem
+                    <DocItem
                       card={card}
                       issue={
                         card.issue_id ? issuesById.get(card.issue_id) : undefined
@@ -183,7 +183,7 @@ export function CardsPage() {
       </div>
 
       {(creating || editing) && (
-        <CardEditorDialog
+        <DocEditorDialog
           card={editing}
           onClose={() => {
             setCreating(false);
@@ -203,7 +203,7 @@ export function CardsPage() {
  * the scroll container is the ancestor, not the window.
  */
 function DayHeading({ date, count }: { date: Date; count: number }) {
-  const { t, i18n } = useT("cards");
+  const { t, i18n } = useT("docs");
   // Formatted with the UI language rather than the browser locale: the rest of
   // the page is already translated, and a Chinese page with an English weekday
   // reads as a bug.
@@ -242,7 +242,7 @@ function TimelineRow({
   at: string;
   children: React.ReactNode;
 }) {
-  const { i18n } = useT("cards");
+  const { i18n } = useT("docs");
   const time = new Intl.DateTimeFormat(i18n.language, {
     hour: "2-digit",
     minute: "2-digit",
@@ -275,7 +275,7 @@ function EmptyState({
   hasCards: boolean;
   onCreate: () => void;
 }) {
-  const { t } = useT("cards");
+  const { t } = useT("docs");
   return (
     <div className="flex flex-col items-center justify-center gap-3 py-24 text-center">
       <Lightbulb className="size-8 text-faint-foreground" />

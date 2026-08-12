@@ -311,14 +311,14 @@ Attaching a resource works on a FINISHED issue. The freeze covers the title and
 description; filing something next to a record is not editing the record, which
 is the same line comments already sit on.
 
-## `multica kb` — notes that are not issues
+## `multica doc` — notes that are not issues
 
 | Behavior | File:line |
 |---|---|
-| `multica kb list/get/add/update/delete` | `server/cmd/multica/cmd_kb.go:25` |
-| `--issue` on list switches endpoint, not query param | `server/cmd/multica/cmd_kb.go:125` |
-| Untitled cards fall back to the body's first line | `server/cmd/multica/cmd_kb.go:198` (`cardTitleForTable`) |
-| `--title` or `--content` required | `server/cmd/multica/cmd_kb.go:246` |
+| `multica doc list/get/add/update/delete` | `server/cmd/multica/cmd_doc.go:25` |
+| `--issue` on list switches endpoint, not query param | `server/cmd/multica/cmd_doc.go:125` |
+| Untitled cards fall back to the body's first line | `server/cmd/multica/cmd_doc.go:198` (`cardTitleForTable`) |
+| `--title` or `--content` required | `server/cmd/multica/cmd_doc.go:246` |
 | API routes (`/api/cards`, `/api/issues/{id}/cards`) | `server/cmd/server/router.go:1123,1162` |
 | Handler and validation | `server/internal/handler/card.go` |
 | Tests | `server/cmd/multica/cmd_card_test.go` |

@@ -57,7 +57,7 @@ func TestRootCommandGroupsAreDeclared(t *testing.T) {
 // issue, and someone scanning the list has to be able to find them.
 func TestCardCommandIsListed(t *testing.T) {
 	for _, cmd := range rootCmd.Commands() {
-		if cmd.Name() == "kb" {
+		if cmd.Name() == "doc" {
 			if cmd.GroupID != groupCore {
 				t.Fatalf("card is in group %q, want %q", cmd.GroupID, groupCore)
 			}

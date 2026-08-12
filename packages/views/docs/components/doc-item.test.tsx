@@ -2,13 +2,13 @@ import { describe, it, expect, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import type { Card } from "@multica/core/types";
 import { I18nProvider } from "@multica/core/i18n/react";
-import enCards from "../../locales/en/cards.json";
-import { CardItem } from "./card-item";
+import enCards from "../../locales/en/docs.json";
+import { DocItem } from "./doc-item";
 
 function renderCard(card: Card) {
   return render(
-    <I18nProvider locale="en" resources={{ en: { cards: enCards } }}>
-      <CardItem card={card} onEdit={vi.fn()} onOpenIssue={vi.fn()} />
+    <I18nProvider locale="en" resources={{ en: { docs: enCards } }}>
+      <DocItem card={card} onEdit={vi.fn()} onOpenIssue={vi.fn()} />
     </I18nProvider>,
   );
 }
@@ -37,7 +37,7 @@ function makeCard(overrides: Partial<Card> = {}): Card {
   };
 }
 
-describe("CardItem", () => {
+describe("DocItem", () => {
   // The editor writes Markdown, so a card shown as raw source puts `**bold**`
   // and link syntax on screen — which is what it did before.
   it("hands the body to the Markdown renderer rather than printing it", () => {

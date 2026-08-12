@@ -30,7 +30,7 @@ import { useT } from "../../i18n";
  */
 const CARD_PREVIEW_MAX_HEIGHT = 160;
 
-export function CardItem({
+export function DocItem({
   card,
   issue,
   onEdit,
@@ -42,7 +42,7 @@ export function CardItem({
   onEdit: () => void;
   onOpenIssue: (identifier: string) => void;
 }) {
-  const { t } = useT("cards");
+  const { t } = useT("docs");
   const title = card.title.trim();
   const body = card.content.trim();
 
@@ -55,14 +55,14 @@ export function CardItem({
           className="min-w-0 flex-1 text-left"
         >
           <h3 className="text-title-sm font-semibold leading-snug group-hover:underline">
-            {title || t(($) => $.card.untitled)}
+            {title || t(($) => $.doc.untitled)}
           </h3>
         </button>
         <Button
           size="icon-xs"
           variant="ghost"
           onClick={onEdit}
-          aria-label={t(($) => $.card.edit)}
+          aria-label={t(($) => $.doc.edit)}
           className="shrink-0 opacity-0 transition-opacity group-hover:opacity-100"
         >
           <Pencil className="size-3.5" />
@@ -112,7 +112,7 @@ export function CardItem({
             // The card still names a requirement, but it is not in the loaded
             // set — deleted, or outside this workspace's window. Say so rather
             // than rendering a chip that goes nowhere.
-            <span className="shrink-0">{t(($) => $.card.issue_missing)}</span>
+            <span className="shrink-0">{t(($) => $.doc.issue_missing)}</span>
           )}
         </div>
       )}

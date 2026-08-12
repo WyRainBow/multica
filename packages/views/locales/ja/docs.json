@@ -1,0 +1,30 @@
+{
+  "page": {
+    "title": "ドキュメント",
+    "count_other": "{{count}} 件",
+    "new": "新規ドキュメント",
+    "search_placeholder": "ドキュメントを検索...",
+    "empty": "まだドキュメントがありません。最新に保つべきものはここに。",
+    "no_matches": "該当するものがありません。",
+    "day_count_other": "{{count}} 件",
+    "all_kinds": "すべて"
+  },
+  "editor": {
+    "new_title": "新規ドキュメント",
+    "edit_title": "ドキュメントを編集",
+    "title_placeholder": "タイトル（任意）",
+    "content_placeholder": "何か書いてください...",
+    "save": "保存",
+    "cancel": "キャンセル",
+    "delete_action": "削除",
+    "delete_confirm": "このドキュメントを削除しますか？",
+    "save_failed": "保存できませんでした",
+    "delete_failed": "削除できませんでした",
+    "kind_placeholder": "種類"
+  },
+  "doc": {
+    "edit": "編集",
+    "untitled": "タイトルなし",
+    "issue_missing": "リンク先の issue は利用できません"
+  }
+}

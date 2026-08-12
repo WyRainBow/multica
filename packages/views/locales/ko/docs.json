@@ -1,0 +1,30 @@
+{
+  "page": {
+    "title": "문서",
+    "count_other": "{{count}}개",
+    "new": "새 문서",
+    "search_placeholder": "문서 검색...",
+    "empty": "아직 문서가 없습니다. 계속 최신으로 유지할 것을 여기에.",
+    "no_matches": "일치하는 항목이 없습니다.",
+    "day_count_other": "{{count}}개",
+    "all_kinds": "전체"
+  },
+  "editor": {
+    "new_title": "새 문서",
+    "edit_title": "문서 편집",
+    "title_placeholder": "제목 (선택)",
+    "content_placeholder": "무언가 작성하세요...",
+    "save": "저장",
+    "cancel": "취소",
+    "delete_action": "삭제",
+    "delete_confirm": "이 문서를 삭제할까요?",
+    "save_failed": "저장하지 못했습니다",
+    "delete_failed": "삭제하지 못했습니다",
+    "kind_placeholder": "종류"
+  },
+  "doc": {
+    "edit": "편집",
+    "untitled": "제목 없음",
+    "issue_missing": "연결된 issue를 사용할 수 없습니다"
+  }
+}

@@ -1,0 +1,30 @@
+{
+  "page": {
+    "title": "文档",
+    "count_other": "{{count}} 条",
+    "new": "新建文档",
+    "search_placeholder": "搜索文档...",
+    "empty": "还没有文档。长期要维护的东西写在这里。",
+    "no_matches": "没有匹配的文档。",
+    "day_count_other": "{{count}} 条",
+    "all_kinds": "全部"
+  },
+  "editor": {
+    "new_title": "新建文档",
+    "edit_title": "编辑文档",
+    "title_placeholder": "标题（可不填）",
+    "content_placeholder": "写点什么...",
+    "save": "保存",
+    "cancel": "取消",
+    "delete_action": "删除",
+    "delete_confirm": "确定删除这篇文档？",
+    "save_failed": "保存失败",
+    "delete_failed": "删除失败",
+    "kind_placeholder": "分类"
+  },
+  "doc": {
+    "edit": "编辑",
+    "untitled": "无标题",
+    "issue_missing": "关联的 issue 已不可用"
+  }
+}
