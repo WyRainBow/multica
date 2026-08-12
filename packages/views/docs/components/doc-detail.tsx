@@ -26,7 +26,7 @@ import type { OutlineHeading } from "../../editor/outline";
 import { DescriptionOutline } from "../../issues/components/description-outline";
 import { AppLink, useNavigation } from "../../navigation";
 import { useT, useExactTime } from "../../i18n";
-import { docKindTabs } from "../doc-kinds";
+import { allDocPaths } from "../doc-tree";
 
 /**
  * One document, on a page of its own.
@@ -57,12 +57,13 @@ export function DocDetail({ docId }: { docId: string }) {
   const [scrollEl, setScrollEl] = useState<HTMLElement | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
 
-  // Kind suggestions come from what has already been written, the same source
-  // the tabs derive from — a fixed list would offer categories nobody files
-  // anything under.
+  // Folder suggestions come from what has already been written, the same source
+  // the tree derives from — a fixed list would offer folders nobody files
+  // anything under. Every level, not just the top: the deep paths are exactly
+  // the ones nobody wants to retype.
   const { data: all } = useQuery(cardListOptions(wsId));
   const kindSuggestions = useMemo(
-    () => docKindTabs(all?.cards ?? []).map((tab) => tab.kind),
+    () => allDocPaths(all?.cards ?? []),
     [all],
   );
 

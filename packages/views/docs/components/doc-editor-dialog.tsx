@@ -23,7 +23,7 @@ import { useT } from "../../i18n";
 import { useQuery } from "@tanstack/react-query";
 import { cardListOptions } from "@multica/core/docs/queries";
 import { useWorkspaceId } from "@multica/core/hooks";
-import { docKindTabs } from "../doc-kinds";
+import { allDocPaths } from "../doc-tree";
 
 /**
  * Write or edit one card.
@@ -59,7 +59,7 @@ export function DocEditorDialog({
   const wsId = useWorkspaceId();
   const { data: cardList } = useQuery(cardListOptions(wsId));
   const kindSuggestions = useMemo(
-    () => docKindTabs(cardList?.cards ?? []).map((tab) => tab.kind),
+    () => allDocPaths(cardList?.cards ?? []),
     [cardList],
   );
   const [confirmingDelete, setConfirmingDelete] = useState(false);
