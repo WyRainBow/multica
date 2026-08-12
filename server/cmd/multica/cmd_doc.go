@@ -101,8 +101,8 @@ func init() {
 	cardListCmd.Flags().Int("offset", 0, "Number of cards to skip (for pagination)")
 	cardListCmd.Flags().String("issue", "", "Only cards linked to this issue (key or UUID)")
 	cardListCmd.Flags().String("kind", "",
-		"Only cards of this kind. Pass an empty value (--kind=) for the uncategorised ones; omit it for all. `card kinds` lists what exists.")
-	cardListCmd.Flags().String("search", "", "Only cards whose title or content contains this text (case-insensitive). Searches the whole workspace, not just the current page. Ignored with --issue, which returns that issue's cards in full.")
+		"Only documents in this folder AND everything below it — `kind` is a PATH, so `--kind 工作流架构演进` also returns `工作流架构演进/04-验证与交付`. Pass an empty value (--kind=) for the unfiled ones; omit it for all. `doc kinds` lists what exists.")
+	cardListCmd.Flags().String("search", "", "Only documents whose title or content contains this text (case-insensitive). Searches the whole workspace, not just the current page. Ignored with --issue, which returns that issue's cards in full.")
 
 	cardGetCmd.Flags().String("output", "table", "Output format: table or json")
 	cardKindsCmd.Flags().String("output", "table", "Output format: table or json")
@@ -112,7 +112,7 @@ func init() {
 	cardAddCmd.Flags().Bool("content-stdin", false, "Read card content from stdin (preserves multi-line content verbatim)")
 	cardAddCmd.Flags().String("content-file", "", "Read card content from a UTF-8 file. The path must be inside the current working directory unless --allow-external-file is set.")
 	cardAddCmd.Flags().Bool("allow-external-file", false, "Allow --content-file to read a path outside the current working directory")
-	cardAddCmd.Flags().String("kind", "", "Kind of note, free text — it becomes a tab on the cards page. `card kinds` lists what already exists; reuse a name rather than inventing a near-duplicate.")
+	cardAddCmd.Flags().String("kind", "", "Which folder to file it under, free text. Slashes make levels: `工作流架构演进/04-验证与交付`. A folder exists exactly as long as a document names it, so there is nothing to create first — but `doc kinds` lists what is already there, and reusing a name beats inventing a near-duplicate.")
 	cardAddCmd.Flags().String("issue", "", "Link the card to this issue (key or UUID)")
 	cardAddCmd.Flags().String("output", "json", "Output format: table or json")
 
@@ -121,7 +121,7 @@ func init() {
 	cardUpdateCmd.Flags().Bool("content-stdin", false, "Read the new content from stdin")
 	cardUpdateCmd.Flags().String("content-file", "", "Read the new content from a UTF-8 file")
 	cardUpdateCmd.Flags().Bool("allow-external-file", false, "Allow --content-file to read a path outside the current working directory")
-	cardUpdateCmd.Flags().String("kind", "", "New kind. Pass an empty value (--kind=) to move the card back to uncategorised.")
+	cardUpdateCmd.Flags().String("kind", "", "Move it to another folder. Slashes make levels. Pass an empty value (--kind=) to leave it unfiled.")
 	cardUpdateCmd.Flags().String("issue", "", "Link the card to this issue (key or UUID)")
 	cardUpdateCmd.Flags().Bool("detach", false, "Remove the card's issue link. Mutually exclusive with --issue.")
 	cardUpdateCmd.Flags().String("output", "json", "Output format: table or json")

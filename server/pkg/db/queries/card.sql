@@ -72,14 +72,20 @@ RETURNING *;
 DELETE FROM card WHERE id = $1 AND workspace_id = $2;
 
 -- name: ListCardsByKind :many
+-- `kind` is a PATH, so selecting a folder takes everything below it: the exact
+-- match, plus anything whose kind continues with a slash. The slash is what
+-- keeps the boundary on a segment — a bare prefix would make `本地联调` swallow
+-- `本地联调整理`. Matches the client's filterDocsByPath.
 SELECT * FROM card
-WHERE workspace_id = sqlc.arg(workspace_id) AND kind = sqlc.arg(kind)
+WHERE workspace_id = sqlc.arg(workspace_id)
+  AND (kind = sqlc.arg(kind) OR kind LIKE sqlc.arg(kind) || '/%')
 ORDER BY created_at DESC, id DESC
 LIMIT sqlc.arg('limit') OFFSET sqlc.arg('offset');
 
 -- name: CountCardsByKind :one
 SELECT count(*) FROM card
-WHERE workspace_id = sqlc.arg(workspace_id) AND kind = sqlc.arg(kind);
+WHERE workspace_id = sqlc.arg(workspace_id)
+  AND (kind = sqlc.arg(kind) OR kind LIKE sqlc.arg(kind) || '/%');
 
 -- name: ListCardKinds :many
 -- The tabs, in the order they should appear: most-used first, so a category

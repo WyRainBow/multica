@@ -24,7 +24,8 @@ func (q *Queries) CountCards(ctx context.Context, workspaceID pgtype.UUID) (int6
 
 const countCardsByKind = `-- name: CountCardsByKind :one
 SELECT count(*) FROM card
-WHERE workspace_id = $1 AND kind = $2
+WHERE workspace_id = $1
+  AND (kind = $2 OR kind LIKE $2 || '/%')
 `
 
 type CountCardsByKindParams struct {
@@ -270,7 +271,8 @@ func (q *Queries) ListCards(ctx context.Context, arg ListCardsParams) ([]Card, e
 
 const listCardsByKind = `-- name: ListCardsByKind :many
 SELECT id, workspace_id, issue_id, author_type, author_id, title, content, created_at, updated_at, kind FROM card
-WHERE workspace_id = $1 AND kind = $2
+WHERE workspace_id = $1
+  AND (kind = $2 OR kind LIKE $2 || '/%')
 ORDER BY created_at DESC, id DESC
 LIMIT $4 OFFSET $3
 `
@@ -282,6 +284,10 @@ type ListCardsByKindParams struct {
 	Limit       int32       `json:"limit"`
 }
 
+// `kind` is a PATH, so selecting a folder takes everything below it: the exact
+// match, plus anything whose kind continues with a slash. The slash is what
+// keeps the boundary on a segment — a bare prefix would make `本地联调` swallow
+// `本地联调整理`. Matches the client's filterDocsByPath.
 func (q *Queries) ListCardsByKind(ctx context.Context, arg ListCardsByKindParams) ([]Card, error) {
 	rows, err := q.db.Query(ctx, listCardsByKind,
 		arg.WorkspaceID,

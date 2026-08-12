@@ -14,9 +14,9 @@ import { useT } from "../../i18n";
 import { useNavigation } from "../../navigation";
 import { DocEditorDialog } from "./doc-editor-dialog";
 import { DocItem } from "./doc-item";
-import { cn } from "@multica/ui/lib/utils";
 import { groupCardsByDay } from "../group-by-day";
-import { docKindTabs, filterDocsByKind } from "../doc-kinds";
+import { buildDocTree, filterDocsByPath } from "../doc-tree";
+import { DocTreeNav } from "./doc-tree-nav";
 
 /**
  * Everything a workspace has learned, newest first.
@@ -26,43 +26,6 @@ import { docKindTabs, filterDocsByKind } from "../doc-kinds";
  * and grouping by the requirement it came from would bury the ones that came
  * from reading or from an incident.
  */
-/**
- * One tab. Underline plus weight, not a background: the row sits directly on
- * the page and a filled pill would read as a button that does something.
- *
- * The active state is carried by font weight and text colour — dimensions
- * hover does not touch — so hovering the selected tab cannot visually
- * downgrade it to look merely hovered.
- */
-function KindTab({
-  label,
-  count,
-  active,
-  onSelect,
-}: {
-  label: string;
-  count: number;
-  active: boolean;
-  onSelect: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onSelect}
-      aria-pressed={active}
-      className={cn(
-        "-mb-px flex shrink-0 items-center gap-1.5 border-b-2 px-3 py-2 text-body transition-colors",
-        active
-          ? "border-primary font-medium text-foreground"
-          : "border-transparent text-muted-foreground hover:text-foreground",
-      )}
-    >
-      {label}
-      <span className="text-caption tabular-nums text-faint-foreground">{count}</span>
-    </button>
-  );
-}
-
 export function DocsPage() {
   const { t } = useT("docs");
   const wsId = useWorkspaceId();
@@ -91,9 +54,9 @@ export function DocsPage() {
   // Tabs come from every card, not from the search result: a tab that
   // disappeared because the current query matched nothing in it would make
   // the category look deleted.
-  const tabs = useMemo(() => docKindTabs(cards), [cards]);
+  const tree = useMemo(() => buildDocTree(cards), [cards]);
   const filtered = useMemo(() => {
-    const inTab = filterDocsByKind(cards, kind);
+    const inTab = filterDocsByPath(cards, kind);
     const query = search.trim().toLowerCase();
     if (!query) return inTab;
     return inTab.filter(
@@ -126,29 +89,21 @@ export function DocsPage() {
         </div>
       </div>
 
-      {/* Only once something has been filed. A lone 全部 tab is a control that
-          cannot do anything, and it would sit there on every fresh workspace. */}
-      {tabs.length > 0 && (
-        <div className="flex items-center gap-1 overflow-x-auto border-b px-4">
-          <KindTab
-            label={t(($) => $.page.all_kinds)}
-            count={cards.length}
-            active={kind === ""}
-            onSelect={() => setKind("")}
+      <div className="flex min-h-0 flex-1">
+        {/* Only once something has been filed. A lone "all" row is a control
+            that cannot do anything, and it would sit there on every fresh
+            workspace. */}
+        {tree.length > 0 && (
+          <DocTreeNav
+            tree={tree}
+            total={cards.length}
+            selected={kind}
+            onSelect={setKind}
+            className="w-52 shrink-0 overflow-y-auto border-r p-2"
           />
-          {tabs.map((tab) => (
-            <KindTab
-              key={tab.kind}
-              label={tab.kind}
-              count={tab.count}
-              active={kind === tab.kind}
-              onSelect={() => setKind(tab.kind)}
-            />
-          ))}
-        </div>
-      )}
+        )}
 
-      <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4">
+        <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4">
         {isLoading ? null : filtered.length === 0 ? (
           <EmptyState
             hasCards={cards.length > 0}
@@ -185,7 +140,8 @@ export function DocsPage() {
               </section>
             ))}
           </div>
-        )}
+          )}
+        </div>
       </div>
 
       {(creating || editing) && (

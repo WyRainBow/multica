@@ -144,9 +144,12 @@ export function DocDetail({ docId }: { docId: string }) {
       </div>
 
       <div ref={setScrollEl} className="flex-1 overflow-y-auto">
-        {/* Left-aligned like the list, and for the same reason: this is a
-            working document, not an article. */}
-        <div className="w-full max-w-3xl px-6 py-6">
+        {/* Centred, unlike the list. The two are different acts: the list is
+            scanned, so it belongs where the eye already is — hard left, under
+            the header. This page is READ start to finish, and a column pinned
+            to one edge of a wide window leaves the text hanging off the side
+            with nothing balancing it. */}
+        <div className="mx-auto w-full max-w-3xl px-6 py-6">
           <Input
             defaultValue={doc.title}
             placeholder={t(($) => $.editor.title_placeholder)}
