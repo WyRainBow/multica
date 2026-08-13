@@ -54,7 +54,7 @@ var cardGetCmd = &cobra.Command{
 var cardAddCmd = &cobra.Command{
 	Use:   "add",
 	Short: "Write a document",
-	Long: `Write a card.
+	Long: `Write a document.
 
 Pipe the body in rather than passing it inline whenever it is more than a
 sentence — a retrospective is a document, and --content mangles newlines:
@@ -76,8 +76,10 @@ var cardKindsCmd = &cobra.Command{
 	Short: "List the kinds in use, with a count each",
 	Long: `List the kinds in use, with a count each.
 
-Kinds are free text and become tabs on the cards page, so this is how you find
-the name to reuse instead of inventing 文档 / 档案 / doc for one thing.`,
+A kind is a folder PATH — slashes make levels, and every level is listed here,
+so 工作流架构演进 and 工作流架构演进/04-验证与交付 both appear. It is free text
+with nothing to create first, which is exactly why you should read this before
+filing: reusing a name beats inventing 文档 / 档案 / doc for one thing.`,
 	Args: cobra.NoArgs,
 	RunE: runCardKinds,
 }
