@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
-import type { Card } from "@multica/core/types";
+import type { Card, Issue } from "@multica/core/types";
 import { I18nProvider } from "@multica/core/i18n/react";
 import enCards from "../../locales/en/docs.json";
 import { DocItem } from "./doc-item";
@@ -74,5 +74,62 @@ describe("DocItem length", () => {
   it("shows it on a document with no requirement", () => {
     renderCard(makeCard({ issue_id: null, content: "12345" }));
     expect(screen.getByText("5 chars")).toBeInTheDocument();
+  });
+});
+
+// The workspace issue list is the first pages only, so a document pointing at
+// a finished issue found nothing there and the row claimed the issue was
+// unavailable. It was not — it was past the page. Three states now, and only
+// one of them says "gone".
+describe("DocItem's linked issue", () => {
+  function renderWith(props: { issue?: Issue; issueGone?: boolean }) {
+    return render(
+      <I18nProvider locale="en" resources={{ en: { docs: enCards } }}>
+        <DocItem
+          card={makeCard({ issue_id: "issue-7" })}
+          onEdit={vi.fn()}
+          onOpenIssue={vi.fn()}
+          {...props}
+        />
+      </I18nProvider>,
+    );
+  }
+
+  const done = {
+    id: "issue-7",
+    identifier: "COC-23",
+    status: "done",
+  } as unknown as Issue;
+
+  it("shows the key of a finished issue instead of calling it unavailable", () => {
+    renderWith({ issue: done });
+    expect(screen.getByText("COC-23")).toBeInTheDocument();
+    expect(
+      screen.queryByText(/gone|unavailable|已不可用/i),
+    ).not.toBeInTheDocument();
+  });
+
+  // Written while the work is live, read long after it finished — whether that
+  // has happened is the first thing you want to know.
+  it("shows the issue's status, not only its key", () => {
+    renderWith({ issue: done });
+    // Scoped to the chip: the row's edit control is a lucide icon too, and an
+    // unscoped query for one would pass without any status ever rendering.
+    const chip = screen.getByText("COC-23").closest("button")!;
+    expect(chip.querySelector("svg")).toBeInTheDocument();
+  });
+
+  // Saying "unavailable" while the answer is still in flight is the same wrong
+  // message, one second later.
+  it("says nothing while the issue is still being resolved", () => {
+    renderWith({ issue: undefined, issueGone: false });
+    expect(
+      screen.queryByText("The linked issue is gone"),
+    ).not.toBeInTheDocument();
+  });
+
+  it("says so once the issue is confirmed gone", () => {
+    renderWith({ issue: undefined, issueGone: true });
+    expect(screen.getByText("The linked issue is gone")).toBeInTheDocument();
   });
 });

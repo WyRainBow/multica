@@ -1,12 +1,15 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQueries, useQuery } from "@tanstack/react-query";
 import { Lightbulb, Plus } from "lucide-react";
 import { useWorkspaceId } from "@multica/core/hooks";
 import { useWorkspacePaths } from "@multica/core/paths";
 import { cardListOptions } from "@multica/core/docs/queries";
-import { issueListOptions } from "@multica/core/issues/queries";
+import {
+  issueDetailOptions,
+  issueListOptions,
+} from "@multica/core/issues/queries";
 import type { Issue, Card } from "@multica/core/types";
 import { Button } from "@multica/ui/components/ui/button";
 import { Input } from "@multica/ui/components/ui/input";
@@ -44,11 +47,51 @@ export function DocsPage() {
   // list needs the issues it references. One workspace query rather than one
   // per card.
   const { data: issues = [] } = useQuery(issueListOptions(wsId));
-  const issuesById = useMemo(() => {
+  const listedById = useMemo(() => {
     const map = new Map<string, Issue>();
     for (const issue of issues) map.set(issue.id, issue);
     return map;
   }, [issues]);
+
+  // The workspace list is the FIRST PAGES only, so a document pointing at a
+  // finished issue — the ones most often written about — found nothing there
+  // and the row said the issue was unavailable. It was not: it was just past
+  // the page. Anything the list did not cover is fetched by id.
+  //
+  // One query per unresolved document rather than per document: on a workspace
+  // whose issues all fit in the first pages this fires zero times, and Query
+  // dedupes two documents naming the same issue.
+  const unresolvedIds = useMemo(() => {
+    const ids = new Set<string>();
+    for (const card of data?.cards ?? []) {
+      if (card.issue_id && !listedById.has(card.issue_id))
+        ids.add(card.issue_id);
+    }
+    return [...ids];
+  }, [data?.cards, listedById]);
+
+  const fetchedIssues = useQueries({
+    queries: unresolvedIds.map((issueId) => issueDetailOptions(wsId, issueId)),
+  });
+
+  const issuesById = useMemo(() => {
+    const map = new Map(listedById);
+    for (const result of fetchedIssues) {
+      if (result.data) map.set(result.data.id, result.data);
+    }
+    return map;
+  }, [listedById, fetchedIssues]);
+
+  // An issue that is genuinely gone, as opposed to one still being fetched.
+  // Saying "unavailable" while the answer is in flight is the same wrong
+  // message, a second later.
+  const goneIssueIds = useMemo(() => {
+    const gone = new Set<string>();
+    unresolvedIds.forEach((issueId, index) => {
+      if (fetchedIssues[index]?.isError) gone.add(issueId);
+    });
+    return gone;
+  }, [unresolvedIds, fetchedIssues]);
 
   const cards = data?.cards ?? [];
   // Tabs come from every card, not from the search result: a tab that
@@ -131,6 +174,9 @@ export function DocsPage() {
                           card.issue_id
                             ? issuesById.get(card.issue_id)
                             : undefined
+                        }
+                        issueGone={
+                          !!card.issue_id && goneIssueIds.has(card.issue_id)
                         }
                         onEdit={() => navigation.push(paths.docDetail(card.id))}
                         onOpenIssue={(identifier) =>

@@ -4,6 +4,7 @@ import { Pencil } from "lucide-react";
 import type { Issue, Card } from "@multica/core/types";
 import { Button } from "@multica/ui/components/ui/button";
 import { ReadonlyContent } from "../../editor";
+import { StatusIcon } from "../../issues/components/status-icon";
 import { useT } from "../../i18n";
 import { docLength } from "../doc-tree";
 
@@ -34,12 +35,16 @@ const CARD_PREVIEW_MAX_HEIGHT = 160;
 export function DocItem({
   card,
   issue,
+  issueGone = false,
   onEdit,
   onOpenIssue,
 }: {
   card: Card;
   /** Resolved requirement, when the card points at one that still exists. */
   issue?: Issue;
+  /** The linked issue was looked up and is genuinely gone — not merely absent
+   *  from the page of issues this view happened to load. */
+  issueGone?: boolean;
   onEdit: () => void;
   onOpenIssue: (identifier: string) => void;
 }) {
@@ -105,21 +110,27 @@ export function DocItem({
           lines on screen otherwise. Same count the issue page's document list
           shows, and the same one an agent reads. */}
       <div className="mt-3 flex items-center gap-2 text-caption text-muted-foreground">
-        {(issue || card.issue_id) &&
-          (issue ? (
-            <button
-              type="button"
-              onClick={() => onOpenIssue(issue.identifier)}
-              className="shrink-0 rounded bg-muted px-1.5 py-0.5 font-medium tabular-nums transition-colors hover:text-foreground"
-            >
-              {issue.identifier}
-            </button>
-          ) : (
-            // The card still names a requirement, but it is not in the loaded
-            // set — deleted, or outside this workspace's window. Say so rather
-            // than rendering a chip that goes nowhere.
+        {issue ? (
+          <button
+            type="button"
+            onClick={() => onOpenIssue(issue.identifier)}
+            className="flex shrink-0 items-center gap-1 rounded bg-muted px-1.5 py-0.5 font-medium tabular-nums transition-colors hover:text-foreground"
+          >
+            {/* The issue's state, not just its key. A document is usually
+                written while the work is live and read long after it finished;
+                whether that has happened is the first thing you want to know,
+                and it used to be invisible here. */}
+            <StatusIcon status={issue.status} className="size-3 shrink-0" />
+            {issue.identifier}
+          </button>
+        ) : (
+          // Only once the lookup has actually failed. This used to fire for any
+          // issue absent from the loaded page — which is every finished issue
+          // past the first pages, the ones documents are most often about.
+          issueGone && (
             <span className="shrink-0">{t(($) => $.doc.issue_missing)}</span>
-          ))}
+          )
+        )}
         {docLength(card.content) > 0 && (
           <span className="ml-auto shrink-0 tabular-nums text-faint-foreground">
             {t(($) => $.doc.length, { count: docLength(card.content) })}
