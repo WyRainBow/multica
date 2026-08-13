@@ -300,7 +300,6 @@ interface ContentEditorRef {
    * to live IN the document to survive, and the description round-trips
    * through Markdown, which has nowhere to keep one.
    */
-  scrollToPosition: (pos: number) => void;
   /** Drop focus from the editor. Used by `useComposerSubmit`'s
    *  `afterAccepted: "blur"` on surfaces where a send ends the turn, so the
    *  composer stops reading as "still writing". */
@@ -429,17 +428,24 @@ const ContentEditor = forwardRef<ContentEditorRef, ContentEditorProps>(
     const onReadyRef = useRef(onReady);
     const onUploadingChangeRef = useRef(onUploadingChange);
     const onUploadFileRef = useRef<
-      ((file: File, uploadId: string) => Promise<UploadResult | null>) | undefined
+      | ((file: File, uploadId: string) => Promise<UploadResult | null>)
+      | undefined
     >(undefined);
     // Same reasoning as placeholderRef below: the extension array is built once
     // at mount, so the paste-as-file threshold is read through a ref to stay
     // live without remounting the editor.
-    const pasteAsFileThresholdRef = useRef<number | undefined>(pasteAsFileThreshold);
-    const mentionContextItemsRef = useRef<MentionItem[]>(mentionContextItems ?? []);
+    const pasteAsFileThresholdRef = useRef<number | undefined>(
+      pasteAsFileThreshold,
+    );
+    const mentionContextItemsRef = useRef<MentionItem[]>(
+      mentionContextItems ?? [],
+    );
     // Kept in a ref for the same reason as mentionContextItems: the extension
     // set is built once at mount, so a directly-captured options object would
     // freeze whatever closures existed then and stop seeing new quick actions.
-    const quickActionMenuRef = useRef<BuiltinCommandSuggestionOptions | undefined>(quickActionMenu);
+    const quickActionMenuRef = useRef<
+      BuiltinCommandSuggestionOptions | undefined
+    >(quickActionMenu);
     const lastEmittedRef = useRef<string | null>(null);
     // `content` already consumes the initial synchronized value when Tiptap
     // mounts. Track later changes separately so the sync effect does not parse
@@ -449,7 +455,9 @@ const ContentEditor = forwardRef<ContentEditorRef, ContentEditorProps>(
     // raw controlled value rather than the editor serialization: Tiptap may
     // omit invisible channel-media provenance comments while retaining the
     // visible image, and the server needs those comments in the merge base.
-    const documentBaseRef = useRef(normalizeMarkdown(value ?? defaultValue ?? ""));
+    const documentBaseRef = useRef(
+      normalizeMarkdown(value ?? defaultValue ?? ""),
+    );
     // Live placeholder text. Passed into the Placeholder extension as a getter
     // (not a static string) so the plugin re-reads it on every decoration pass —
     // the sync effect below updates this ref and nudges a repaint. Tiptap
@@ -458,7 +466,9 @@ const ContentEditor = forwardRef<ContentEditorRef, ContentEditorProps>(
     const placeholderRef = useRef(placeholderText);
     // Same getter contract as placeholderRef: the extension array is built once
     // at mount, so anchors have to arrive through a ref the plugin re-reads.
-    const commentAnchorsRef = useRef<readonly CommentAnchor[]>(commentAnchors ?? []);
+    const commentAnchorsRef = useRef<readonly CommentAnchor[]>(
+      commentAnchors ?? [],
+    );
     commentAnchorsRef.current = commentAnchors ?? [];
     const commentAnchorClickRef = useRef(onCommentAnchorClick);
     commentAnchorClickRef.current = onCommentAnchorClick;
@@ -472,7 +482,9 @@ const ContentEditor = forwardRef<ContentEditorRef, ContentEditorProps>(
       const handler = outlineChangeRef.current;
       if (!handler) return;
       const headings = extractOutline(ed.state.doc);
-      const signature = headings.map((h) => `${h.pos}:${h.level}:${h.text}`).join("\u0000");
+      const signature = headings
+        .map((h) => `${h.pos}:${h.level}:${h.text}`)
+        .join("\u0000");
       if (signature === lastOutlineRef.current) return;
       lastOutlineRef.current = signature;
       handler(headings);
@@ -493,7 +505,10 @@ const ContentEditor = forwardRef<ContentEditorRef, ContentEditorProps>(
     // stable across renders the way the original passthrough did.
     const wrappedOnUploadFile = useMemo(() => {
       if (!onUploadFile) return undefined;
-      return async (file: File, uploadId: string): Promise<UploadResult | null> => {
+      return async (
+        file: File,
+        uploadId: string,
+      ): Promise<UploadResult | null> => {
         const result = await onUploadFile(file, uploadId);
         // Only track attachments that carry a persisted id — the no-workspace
         // avatar branch returns an id-less record that the resolver can't key
@@ -572,9 +587,9 @@ const ContentEditor = forwardRef<ContentEditorRef, ContentEditorProps>(
     // the slug ref) and returns null outside a workspace, for non-identifier
     // tokens, or when the prefix can't match this workspace, so no network call
     // happens for those; the exact-match filter enforces correctness.
-    const resolveIssueIdentifierRef = useRef<IssueIdentifierResolver | undefined>(
-      undefined,
-    );
+    const resolveIssueIdentifierRef = useRef<
+      IssueIdentifierResolver | undefined
+    >(undefined);
     resolveIssueIdentifierRef.current = async (identifier) => {
       if (!isIssueIdentifier(identifier)) return null;
       const slug = workspaceSlugRef.current;
@@ -672,9 +687,11 @@ const ContentEditor = forwardRef<ContentEditorRef, ContentEditorProps>(
         enableSlashCommands,
         slashCommandMode,
         quickActionMenu: {
-          getQuickActions: () => quickActionMenuRef.current?.getQuickActions?.() ?? [],
+          getQuickActions: () =>
+            quickActionMenuRef.current?.getQuickActions?.() ?? [],
           renderQuickAction: (id: string) =>
-            quickActionMenuRef.current?.renderQuickAction?.(id) ?? Promise.resolve(""),
+            quickActionMenuRef.current?.renderQuickAction?.(id) ??
+            Promise.resolve(""),
           onRenderError: (error: unknown) =>
             quickActionMenuRef.current?.onRenderError?.(error),
         },
@@ -722,7 +739,10 @@ const ContentEditor = forwardRef<ContentEditorRef, ContentEditorProps>(
           },
         },
         attributes: {
-          class: cn("flex-1 rich-text-editor text-body outline-none", className),
+          class: cn(
+            "flex-1 rich-text-editor text-body outline-none",
+            className,
+          ),
         },
       },
     });
@@ -829,8 +849,11 @@ const ContentEditor = forwardRef<ContentEditorRef, ContentEditorProps>(
         // Same chunked path on WS-driven re-parse of a large description.
         const manager =
           incoming.length > MARKDOWN_CHUNK_THRESHOLD
-            ? (editor.storage as { markdown?: { manager?: MarkdownManagerLike } })
-                .markdown?.manager
+            ? (
+                editor.storage as {
+                  markdown?: { manager?: MarkdownManagerLike };
+                }
+              ).markdown?.manager
             : undefined;
         if (manager) {
           editor.commands.setContent(parseMarkdownChunked(manager, incoming), {
@@ -994,13 +1017,6 @@ const ContentEditor = forwardRef<ContentEditorRef, ContentEditorProps>(
         }
         editor.commands.focus(posFromAnchor(editor.state.doc, anchor));
       },
-      scrollToPosition: (pos: number) => {
-        if (!editor || editor.isDestroyed) return;
-        const node = editor.view.nodeDOM(pos) ?? editor.view.domAtPos(pos).node;
-        const element =
-          node instanceof HTMLElement ? node : (node as Node)?.parentElement;
-        element?.scrollIntoView({ behavior: "smooth", block: "start" });
-      },
       blur: () => {
         editor?.commands.blur();
       },
@@ -1020,9 +1036,13 @@ const ContentEditor = forwardRef<ContentEditorRef, ContentEditorProps>(
       },
       insertMarkdownAtEnd: (markdown: string) => {
         if (!editor || editor.isDestroyed) return false;
-        editor.commands.insertContentAt(editor.state.doc.content.size, markdown, {
-          contentType: "markdown",
-        });
+        editor.commands.insertContentAt(
+          editor.state.doc.content.size,
+          markdown,
+          {
+            contentType: "markdown",
+          },
+        );
         return true;
       },
       flushPendingUpdate: () => {
@@ -1052,12 +1072,19 @@ const ContentEditor = forwardRef<ContentEditorRef, ContentEditorProps>(
     const hoverDisabled = !editor?.state.selection.empty;
     const hover = useLinkHover(wrapperRef, hoverDisabled);
 
-    const handleContainerMouseDown = (event: ReactMouseEvent<HTMLDivElement>) => {
+    const handleContainerMouseDown = (
+      event: ReactMouseEvent<HTMLDivElement>,
+    ) => {
       if (!editor) return;
 
       const target = event.target as HTMLElement;
       if (target.closest(".ProseMirror")) return;
-      if (target.closest("a, button, input, textarea, [role='button'], [data-node-view-wrapper]")) return;
+      if (
+        target.closest(
+          "a, button, input, textarea, [role='button'], [data-node-view-wrapper]",
+        )
+      )
+        return;
 
       event.preventDefault();
       editor.commands.focus("end");

@@ -25,7 +25,14 @@
  *             settled-but-malformed fence still renders as source.
  */
 
-import { createContext, isValidElement, memo, useContext, useMemo, useRef } from "react";
+import {
+  createContext,
+  isValidElement,
+  memo,
+  useContext,
+  useMemo,
+  useRef,
+} from "react";
 import ReactMarkdown, {
   type Components,
   type ExtraProps,
@@ -37,6 +44,7 @@ import remarkBreaks from "remark-breaks";
 import remarkGfm from "remark-gfm";
 import remarkMath from "remark-math";
 import rehypeRaw from "rehype-raw";
+import { HEADING_ANCHOR_ATTRIBUTE } from "../editor/extensions/heading-anchor";
 import rehypeSanitize from "rehype-sanitize";
 import { cn } from "@multica/ui/lib/utils";
 import { useWorkspaceSlug } from "@multica/core/paths";
@@ -88,7 +96,9 @@ export type RichContentPhase = "streaming" | "settled";
 // every highlighted <code>'s innerHTML and collapses an active text selection
 // inside a code block (MUL-3621).
 
-const ClosedFenceContext = createContext<ReadonlySet<number>>(new Set<number>());
+const ClosedFenceContext = createContext<ReadonlySet<number>>(
+  new Set<number>(),
+);
 
 function useIsFenceClosed(offset: number | undefined): boolean {
   const closed = useContext(ClosedFenceContext);
@@ -107,7 +117,13 @@ function useIsFenceClosed(offset: number | undefined): boolean {
  * IssueMentionCard; the wrapper only shields surrounding click handlers
  * (e.g. collapsed-comment expanders) from mention clicks.
  */
-function IssueMentionLink({ issueId, label }: { issueId: string; label?: string }) {
+function IssueMentionLink({
+  issueId,
+  label,
+}: {
+  issueId: string;
+  label?: string;
+}) {
   return (
     <span className="inline align-middle" onClick={(e) => e.stopPropagation()}>
       <IssueMentionCard issueId={issueId} fallbackLabel={label} />
@@ -149,7 +165,13 @@ function IdentifierIssueMentionLink({
  * handlers (e.g. collapsed-comment expanders) from mention clicks — the same
  * shape as IssueMentionLink above.
  */
-function ProjectMentionLink({ projectId, label }: { projectId: string; label?: string }) {
+function ProjectMentionLink({
+  projectId,
+  label,
+}: {
+  projectId: string;
+  label?: string;
+}) {
   return (
     <span className="inline align-middle" onClick={(e) => e.stopPropagation()}>
       <ProjectMentionCard projectId={projectId} fallbackLabel={label} />
@@ -206,7 +228,9 @@ function RichLink({ href, children }: { href?: string; children?: ReactNode }) {
   }
 
   if (isMentionHref(href)) {
-    const match = href.match(/^mention:\/\/(member|agent|issue|project|all)\/(.+)$/);
+    const match = href.match(
+      /^mention:\/\/(member|agent|issue|project|all)\/(.+)$/,
+    );
     if (match?.[1] === "issue" && match[2]) {
       // A bare identifier (from the autolink preprocessor) is carried as the id
       // segment; a real mention carries a UUID. Dispatch on the id shape.
@@ -218,10 +242,20 @@ function RichLink({ href, children }: { href?: string; children?: ReactNode }) {
           />
         );
       }
-      return <IssueMentionLink issueId={match[2]} label={childrenToLabel(children)} />;
+      return (
+        <IssueMentionLink
+          issueId={match[2]}
+          label={childrenToLabel(children)}
+        />
+      );
     }
     if (match?.[1] === "project" && match[2]) {
-      return <ProjectMentionLink projectId={match[2]} label={childrenToLabel(children)} />;
+      return (
+        <ProjectMentionLink
+          projectId={match[2]}
+          label={childrenToLabel(children)}
+        />
+      );
     }
     // Member / agent / all mentions
     return <span className="mention">{children}</span>;
@@ -324,7 +358,12 @@ function RichCode({ className, children, node, ...props }: RichCodeProps) {
     // isRichFenceLanguage is re-checked for the type narrow; shouldUpgradeFence
     // already required it.
     if (isRichFenceLanguage(language)) {
-      return <RichFenceBlock language={language} body={String(children).replace(/\n$/, "")} />;
+      return (
+        <RichFenceBlock
+          language={language}
+          body={String(children).replace(/\n$/, "")}
+        />
+      );
     }
   }
 
@@ -349,7 +388,9 @@ function readFencedCodeChild(children: ReactNode): {
   if (!isValidElement<{ className?: string } & ExtraProps>(child)) return {};
   return {
     // Whole class token only: `language-htmlbars` must not read as `html`.
-    language: /(?:^|\s)language-(\w+)(?:\s|$)/.exec(child.props.className ?? "")?.[1],
+    language: /(?:^|\s)language-(\w+)(?:\s|$)/.exec(
+      child.props.className ?? "",
+    )?.[1],
     offset: nodeStartOffset(child.props.node),
   };
 }
@@ -385,8 +426,47 @@ function RichPre({ children }: RichPreProps) {
 // The components map is module-level and static: it never depends on density,
 // phase or the fence gate, so its identity is stable for the lifetime of the
 // app and react-markdown can bail out of unchanged subtrees.
+/**
+ * Heading anchors, so a rendered document can carry an outline.
+ *
+ * The editor stamps ProseMirror positions through a decoration; here the
+ * identity is the heading's character offset in the SOURCE, which is what
+ * extractOutlineFromMarkdown reports. Same attribute name either way, so the
+ * outline measures, highlights and jumps identically whether the body is being
+ * edited or read — a finished issue's frozen body had no outline at all before
+ * this, which is exactly the body people come back to read.
+ */
+const HEADING_COMPONENTS: Partial<Components> = Object.fromEntries(
+  ([1, 2, 3, 4, 5, 6] as const).map((level) => {
+    const Tag = `h${level}` as const;
+    return [
+      Tag,
+      ({
+        node,
+        children,
+        ...props
+      }: ComponentPropsWithoutRef<typeof Tag> & { node?: unknown }) => {
+        const offset = (node as { position?: { start?: { offset?: number } } })
+          ?.position?.start?.offset;
+        return (
+          <Tag
+            {...props}
+            {...(typeof offset === "number"
+              ? { [HEADING_ANCHOR_ATTRIBUTE]: String(offset) }
+              : {})}
+          >
+            {children}
+          </Tag>
+        );
+      },
+    ];
+  }),
+);
+
 const COMPONENTS: Partial<Components> = {
   a: RichLink,
+
+  ...HEADING_COMPONENTS,
 
   // Images — unified through <Attachment>. The resolver context provided by
   // AttachmentDownloadProvider turns a CDN URL into a full record when
@@ -493,7 +573,10 @@ export const RichContent = memo(function RichContent({
   const processed = useMemo(
     () =>
       highlightToHtml(
-        preprocessMarkdown(content, { cdnDomain, autolinkIssueIdentifiers: true }),
+        preprocessMarkdown(content, {
+          cdnDomain,
+          autolinkIssueIdentifiers: true,
+        }),
       ),
     [content, cdnDomain],
   );
@@ -501,7 +584,10 @@ export const RichContent = memo(function RichContent({
   // Derived from the SAME string handed to ReactMarkdown, so offsets line up
   // with the hast node positions the `code`/`pre` renderers observe. Computing
   // it from the raw pre-preprocess text would mis-match every rewritten node.
-  const closedFences = useMemo(() => computeClosedFenceOffsets(processed), [processed]);
+  const closedFences = useMemo(
+    () => computeClosedFenceOffsets(processed),
+    [processed],
+  );
 
   const wrapperRef = useRef<HTMLDivElement>(null);
   const hover = useLinkHover(wrapperRef);

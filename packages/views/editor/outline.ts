@@ -89,3 +89,41 @@ export function activeOutlineId(
   }
   return active;
 }
+
+/**
+ * The outline of a Markdown document, for surfaces that render it as HTML
+ * instead of loading it into the editor — a finished issue's frozen body, which
+ * has no ProseMirror document to walk.
+ *
+ * `pos` is the heading's CHARACTER OFFSET in the source. That is the same
+ * number react-markdown reports as `node.position.start.offset`, which is what
+ * the readonly renderer stamps its heading anchors with — so measuring,
+ * highlighting and jumping all work against one identity, exactly as they do in
+ * the editor. The two numbering schemes never mix: a document is either being
+ * edited or being read, never both.
+ *
+ * Headings inside fenced code blocks are not headings.
+ */
+export function extractOutlineFromMarkdown(markdown: string): OutlineHeading[] {
+  const headings: OutlineHeading[] = [];
+  let offset = 0;
+  let inFence = false;
+  for (const line of markdown.split("\n")) {
+    const fence = /^\s{0,3}(```|~~~)/.exec(line);
+    if (fence) inFence = !inFence;
+    else if (!inFence) {
+      const match = /^(#{1,6})\s+(.+?)\s*#*\s*$/.exec(line);
+      const text = match?.[2]?.trim();
+      if (match && text) {
+        headings.push({
+          id: `h${offset}`,
+          level: match[1]!.length,
+          text,
+          pos: offset,
+        });
+      }
+    }
+    offset += line.length + 1; // +1 for the newline split removed
+  }
+  return headings;
+}

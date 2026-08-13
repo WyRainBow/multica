@@ -26,6 +26,16 @@ import {
 const READING_LINE_RATIO = 1 / 3;
 
 /**
+ * Space left above a heading after jumping to it.
+ *
+ * Landing a heading flush against the top edge reads as "the section starts
+ * off-screen" — there is nothing above it to prove you arrived rather than
+ * overshot. It also keeps the heading clear of anything overlaying the top of
+ * the scroll area.
+ */
+const JUMP_TOP_MARGIN = 24;
+
+/**
  * A table of contents for the issue description.
  *
  * Reads the live document rather than the saved Markdown, so headings appear
@@ -39,13 +49,12 @@ const READING_LINE_RATIO = 1 / 3;
 export function DescriptionOutline({
   headings,
   scrollContainer,
-  onJump,
   className,
 }: {
   headings: readonly OutlineHeading[];
-  /** The element the description scrolls inside; drives the active section. */
+  /** The element the description scrolls inside; drives both the active
+   *  section and the jump. */
   scrollContainer: HTMLElement | null;
-  onJump: (heading: OutlineHeading) => void;
   className?: string;
 }) {
   const { t } = useT("issues");
@@ -67,13 +76,60 @@ export function DescriptionOutline({
         `[data-outline-pos="${heading.pos}"]`,
       );
       if (element) {
-        offsets.set(heading.id, element.getBoundingClientRect().top - containerTop);
+        offsets.set(
+          heading.id,
+          element.getBoundingClientRect().top - containerTop,
+        );
       }
     }
     setActiveId(
-      activeOutlineId(headings, offsets, container.clientHeight * READING_LINE_RATIO),
+      activeOutlineId(
+        headings,
+        offsets,
+        container.clientHeight * READING_LINE_RATIO,
+      ),
     );
   }, [headings, scrollContainer]);
+
+  /**
+   * Scroll the container to a heading.
+   *
+   * Measures the rendered element through the same `data-outline-pos` lookup
+   * that drives the active-section highlight, then scrolls the container this
+   * component was handed. The jump used to go a different way — resolve the
+   * ProseMirror position to a DOM node through the editor ref, then
+   * `scrollIntoView` — which put the one thing a reader clicks on a path that
+   * nothing else exercised, and left it depending on an editor instance a
+   * finished issue does not render at all.
+   *
+   * Scrolling the KNOWN container rather than letting `scrollIntoView` pick a
+   * scrollable ancestor is also what makes the landing position ours to set.
+   *
+   * The active id is set here rather than waited for: smooth scrolling reaches
+   * the recompute several frames later, and an outline that highlights a
+   * moment after you click reads as a click that did not register.
+   */
+  const jump = useCallback(
+    (heading: OutlineHeading) => {
+      const container = scrollContainer;
+      const element = container?.querySelector<HTMLElement>(
+        `[data-outline-pos="${heading.pos}"]`,
+      );
+      // Nothing to measure against. There is deliberately no second way to
+      // scroll: the jump used to have one, and having two meant the one the
+      // tests did not cover was the one the reader clicked.
+      if (!container || !element) return;
+      const delta =
+        element.getBoundingClientRect().top -
+        container.getBoundingClientRect().top;
+      container.scrollTo({
+        top: Math.max(0, container.scrollTop + delta - JUMP_TOP_MARGIN),
+        behavior: "smooth",
+      });
+      setActiveId(heading.id);
+    },
+    [scrollContainer],
+  );
 
   useEffect(() => {
     const container = scrollContainer;
@@ -114,7 +170,9 @@ export function DescriptionOutline({
             )}
           </TooltipTrigger>
           <TooltipContent side="right" sideOffset={6}>
-            {collapsed ? t(($) => $.outline.expand) : t(($) => $.outline.collapse)}
+            {collapsed
+              ? t(($) => $.outline.expand)
+              : t(($) => $.outline.collapse)}
           </TooltipContent>
         </Tooltip>
 
@@ -129,7 +187,7 @@ export function DescriptionOutline({
                 <button
                   key={heading.id}
                   type="button"
-                  onClick={() => onJump(heading)}
+                  onClick={() => jump(heading)}
                   style={{ paddingLeft: (depths[index] ?? 0) * 10 }}
                   className={cn(
                     "truncate rounded py-0.5 pr-1 text-left text-caption transition-colors",

@@ -86,10 +86,6 @@ export function DocDetail({ docId }: { docId: string }) {
     setLength(docLength(doc?.content ?? ""));
   }, [doc?.content]);
 
-  const jumpToHeading = useCallback((heading: OutlineHeading) => {
-    editorRef.current?.scrollToPosition(heading.pos);
-  }, []);
-
   const save = useCallback(
     // issue_id: an explicit null detaches; omitting it leaves the link alone.
     (patch: {
@@ -286,7 +282,6 @@ export function DocDetail({ docId }: { docId: string }) {
       <DescriptionOutline
         headings={outline}
         scrollContainer={scrollEl}
-        onJump={jumpToHeading}
         className="absolute bottom-0 left-3 top-24 hidden w-44 pb-4 @[81rem]:flex"
       />
 
