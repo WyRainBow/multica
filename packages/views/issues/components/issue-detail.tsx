@@ -154,6 +154,7 @@ import { PhaseTrack } from "./phase-track";
 import { phaseAtTime } from "./phase-window";
 import type { IssuePhase } from "@multica/core/types";
 import { DescriptionOutline } from "./description-outline";
+import { CopyDescriptionButton } from "./copy-description-button";
 import {
   extractOutlineFromMarkdown,
   type OutlineHeading,
@@ -3453,6 +3454,12 @@ export function IssueDetail({
                     <p>{t(($) => $.detail.frozen_hint)}</p>
                     <p>{t(($) => $.detail.frozen_stale_hint)}</p>
                   </div>
+                  {/* Copying is not editing, and a frozen body is the one most
+                      often lifted somewhere else. */}
+                  <CopyDescriptionButton
+                    markdown={issue.description || ""}
+                    className="-mt-1 ml-auto"
+                  />
                 </div>
               </div>
             ) : (
@@ -3520,13 +3527,21 @@ export function IssueDetail({
                     multiple
                     onSelect={(file) => descEditorRef.current?.uploadFile(file)}
                   />
+                  {/* The Markdown source, which is what an agent reads — see
+                  the component. Pushed right so the two facts about the body
+                  as a whole, "how long" and "take it with you", sit together
+                  away from the reaction and upload controls. */}
+                  <CopyDescriptionButton
+                    markdown={issue.description || ""}
+                    className="ml-auto"
+                  />
                   {/* Hidden while the description is empty: a "0 characters" label
                   on every fresh issue is noise, and the number only starts
                   meaning something once there is something to measure. No
                   threshold colour — length is not the same as bloat, and
                   flagging a long-but-clean description would be wrong. */}
                   {descLength > 0 && (
-                    <span className="ml-auto shrink-0 text-caption tabular-nums text-faint-foreground">
+                    <span className="shrink-0 text-caption tabular-nums text-faint-foreground">
                       {t(($) => $.detail.description_length, {
                         count: descLength,
                       })}

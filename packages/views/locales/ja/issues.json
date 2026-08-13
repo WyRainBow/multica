@@ -358,7 +358,9 @@
     "workdir_path_unavailable": "まだローカルの作業ディレクトリがありません。ローカルエージェントがこのタスクを実行していません",
     "comment_edited_at": "{{time}} に編集",
     "comment_never_edited": "未編集",
-    "frozen_stale_hint": "作業が完了した時点の内容です。過去については正確ですが、現在もそうとは限りません。実行する前に現在の状態を確認してください。"
+    "frozen_stale_hint": "作業が完了した時点の内容です。過去については正確ですが、現在もそうとは限りません。実行する前に現在の状態を確認してください。",
+    "copy_description": "本文をコピー",
+    "copied": "コピーしました"
   },
   "outline": {
     "collapse": "目次を閉じる",

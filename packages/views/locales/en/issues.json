@@ -363,7 +363,9 @@
     "workdir_path_unavailable": "No local workdir yet — issue has not been run by a local agent",
     "comment_edited_at": "Edited {{time}}",
     "comment_never_edited": "Never edited",
-    "frozen_stale_hint": "It records what was true when the work finished — accurate about the past, not necessarily about now. Check the current state before acting on it."
+    "frozen_stale_hint": "It records what was true when the work finished — accurate about the past, not necessarily about now. Check the current state before acting on it.",
+    "copy_description": "Copy",
+    "copied": "Copied"
   },
   "outline": {
     "collapse": "Collapse outline",
