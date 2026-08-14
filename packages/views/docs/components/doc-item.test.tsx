@@ -15,8 +15,8 @@ function renderCard(card: Card) {
 
 // The renderer itself is covered in packages/views/rich-content; here it only
 // needs to be reachable, so the stub records what it was handed.
-vi.mock("../../editor", () => ({
-  ReadonlyContent: ({ content }: { content: string }) => (
+vi.mock("../../rich-content", () => ({
+  RichContent: ({ content }: { content: string }) => (
     <div data-testid="rendered-markdown">{content}</div>
   ),
 }));

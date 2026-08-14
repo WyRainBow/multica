@@ -35,3 +35,64 @@
   margin-top: 0.5rem;
   margin-bottom: 0.5rem;
 }
+
+/*
+ * Preview density — a body shown inside a LIST ROW, not read.
+ *
+ * The document densities set heading sizes for a page whose own title is a
+ * display-size heading above them. A list row's title is text-title-sm (16px),
+ * while an h2 in the body is --text-title (18px) and an h1 larger still — so a
+ * document whose body opened with a heading rendered that heading BIGGER than
+ * the document's own name. The hierarchy was inverted on every such row.
+ *
+ * Every heading is capped at body size here and separated by weight instead.
+ * Inside a preview a heading's job is only to say "a section starts", which
+ * weight carries; size is what the row's title needs and cannot share.
+ */
+.rich-content-preview h1,
+.rich-content-preview h2,
+.rich-content-preview h3,
+.rich-content-preview h4,
+.rich-content-preview h5,
+.rich-content-preview h6 {
+  font-size: var(--text-body);
+  line-height: var(--text-body--line-height);
+  font-weight: 600;
+  margin-top: 0.625rem;
+  margin-bottom: 0.25rem;
+}
+
+.rich-content-preview > :first-child {
+  margin-top: 0;
+}
+
+/*
+ * Quotes are the FIRST thing on most documents here — the convention is a
+ * one-line `>` summary above the body, which makes it the single most useful
+ * line in a list. Italic across several lines is slow to read and, with a 3px
+ * rule beside it, weighs more than the title it sits under. Upright text and a
+ * hairline keep it as the road sign it is.
+ */
+.rich-content-preview blockquote {
+  font-style: normal;
+  border-left-width: 2px;
+  padding-left: 0.625rem;
+  margin: 0.375rem 0;
+}
+
+/* Prose only. A preview is scanned for whether this is the document you want,
+   and a table or a diagram cannot answer that at row height. */
+.rich-content-preview .code-block-wrapper,
+.rich-content-preview .tableWrapper,
+.rich-content-preview pre,
+.rich-content-preview img {
+  margin-top: 0.375rem;
+  margin-bottom: 0.375rem;
+}
+
+.rich-content-preview p,
+.rich-content-preview ul,
+.rich-content-preview ol {
+  margin-top: 0.375rem;
+  margin-bottom: 0.375rem;
+}

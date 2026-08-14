@@ -28,8 +28,8 @@ vi.mock("../../navigation", () => ({
   AppLink: ({ children }: { children: React.ReactNode }) => <span>{children}</span>,
 }));
 
-vi.mock("../../editor", () => ({
-  ReadonlyContent: ({ content }: { content: string }) => <div>{content}</div>,
+vi.mock("../../rich-content", () => ({
+  RichContent: ({ content }: { content: string }) => <div>{content}</div>,
 }));
 
 vi.mock("./doc-editor-dialog", () => ({ DocEditorDialog: () => null }));

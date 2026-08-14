@@ -3,7 +3,7 @@
 import { Pencil } from "lucide-react";
 import type { Issue, Card } from "@multica/core/types";
 import { Button } from "@multica/ui/components/ui/button";
-import { ReadonlyContent } from "../../editor";
+import { RichContent } from "../../rich-content";
 import { StatusIcon } from "../../issues/components/status-icon";
 import { useT } from "../../i18n";
 import { docLength } from "../doc-tree";
@@ -23,14 +23,17 @@ import { docLength } from "../doc-tree";
  * action on a note is "read the rest / fix a line", not "go somewhere else".
  */
 /**
- * How much of a card's body the list shows before cutting it off.
+ * How much of a document's body the list shows before cutting it off.
  *
- * Roughly six lines of body text. A cap in pixels rather than lines because
- * the body is rendered Markdown — headings, lists and code blocks all have
- * different line heights, and a line count would cut each card at a different
- * physical depth.
+ * A cap in pixels rather than lines because the body is rendered Markdown —
+ * headings, lists and code blocks all have different heights, and a line count
+ * would cut each row at a different physical depth.
+ *
+ * A whole multiple of the body line-height (20px), so a cut through plain
+ * prose lands BETWEEN lines. It cannot always: a heading or a list above the
+ * cut shifts everything below it off the grid, which is what the fade is for.
  */
-const CARD_PREVIEW_MAX_HEIGHT = 160;
+const DOC_PREVIEW_MAX_HEIGHT = 160;
 
 export function DocItem({
   card,
@@ -80,26 +83,30 @@ export function DocItem({
         // showing the source here means every bold run and every link reads as
         // punctuation — `**待确认**` and `[url](url)` on screen.
         //
-        // The same renderer comments and issue descriptions use, so a card
-        // formats identically to the rest of the product and picks up future
-        // fixes for free.
+        // Preview density, not document density. At document density an h2 in
+        // the body renders at 18px while this row's own title is 16px, so any
+        // document whose body has a heading showed that heading LARGER than the
+        // document's name — the hierarchy inverted on the row. Preview caps
+        // every heading at body size and separates them by weight instead.
         //
         // Height-capped rather than `line-clamp`: clamping counts lines inside
-        // ONE block, so a card whose body is several paragraphs would show six
+        // ONE block, so a row whose body is several paragraphs would show six
         // lines of the first one and then the rest in full. A max-height plus a
         // fade cuts the whole thing at the same place regardless of structure.
         <button
           type="button"
           onClick={onEdit}
           className="relative mt-2 block w-full overflow-hidden text-left"
-          style={{ maxHeight: CARD_PREVIEW_MAX_HEIGHT }}
+          style={{ maxHeight: DOC_PREVIEW_MAX_HEIGHT }}
         >
-          <ReadonlyContent content={body} className="text-body" />
-          {/* Only meaningful when the body actually overflows; on a short card
-              it sits over the page background and is invisible. */}
+          <RichContent content={body} density="preview" phase="settled" />
+          {/* Tall enough to swallow a whole line. At 8px it only covered the
+              descenders, so a cut through the middle of a line left the tops of
+              the characters legible — which reads as a rendering fault rather
+              than as "there is more below". */}
           <span
             aria-hidden
-            className="pointer-events-none absolute inset-x-0 bottom-0 h-8 bg-gradient-to-t from-card to-transparent"
+            className="pointer-events-none absolute inset-x-0 bottom-0 h-10 bg-gradient-to-t from-card via-card/80 to-transparent"
           />
         </button>
       )}

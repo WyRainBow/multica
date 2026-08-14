@@ -19,7 +19,7 @@
  * mention and attachment behaviour is decided here, once.
  *
  *   density — CSS only. Never switches parser, plugins, components map or the
- *             semantic DOM; `compact` and `document` produce the same blocks.
+ *             semantic DOM; every density produces the same blocks.
  *   phase   — lifecycle only. Does NOT decide whether a fence upgrades; that is
  *             the fence's real closed state (see streaming-fence.ts), so a
  *             settled-but-malformed fence still renders as source.
@@ -83,7 +83,7 @@ import "katex/dist/katex.min.css";
 import "../editor/styles/index.css";
 import "./rich-content.css";
 
-export type RichContentDensity = "compact" | "document";
+export type RichContentDensity = "compact" | "document" | "preview";
 export type RichContentPhase = "streaming" | "settled";
 
 // ---------------------------------------------------------------------------
@@ -625,6 +625,7 @@ export const RichContent = memo(function RichContent({
         className={cn(
           "rich-text-editor readonly text-body",
           density === "compact" && "rich-content-compact",
+          density === "preview" && "rich-content-preview",
           className,
         )}
       >
