@@ -63,8 +63,41 @@
 
 ## 本地怎么跑（不用 Docker）
 
-见 [`docs/local-dev-without-docker.md`](docs/local-dev-without-docker.md)。用 Homebrew 的 PostgreSQL，
-不依赖 Docker —— 写这份文档是因为 `make dev` / `make server` 会强制拉取 Docker 镜像。
+**不要用 `make dev` / `make server` / `make setup`。** 它们都会调 `scripts/ensure-postgres.sh`，
+而那个脚本只要判定数据库地址是 `localhost` / `127.0.0.1` / `::1`，就会去执行
+`docker compose up -d postgres` —— 本机已经装了 PostgreSQL 也绕不开。所以这里是绕开 make、
+手动起两个进程。
+
+### 每天启动
+
+两个终端，或者各自后台跑。两条命令都要先 `source .env`：后端从环境变量读
+`DATABASE_URL`，前端要读 `NEXT_PUBLIC_*`。
+
+```bash
+# 终端 1 —— 后端，监听 :8080
+cd server && set -a && . ../.env && set +a && go run ./cmd/server
+
+# 终端 2 —— 前端，监听 :3000（在仓库根目录）
+set -a && . ./.env && set +a && pnpm dev:web
+```
+
+打开 http://localhost:3000 。确认起来了：
+
+```bash
+curl -s localhost:8080/healthz
+# {"status":"ok","checks":{"db":"ok","migrations":"ok"}}
+```
+
+`db` 和 `migrations` 都是 `ok` 才算真起来了——端口通只说明进程活着，迁移没跑完照样 500。
+
+### 第一次要先做的事
+
+装 PostgreSQL、建库建角色、跑迁移、拿注册验证码（本地不发邮件，验证码只写进数据库）、
+让 CLI 连本地实例，完整步骤见
+[`docs/local-dev-without-docker.md`](docs/local-dev-without-docker.md)。
+
+本机这套跑在 **5433**（Homebrew 的 `postgresql@17`，避开系统上原有的 5432），
+版本是 Node 26 / Go 1.26 / pnpm 10.28。
 
 ---
 
