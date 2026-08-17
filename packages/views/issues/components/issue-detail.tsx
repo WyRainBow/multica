@@ -155,6 +155,7 @@ import { phaseAtTime } from "./phase-window";
 import type { IssuePhase } from "@multica/core/types";
 import { DescriptionOutline } from "./description-outline";
 import { CopyDescriptionButton } from "./copy-description-button";
+import { summarizeDiscussion } from "../discussion-summary";
 import {
   extractOutlineFromMarkdown,
   type OutlineHeading,
@@ -1905,6 +1906,14 @@ export function IssueDetail({
 
     return { threadReplies, groups: orderedGroups };
   }, [timeline, selectedPhaseId, issuePhases]);
+
+  // Reads the grouped result rather than the raw timeline, so the numbers
+  // narrow with the list when a station is selected. A header disagreeing with
+  // the rows beneath it makes both untrustworthy.
+  const discussion = useMemo(
+    () => summarizeDiscussion(timelineView.groups, timelineView.threadReplies),
+    [timelineView],
+  );
 
   // Flat array consumed by <Virtuoso>. Recomputed when timelineView.groups
   // changes (timeline events) or expandedResolved flips (user toggles a
@@ -3752,6 +3761,33 @@ export function IssueDetail({
                   <h2 className="text-title-sm font-semibold">
                     {t(($) => $.detail.activity_section)}
                   </h2>
+                  {/* Two different questions. How much there is to read, and
+                      how much is still asking something — the second is the
+                      only one you can act on, and it is why a count in the
+                      header is worth having: forty comments with nothing open
+                      is finished reading, four comments with three open
+                      threads is waiting on someone.
+
+                      The open count is only drawn when there IS something
+                      open. A standing "0 unresolved" is a status light that
+                      never means anything, and it would sit on every settled
+                      issue in the workspace. */}
+                  {discussion.comments > 0 && (
+                    <div className="flex items-center gap-2 text-caption text-muted-foreground">
+                      <span className="tabular-nums">
+                        {t(($) => $.detail.comment_count, {
+                          count: discussion.comments,
+                        })}
+                      </span>
+                      {discussion.openThreads > 0 && (
+                        <span className="rounded-full bg-muted px-2 py-0.5 tabular-nums text-foreground">
+                          {t(($) => $.detail.open_thread_count, {
+                            count: discussion.openThreads,
+                          })}
+                        </span>
+                      )}
+                    </div>
+                  )}
                 </div>
                 <div className="flex items-center gap-2">
                   {/* A delegated subscription is one the user never opted into

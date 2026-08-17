@@ -360,7 +360,9 @@
     "comment_never_edited": "未編集",
     "frozen_stale_hint": "作業が完了した時点の内容です。過去については正確ですが、現在もそうとは限りません。実行する前に現在の状態を確認してください。",
     "copy_description": "本文をコピー",
-    "copied": "コピーしました"
+    "copied": "コピーしました",
+    "comment_count_other": "コメント {{count}} 件",
+    "open_thread_count_other": "未解決 {{count}} 件"
   },
   "outline": {
     "collapse": "目次を閉じる",

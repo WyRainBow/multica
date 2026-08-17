@@ -360,7 +360,9 @@
     "comment_never_edited": "편집된 적 없음",
     "frozen_stale_hint": "작업이 끝난 시점의 내용입니다. 과거에 대해서는 정확하지만 지금도 그렇다고 볼 수는 없습니다. 이대로 실행하기 전에 현재 상태를 확인하세요.",
     "copy_description": "본문 복사",
-    "copied": "복사됨"
+    "copied": "복사됨",
+    "comment_count_other": "댓글 {{count}}개",
+    "open_thread_count_other": "미해결 {{count}}개"
   },
   "outline": {
     "collapse": "목차 접기",

@@ -360,7 +360,9 @@
     "unsubscribe_subtree_succeeded": "已取消订阅此任务及其子任务。",
     "subscription_update_failed": "无法更新订阅状态，请重试。",
     "copy_description": "复制正文",
-    "copied": "已复制"
+    "copied": "已复制",
+    "comment_count_other": "{{count}} 条评论",
+    "open_thread_count_other": "{{count}} 个讨论未解决"
   },
   "outline": {
     "collapse": "收起目录",

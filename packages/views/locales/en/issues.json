@@ -365,7 +365,11 @@
     "comment_never_edited": "Never edited",
     "frozen_stale_hint": "It records what was true when the work finished — accurate about the past, not necessarily about now. Check the current state before acting on it.",
     "copy_description": "Copy",
-    "copied": "Copied"
+    "copied": "Copied",
+    "comment_count_one": "{{count}} comment",
+    "comment_count_other": "{{count}} comments",
+    "open_thread_count_one": "{{count}} unresolved",
+    "open_thread_count_other": "{{count}} unresolved"
   },
   "outline": {
     "collapse": "Collapse outline",
