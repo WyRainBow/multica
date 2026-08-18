@@ -624,7 +624,9 @@ function CommentRow({
   const edit = useEditAttachmentState(issueId, entry, onEdit);
 
   const isOwn = entry.actor_type === "member" && entry.actor_id === currentUserId;
-  const canEditEntry = isOwn || (canModerate && entry.actor_type === "member");
+  // Mirrors the backend UpdateComment gate (`isAuthor || isAdmin`): admins
+  // may edit any comment, including agent-authored ones.
+  const canEditEntry = isOwn || canModerate;
   const canDeleteEntry = isOwn || canModerate;
   const [confirmDelete, setConfirmDelete] = useState(false);
 
@@ -959,7 +961,9 @@ function CommentCardImpl({
   const edit = useEditAttachmentState(issueId, entry, onEdit);
 
   const isOwn = entry.actor_type === "member" && entry.actor_id === currentUserId;
-  const canEditEntry = isOwn || (canModerate && entry.actor_type === "member");
+  // Mirrors the backend UpdateComment gate (`isAuthor || isAdmin`): admins
+  // may edit any comment, including agent-authored ones.
+  const canEditEntry = isOwn || canModerate;
   const canDeleteEntry = isOwn || canModerate;
   const [confirmDelete, setConfirmDelete] = useState(false);
 

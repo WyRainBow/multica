@@ -212,6 +212,55 @@ describe("comment edit — draft snapshot", () => {
   });
 });
 
+describe("comment edit — permission gate", () => {
+  // Mirrors backend UpdateComment (`isAuthor || isAdmin`): workspace admins
+  // may edit agent-authored comments; regular members may not.
+  const agentEntry = {
+    ...entry,
+    actor_type: "agent",
+    actor_id: "agt-1",
+  } as unknown as TimelineEntry;
+
+  function renderAgentCommentCard(canModerate: boolean) {
+    const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    return renderWithI18n(
+      <QueryClientProvider client={qc}>
+        <CommentCard
+          issueId="issue-1"
+          entry={agentEntry}
+          replies={[]}
+          currentUserId="user-1"
+          canModerate={canModerate}
+          onReply={vi.fn().mockResolvedValue(true)}
+          onEdit={vi.fn().mockResolvedValue(undefined)}
+          onDelete={vi.fn()}
+          onToggleReaction={vi.fn()}
+        />
+      </QueryClientProvider>,
+    );
+  }
+
+  function openMenu() {
+    const trigger = document.querySelector('button[aria-haspopup="menu"]');
+    if (!trigger) throw new Error("Expected the comment actions menu trigger");
+    fireEvent.click(trigger);
+  }
+
+  it("shows Edit on an agent-authored comment for moderators", async () => {
+    renderAgentCommentCard(true);
+    openMenu();
+    expect(await screen.findByText("Edit")).toBeInTheDocument();
+  });
+
+  it("hides Edit on an agent-authored comment for regular members", async () => {
+    renderAgentCommentCard(false);
+    openMenu();
+    // Copy is unconditional — its presence means the menu opened.
+    expect(await screen.findByText("Copy")).toBeInTheDocument();
+    expect(screen.queryByText("Edit")).toBeNull();
+  });
+});
+
 // MUL-4808 — comment edit had no upload gate: saving mid-upload persisted the
 // edit with the pending image stripped out of the body and its id unbound.
 describe("comment edit — upload submit gate", () => {

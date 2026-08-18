@@ -332,9 +332,17 @@ describe("canEditComment / canDeleteComment", () => {
       false,
     );
   });
-  it("denies edit on agent-authored comments", () => {
+  it("admin CAN edit an agent-authored comment", () => {
+    // Mirrors backend UpdateComment (`isAuthor || isAdmin`): admins moderate
+    // any comment regardless of author type.
     const c = makeComment({ author_type: "agent", author_id: "agt_1" });
-    const d = canEditComment(c, { userId: BOB, role: "owner" });
+    expect(canEditComment(c, { userId: BOB, role: "owner" }).allowed).toBe(
+      true,
+    );
+  });
+  it("denies agent-comment edit for non-admin members", () => {
+    const c = makeComment({ author_type: "agent", author_id: "agt_1" });
+    const d = canEditComment(c, { userId: BOB, role: "member" });
     expect(d.allowed).toBe(false);
     expect(d.reason).toBe("not_resource_owner");
   });

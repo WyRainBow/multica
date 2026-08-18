@@ -131,15 +131,10 @@ export function canEditComment(
   if (ctx.userId === null) {
     return deny("not_authenticated", "Sign in to edit comments.");
   }
-  // Only member-authored comments can be edited; agent-authored comments are
-  // immutable from any human's perspective.
-  if (comment.author_type !== "member") {
-    return deny(
-      "not_resource_owner",
-      "Agent-authored comments cannot be edited.",
-    );
-  }
   if (comment.author_id === ctx.userId) return ALLOW;
+  // Admins may edit any comment, including agent-authored ones — edit
+  // matches delete and mirrors the backend UpdateComment gate
+  // (`isAuthor || isAdmin`).
   if (isAdminLike(ctx.role)) return ALLOW;
   return deny(
     "not_resource_owner",
