@@ -9,8 +9,8 @@
  *
  * Item set (conditional, mirrors web's comment context menu):
  *   Reply (stub) · React… (opens nested sheet) · Copy · Select Text ·
- *   Copy Link · Resolve/Unresolve Thread (root only) · Delete (own only) ·
- *   Cancel
+ *   Copy Link · Resolve/Unresolve Thread (root only) · Edit (own only) ·
+ *   Delete (own only) · Cancel
  *
  * The nested React… sheet (5 quick emojis + More reactions… + Cancel) is
  * fired from INSIDE the outer sheet's completion callback rather than
@@ -69,6 +69,7 @@ export function useCommentLongPress(
       | { kind: "select" }
       | { kind: "copyLink" }
       | { kind: "resolve" }
+      | { kind: "edit" }
       | { kind: "delete" }
       | { kind: "cancel" };
 
@@ -91,6 +92,12 @@ export function useCommentLongPress(
         kind: "resolve",
       });
     }
+    // Edit sits directly above Delete (web's menu order) and shares the
+    // same own-only gate as Delete. Web additionally allows workspace
+    // admins to edit member comments; mobile has no workspace-role
+    // plumbing yet — see the divergence note in
+    // issue/[id]/comment/[commentId]/edit.tsx.
+    if (isOwn) push("Edit", { kind: "edit" });
     if (isOwn) push("Delete", { kind: "delete" });
     push("Cancel", { kind: "cancel" });
 
@@ -170,6 +177,17 @@ export function useCommentLongPress(
             resolveComment.mutate({
               commentId: entry.id,
               resolved: !entry.resolved_at,
+            });
+            return;
+          case "edit":
+            if (!wsSlug) return;
+            router.push({
+              pathname: "/[workspace]/issue/[id]/comment/[commentId]/edit",
+              params: {
+                workspace: wsSlug,
+                id: issueId,
+                commentId: entry.id,
+              },
             });
             return;
           case "delete":

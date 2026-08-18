@@ -226,6 +226,19 @@ export default function WorkspaceLayout() {
           name="issue/[id]/comment/[commentId]/emoji-picker"
           options={SHEET_OPTIONS}
         />
+        {/* Edit a comment's text — long-press → Edit on an own comment.
+            Modal (not formSheet): mirrors issue/[id]/edit.tsx, the
+            existing "edit a record's free text" gesture (Cancel/Save
+            header + dirty Alert + mention pipeline). The route body
+            overrides headerLeft/headerRight with Cancel/Save. */}
+        <Stack.Screen
+          name="issue/[id]/comment/[commentId]/edit"
+          options={{
+            title: "Edit Comment",
+            presentation: "modal",
+            headerLeft: () => <ModalCloseButton />,
+          }}
+        />
         {/* Project-detail formSheet pickers. */}
         <Stack.Screen
           name="project/[id]/picker/status"
