@@ -127,14 +127,34 @@ function BlockedIcon() {
 
 /** Filled circle + white X — the terminal-state counterpart to DoneIcon's
  *  filled circle + white checkmark. */
+/**
+ * The prohibition sign — ring plus one diagonal bar.
+ *
+ * Cancelled is terminal like Done, but it is not an OUTCOME the way Done is:
+ * nothing was produced, the work was called off. Drawing it as Done's twin (a
+ * filled disc with a white mark) gave the two the same weight and left the
+ * reader to tell them apart by which mark was inside a solid blob at 14px.
+ * A ring with a bar through it is read as "stopped" before it is read as a
+ * shape, which is the whole point of borrowing a sign everyone already knows.
+ *
+ * `progress={0}` reuses the same ring every other status draws, so the stroke
+ * weight matches the row it sits in rather than being tuned by eye.
+ *
+ * The bar runs to the ring's centreline (radius x cos45), the proportion the
+ * standard sign uses — pulled in any further and it reads as a dash floating
+ * inside a circle instead of one continuous stroke.
+ */
 function CancelledIcon() {
+  const reach = OUTER_R * Math.SQRT1_2;
   return (
-    <ProgressCircle progress={1}>
-      <path
-        d="M4.6 4.6 L9.4 9.4 M9.4 4.6 L4.6 9.4"
-        fill="none"
-        stroke="white"
-        strokeWidth={1.7}
+    <ProgressCircle progress={0}>
+      <line
+        x1={CX - reach}
+        y1={CY - reach}
+        x2={CX + reach}
+        y2={CY + reach}
+        stroke="currentColor"
+        strokeWidth={1.5}
         strokeLinecap="round"
       />
     </ProgressCircle>
@@ -168,7 +188,8 @@ export function StatusIcon({
   className?: string;
   inheritColor?: boolean;
 }) {
-  const knownStatus = status in STATUS_RENDERERS ? (status as IssueStatus) : null;
+  const knownStatus =
+    status in STATUS_RENDERERS ? (status as IssueStatus) : null;
   const cfg = knownStatus ? STATUS_CONFIG[knownStatus] : null;
   const Renderer = knownStatus ? STATUS_RENDERERS[knownStatus] : TodoIcon;
 
@@ -176,7 +197,7 @@ export function StatusIcon({
     <svg
       viewBox="0 0 14 14"
       fill="none"
-      className={`${className} ${inheritColor ? "" : cfg?.iconColor ?? "text-muted-foreground"} shrink-0`}
+      className={`${className} ${inheritColor ? "" : (cfg?.iconColor ?? "text-muted-foreground")} shrink-0`}
     >
       <Renderer />
     </svg>

@@ -13,19 +13,37 @@ describe("issue icons", () => {
     expect(icon).toHaveClass("text-muted-foreground");
   });
 
-  it("renders cancelled as a filled circle with a white X", () => {
+  it("renders cancelled as the prohibition sign", () => {
     const { container } = render(<StatusIcon status="cancelled" />);
-
-    // Terminal states are solid: like Done (filled circle + white check),
-    // Cancelled is a filled circle + white X, not an X inside a thin ring.
     const icon = container.querySelector("svg");
+
     expect(icon).toHaveClass("text-muted-foreground");
-    expect(icon!.innerHTML).toContain('fill="currentColor"');
-    expect(icon!.innerHTML).toContain('stroke="white"');
+    // A ring, not a disc: the filled version made Cancelled read as Done's
+    // twin, and the two are not the same kind of ending — Done produced
+    // something, Cancelled called the work off.
+    expect(icon!.innerHTML).not.toContain('stroke="white"');
+    expect(icon!.querySelector("line")).toBeTruthy();
+  });
+
+  // Cancelled and Blocked share the ring-and-bar family, so the bar length is
+  // load-bearing: Cancelled spans the ring (the standard sign), Blocked keeps
+  // a short bar inside it. Same shape at the same length would leave colour as
+  // the only difference between two different statuses.
+  it("draws a longer bar than blocked", () => {
+    const span = (status: "cancelled" | "blocked") => {
+      const { container } = render(<StatusIcon status={status} />);
+      const line = container.querySelector("svg line")!;
+      const x1 = Number(line.getAttribute("x1"));
+      const x2 = Number(line.getAttribute("x2"));
+      return Math.abs(x2 - x1);
+    };
+    expect(span("cancelled")).toBeGreaterThan(span("blocked"));
   });
 
   it("renders a muted fallback for unknown priority values", () => {
-    const { container } = render(<PriorityIcon priority="unexpected_priority" />);
+    const { container } = render(
+      <PriorityIcon priority="unexpected_priority" />,
+    );
 
     const icon = container.querySelector("svg");
     expect(icon).toHaveClass("text-muted-foreground");

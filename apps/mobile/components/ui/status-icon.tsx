@@ -115,15 +115,26 @@ function BlockedSlash({ color }: { color: string }) {
   );
 }
 
-function CancelledX() {
-  // White X drawn on top of the filled circle — the terminal-state
-  // counterpart to DoneCheck (filled circle + white checkmark).
+function CancelledSlash({ color }: { color: string }) {
+  // The prohibition sign. Cancelled is terminal like Done, but nothing was
+  // produced — the work was called off — so drawing it as Done's twin (filled
+  // disc + white mark) gave the two the same weight and left the reader
+  // telling them apart by which mark sat inside a solid blob at 14px.
+  //
+  // Shares the ring-and-bar family with Blocked, and is separated from it the
+  // way the palette already separates them: Blocked is destructive red with a
+  // short bar inside the ring, Cancelled is muted grey with a bar spanning the
+  // ring — which is what makes it read as the standard sign rather than a dash
+  // floating in a circle.
+  const reach = OUTER_R * Math.SQRT1_2;
   return (
-    <Path
-      d="M4.6 4.6 L9.4 9.4 M9.4 4.6 L4.6 9.4"
-      fill="none"
-      stroke="#ffffff"
-      strokeWidth={1.7}
+    <Line
+      x1={CX - reach}
+      y1={CY - reach}
+      x2={CX + reach}
+      y2={CY + reach}
+      stroke={color}
+      strokeWidth={1.5}
       strokeLinecap="round"
     />
   );
@@ -156,8 +167,8 @@ export function StatusIcon({
           <BlockedSlash color={color} />
         </ProgressCircle>
       ) : (
-        <ProgressCircle progress={1} color={color}>
-          <CancelledX />
+        <ProgressCircle progress={0} color={color}>
+          <CancelledSlash color={color} />
         </ProgressCircle>
       )}
     </Svg>
