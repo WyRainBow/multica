@@ -214,6 +214,21 @@ list table and on the app's comment card is a handle for humans, never a value
 to retype. The response carries `issue_id` and `parent_id`, so one comment
 reaches its issue and thread root without a search.
 
+## Fixing a comment you just wrote
+
+```bash
+multica issue comment edit <comment-id> --content "..."
+```
+
+For correcting your OWN comment moments after posting it — a typo, a wrong
+number, a broken link. The new body REPLACES the old one, so `get` it first
+when the fix touches only part of a long comment; a correction that ADDS
+information belongs in a reply instead, where the discussion keeps its history.
+Only the author and workspace admins may edit; attachments are left untouched.
+Mind the mentions in the new body: an edit re-runs `@agent` / `@squad` triggers
+(and cancels tasks the old body started), so an edit can hire an agent the
+original never called.
+
 ## Reading one passage of a description
 
 `multica issue get <id> --quote-start "..." --quote-end "..."` returns that span alone,

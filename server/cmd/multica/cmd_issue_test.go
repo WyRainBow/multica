@@ -422,6 +422,104 @@ func TestRunIssueCommentAddRejectsExternalAttachmentWithZeroUploads(t *testing.T
 	}
 }
 
+func newIssueCommentEditTestCmd() *cobra.Command {
+	cmd := &cobra.Command{Use: "edit"}
+	cmd.Flags().String("content", "", "")
+	cmd.Flags().Bool("content-stdin", false, "")
+	cmd.Flags().String("content-file", "", "")
+	cmd.Flags().Bool("allow-external-file", false, "")
+	cmd.Flags().String("output", "json", "")
+	return cmd
+}
+
+func TestRunIssueCommentEditPutsReplacementContent(t *testing.T) {
+	const commentID = "22222222-2222-4222-8222-222222222222"
+	var requests int
+	var method, path string
+	var body map[string]any
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requests++
+		method, path = r.Method, r.URL.Path
+		_ = json.NewDecoder(r.Body).Decode(&body)
+		_ = json.NewEncoder(w).Encode(map[string]any{"id": commentID, "content": body["content"]})
+	}))
+	defer srv.Close()
+	setCLITestServerEnv(t, srv.URL)
+	t.Setenv("MULTICA_TOKEN", "mat_test-token")
+
+	cmd := newIssueCommentEditTestCmd()
+	_ = cmd.Flags().Set("content", "fixed body")
+
+	if err := runIssueCommentEdit(cmd, []string{commentID}); err != nil {
+		t.Fatalf("edit comment: %v", err)
+	}
+	if requests != 1 {
+		t.Fatalf("expected exactly one request, got %d", requests)
+	}
+	if method != http.MethodPut || path != "/api/comments/"+commentID {
+		t.Errorf("expected PUT /api/comments/%s, got %s %s", commentID, method, path)
+	}
+	if got, _ := body["content"].(string); got != "fixed body" {
+		t.Errorf("expected replacement content in body, got %#v", body)
+	}
+	// The body must carry content and NOTHING else: the server keeps the
+	// existing attachments only when attachment_ids is absent — a present
+	// but empty list would wipe them.
+	if _, ok := body["attachment_ids"]; ok {
+		t.Errorf("edit must omit attachment_ids, got %v", body["attachment_ids"])
+	}
+}
+
+func TestRunIssueCommentEditRejectsShortIDBeforeAnyRequest(t *testing.T) {
+	var requests int
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requests++
+		w.WriteHeader(http.StatusNotFound)
+	}))
+	defer srv.Close()
+	setCLITestServerEnv(t, srv.URL)
+	t.Setenv("MULTICA_TOKEN", "mat_test-token")
+
+	cmd := newIssueCommentEditTestCmd()
+	_ = cmd.Flags().Set("content", "fixed body")
+
+	err := runIssueCommentEdit(cmd, []string{"c-12345"})
+	if err == nil || !strings.Contains(err.Error(), "not a full UUID") {
+		t.Fatalf("expected short-id rejection naming the full-UUID rule, got %v", err)
+	}
+	if requests != 0 {
+		t.Errorf("expected zero requests for a rejected id, got %d", requests)
+	}
+}
+
+func TestRunIssueCommentEditRequiresContent(t *testing.T) {
+	// Fails before any client is built, so no test server is needed.
+	cmd := newIssueCommentEditTestCmd()
+	err := runIssueCommentEdit(cmd, []string{"22222222-2222-4222-8222-222222222222"})
+	if err == nil || !strings.Contains(err.Error(), "--content") {
+		t.Fatalf("expected required-content error, got %v", err)
+	}
+}
+
+func TestIssueCommentEditHelpCarriesEditContract(t *testing.T) {
+	long := issueCommentEditCmd.Long
+	for _, want := range []string{
+		// Replace, not merge — the mistake this prevents is sending a delta.
+		"REPLACES",
+		// Who may edit, in the words an agent can match a 403 against.
+		"Only the author and workspace admins may edit",
+		// Attachments are out of scope for edit, and must stay that way.
+		"Attachments are left untouched",
+		// An edit re-fires mentions, so the mentions left in the new body
+		// can hire agents the original never called.
+		"re-runs",
+	} {
+		if !strings.Contains(long, want) {
+			t.Errorf("comment edit help missing %q, got:\n%s", want, long)
+		}
+	}
+}
+
 func newIssueCreateTestCmd() *cobra.Command {
 	cmd := &cobra.Command{Use: "create"}
 	cmd.Flags().String("title", "", "")

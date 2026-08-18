@@ -292,6 +292,29 @@ var issueCommentAddCmd = &cobra.Command{
 	RunE:  runIssueCommentAdd,
 }
 
+var issueCommentEditCmd = &cobra.Command{
+	Use:   "edit <comment-id>",
+	Short: "Replace a comment's content",
+	Long: `Replace a comment's content.
+
+The new body REPLACES the old one — nothing merges. When you only mean to fix
+part of a long comment, read it first with ` + "`comment get`" + ` and send the whole
+corrected body. The comment keeps its id, place, and author, and readers see
+it marked as edited.
+
+Only the author and workspace admins may edit; the server rejects anyone else
+with 403. Attachments are left untouched.
+
+An edit re-runs ` + "`@agent` / `@squad`" + ` mentions against the new body (and cancels
+tasks the OLD body triggered), so an edit can hire an agent the original
+never called — mind the mentions you leave in.
+
+Use ` + "`--content-file` or `--content-stdin`" + ` for multi-line bodies; ` + "`--content`" + `
+decodes ` + "`\\n`" + ` escapes instead.`,
+	Args: exactArgs(1),
+	RunE: runIssueCommentEdit,
+}
+
 var issueCommentGetCmd = &cobra.Command{
 	Use:   "get <comment-id>",
 	Short: "Read one comment by id",
@@ -533,6 +556,7 @@ func init() {
 	issueCommentCmd.AddCommand(issueCommentListCmd)
 	issueCommentCmd.AddCommand(issueCommentGetCmd)
 	issueCommentCmd.AddCommand(issueCommentAddCmd)
+	issueCommentCmd.AddCommand(issueCommentEditCmd)
 	issueCommentCmd.AddCommand(issueCommentDeleteCmd)
 	issueCommentCmd.AddCommand(issueCommentResolveCmd)
 	issueCommentCmd.AddCommand(issueCommentUnresolveCmd)
@@ -692,6 +716,11 @@ func init() {
 		"File this comment under a phase of the issue — name (case-insensitive, unique prefix is enough) or UUID. List them with `multica issue phase list <issue-id>`.")
 	issueCommentAddCmd.Flags().StringSlice("attachment", nil, "File path(s) to attach (can be specified multiple times)")
 	issueCommentAddCmd.Flags().String("output", "json", "Output format: table or json")
+	issueCommentEditCmd.Flags().String("content", "", "Replacement comment content (decodes \\n, \\r, \\t, \\\\; pipe via --content-stdin for multi-line bodies or to preserve literal backslashes)")
+	issueCommentEditCmd.Flags().Bool("content-stdin", false, "Read replacement content from stdin (preserves multi-line content verbatim)")
+	issueCommentEditCmd.Flags().String("content-file", "", "Read replacement content from a UTF-8 file (preserves multi-line content verbatim; use this on Windows when stdin piping mangles non-ASCII bytes). The path must be inside the current working directory unless --allow-external-file is set.")
+	issueCommentEditCmd.Flags().Bool("allow-external-file", false, "Allow --content-file to read a path outside the current working directory. Off by default so a stale file from another run/environment can't be picked up (MUL-4252).")
+	issueCommentEditCmd.Flags().String("output", "json", "Output format: table or json")
 
 	// issue comment resolve/unresolve
 	issueCommentResolveCmd.Flags().String("output", "json", "Output format: table or json")
@@ -2469,6 +2498,57 @@ func runIssueCommentAdd(cmd *cobra.Command, args []string) error {
 	}
 
 	fmt.Fprintf(os.Stderr, "Comment added to issue %s.\n", issueRef.Display)
+
+	output, _ := cmd.Flags().GetString("output")
+	if output == "table" {
+		return nil
+	}
+	return cli.PrintJSON(os.Stdout, result)
+}
+
+func runIssueCommentEdit(cmd *cobra.Command, args []string) error {
+	commentID := strings.TrimSpace(args[0])
+	// Same guard as `comment get`: the server would 400 a truncated id, but
+	// only the CLI knows the caller probably copied a shortened one out of
+	// a table and can say where the full UUID comes from.
+	if !uuidRegexp.MatchString(commentID) {
+		return fmt.Errorf(
+			"comment id %q is not a full UUID; copy it from a comment card in the app, "+
+				"or from the ID column of `multica issue comment list <issue-id>`", args[0])
+	}
+
+	content, hasContent, err := resolveTextFlag(cmd, "content")
+	if err != nil {
+		return err
+	}
+	if !hasContent {
+		return fmt.Errorf("--content, --content-stdin, or --content-file is required")
+	}
+	// `edit` takes no --attachment, so the escape hatch stays `add`: say so
+	// in the guard's remedy rather than pointing at a flag this command
+	// doesn't have.
+	if err := guardLocalPathLinks(content, "comment body",
+		"Deliver the file itself with `multica issue comment add <issue-id> --attachment <path>` (repeatable) and drop the link."); err != nil {
+		return err
+	}
+
+	client, err := newAPIClient(cmd)
+	if err != nil {
+		return err
+	}
+
+	ctx, cancel := cli.APIContext(context.Background())
+	defer cancel()
+
+	// No attachment_ids key: the server treats a missing key as "keep the
+	// existing attachments" and only a non-nil (even empty) list as replace.
+	body := map[string]any{"content": content}
+	var result map[string]any
+	if err := client.PutJSON(ctx, "/api/comments/"+commentID, body, &result); err != nil {
+		return fmt.Errorf("edit comment: %w", err)
+	}
+
+	fmt.Fprintf(os.Stderr, "Comment %s updated.\n", commentID)
 
 	output, _ := cmd.Flags().GetString("output")
 	if output == "table" {

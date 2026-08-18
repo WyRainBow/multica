@@ -27,6 +27,17 @@ read. Unresolve the comment that actually carries `resolved_at` first.
 | Implicit comment routing is off in this fork | `server/internal/handler/comment.go:2096` (`implicitCommentRoutingEnabled`) |
 |---|---|
 
+## `multica issue comment edit` — replace the body, keep everything else
+
+| Behavior | File:line |
+|---|---|
+| `comment edit` command + replace/permission/mention contract in help | `server/cmd/multica/cmd_issue.go:295` |
+| CLI PUTs `{content}` only — no `attachment_ids` key | `server/cmd/multica/cmd_issue.go:2509` (`runIssueCommentEdit`) |
+| Author-or-admin gate (403 otherwise) | `server/internal/handler/comment.go:3327` (`isAuthor`/`isAdmin`) |
+| Absent `attachment_ids` preserves attachments; only a non-nil list replaces | `server/internal/handler/comment.go:3353` (`replaceAttachments := req.AttachmentIDs != nil`) |
+| Edit cancels tasks the OLD body triggered | `server/internal/handler/comment.go:3399` (`CancelTasksByTriggerComment`) |
+| Edit re-runs `@agent`/`@squad` triggers against the new body | `server/internal/handler/comment.go:3422` (`retriggerEditedComment`) |
+
 ## `multica issue comment add --anchor` — comment on one passage
 
 | Behavior | File:line |
