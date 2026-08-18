@@ -115,13 +115,15 @@ function BlockedSlash({ color }: { color: string }) {
   );
 }
 
-function CancelledX({ color }: { color: string }) {
+function CancelledX() {
+  // White X drawn on top of the filled circle — the terminal-state
+  // counterpart to DoneCheck (filled circle + white checkmark).
   return (
     <Path
-      d="M5 5 L9 9 M9 5 L5 9"
+      d="M4.6 4.6 L9.4 9.4 M9.4 4.6 L4.6 9.4"
       fill="none"
-      stroke={color}
-      strokeWidth={1.5}
+      stroke="#ffffff"
+      strokeWidth={1.7}
       strokeLinecap="round"
     />
   );
@@ -154,8 +156,8 @@ export function StatusIcon({
           <BlockedSlash color={color} />
         </ProgressCircle>
       ) : (
-        <ProgressCircle progress={0} color={color}>
-          <CancelledX color={color} />
+        <ProgressCircle progress={1} color={color}>
+          <CancelledX />
         </ProgressCircle>
       )}
     </Svg>

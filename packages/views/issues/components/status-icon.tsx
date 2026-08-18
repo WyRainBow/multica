@@ -125,14 +125,16 @@ function BlockedIcon() {
   );
 }
 
+/** Filled circle + white X — the terminal-state counterpart to DoneIcon's
+ *  filled circle + white checkmark. */
 function CancelledIcon() {
   return (
-    <ProgressCircle progress={0}>
+    <ProgressCircle progress={1}>
       <path
-        d="M5 5 L9 9 M9 5 L5 9"
+        d="M4.6 4.6 L9.4 9.4 M9.4 4.6 L4.6 9.4"
         fill="none"
-        stroke="currentColor"
-        strokeWidth={1.5}
+        stroke="white"
+        strokeWidth={1.7}
         strokeLinecap="round"
       />
     </ProgressCircle>
