@@ -12,6 +12,7 @@ type ModalType =
   | "issue-add-child"
   | "issue-delete-confirm"
   | "issue-run-confirm"
+  | "issue-done-comment-review"
   | null;
 
 interface ModalStore {

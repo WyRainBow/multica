@@ -39,6 +39,7 @@
     "./issues/mutations": "./issues/mutations.ts",
     "./issues/timeline-sort": "./issues/timeline-sort.ts",
     "./issues/comment-trigger-outcomes": "./issues/comment-trigger-outcomes.ts",
+    "./issues/done-comment-review": "./issues/done-comment-review.ts",
     "./issues/date": "./issues/date.ts",
     "./issues/ws-updaters": "./issues/ws-updaters.ts",
     "./issues/surface/*": "./issues/surface/*.ts",

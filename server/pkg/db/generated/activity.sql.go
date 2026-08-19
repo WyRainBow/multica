@@ -202,3 +202,36 @@ func (q *Queries) ListActivitiesForIssue(ctx context.Context, arg ListActivities
 	}
 	return items, nil
 }
+
+const listDoneCommentReviewReceipts = `-- name: ListDoneCommentReviewReceipts :many
+SELECT details FROM activity_log
+WHERE issue_id = $1
+  AND workspace_id = $2
+  AND action = 'comments_reviewed_before_done'
+ORDER BY created_at DESC, id DESC
+`
+
+type ListDoneCommentReviewReceiptsParams struct {
+	IssueID     pgtype.UUID `json:"issue_id"`
+	WorkspaceID pgtype.UUID `json:"workspace_id"`
+}
+
+func (q *Queries) ListDoneCommentReviewReceipts(ctx context.Context, arg ListDoneCommentReviewReceiptsParams) ([][]byte, error) {
+	rows, err := q.db.Query(ctx, listDoneCommentReviewReceipts, arg.IssueID, arg.WorkspaceID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := [][]byte{}
+	for rows.Next() {
+		var details []byte
+		if err := rows.Scan(&details); err != nil {
+			return nil, err
+		}
+		items = append(items, details)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}

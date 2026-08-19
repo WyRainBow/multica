@@ -51,6 +51,41 @@ export interface UpdateIssueRequest {
    *  context (MUL-3375). Only consumed when a run actually starts. Control
    *  field — strip from optimistic cache patches. */
   handoff_note?: string;
+  /** Explicit dispositions required when unresolved discussions block done. */
+  comment_review?: DoneCommentReview;
+}
+
+export interface DoneCommentDisposition {
+  issue_id?: string;
+  thread_root_id: string;
+  last_activity_at: string;
+  action: "resolve" | "keep_unresolved";
+  resolution_comment_id?: string;
+}
+
+export interface DoneCommentReview {
+  summary: string;
+  dispositions: DoneCommentDisposition[];
+}
+
+export interface DoneCommentReviewThread {
+  thread_root_id: string;
+  content: string;
+  reply_count: number;
+  last_activity_at: string;
+  pinned: boolean;
+}
+
+export interface DoneCommentReviewIssue {
+  issue_id: string;
+  identifier: string;
+  threads: DoneCommentReviewThread[];
+}
+
+export interface DoneCommentReviewRequired {
+  code: "comment_review_required";
+  error: string;
+  issues: DoneCommentReviewIssue[];
 }
 
 /**

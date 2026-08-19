@@ -32,6 +32,13 @@ INSERT INTO activity_log (
 ) VALUES ($1, $2, $3, $4, $5, $6)
 RETURNING *;
 
+-- name: ListDoneCommentReviewReceipts :many
+SELECT details FROM activity_log
+WHERE issue_id = @issue_id
+  AND workspace_id = @workspace_id
+  AND action = 'comments_reviewed_before_done'
+ORDER BY created_at DESC, id DESC;
+
 -- name: HasSquadLeaderNoActionEvaluationForTask :one
 SELECT EXISTS (
   SELECT 1

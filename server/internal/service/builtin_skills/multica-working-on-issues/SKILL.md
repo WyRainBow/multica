@@ -168,6 +168,16 @@ on it. These are the contracts, not advice:
 - **`done`** on a child issue posts a system comment on its parent. If a PR
   carries close intent (`Closes MUL-XXXX`), it advances the issue to `done`
   itself on merge — you do not also need to flip it manually.
+- **Interactive `done` changes review open comment threads first.** A 409 with
+  `code=comment_review_required` leaves the issue unchanged and returns every
+  blocking root plus its `last_activity_at` snapshot. Read every thread and
+  resolve only the discussions you judge must be closed before Done; for each
+  remaining thread explicitly choose `keep_unresolved`. Then submit one
+  aggregate summary. With the CLI, put
+  `{"summary":"...","dispositions":[...]}` in a workspace-local JSON file and
+  retry with `multica issue status <id> done --comment-review-file <file>`.
+  Never resolve merely to clear the gate. A new reply changes the snapshot and
+  requires another review; an unchanged explicit keep remains valid.
 - **`cancelled`** is a terminal, user-driven decision to close the issue. Like
   `done` it enqueues no new agent work, but it does **not** stop tasks already in
   flight — a run in progress keeps going (MUL-4465). To stop a running task,

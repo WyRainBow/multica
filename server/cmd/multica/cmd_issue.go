@@ -652,6 +652,8 @@ func init() {
 
 	// issue status
 	issueStatusCmd.Flags().String("output", "table", "Output format: table or json")
+	issueStatusCmd.Flags().String("comment-review-file", "", "JSON file with summary and per-thread resolve/keep_unresolved dispositions returned by the done gate")
+	issueStatusCmd.Flags().Bool("allow-external-file", false, "Allow --comment-review-file outside the current working directory")
 
 	// issue reorder
 	registerIssueReorderFlags(issueReorderCmd)
@@ -1823,7 +1825,10 @@ func runIssueStatus(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("resolve issue: %w", err)
 	}
 
-	body := map[string]any{"status": status}
+	body, err := issueStatusBody(cmd, status)
+	if err != nil {
+		return err
+	}
 	var result map[string]any
 	if err := client.PutJSON(ctx, "/api/issues/"+issueRef.ID, body, &result); err != nil {
 		return fmt.Errorf("update status: %w", err)

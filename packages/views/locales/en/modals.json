@@ -64,6 +64,18 @@
     "create_will_start_squad": "{{name}}'s leader will review it and start assigning work right after creation.",
     "create_parked": "Assigned — won't start working in Backlog."
   },
+  "done_comment_review": {
+    "title": "Review comments before marking done",
+    "description": "Review every discussion. Resolve only what you judge must be resolved before Done, and explicitly keep the rest open. Multica will not choose conclusions for you.",
+    "pinned": "Pinned",
+    "empty": "Empty comment",
+    "keep": "Keep this thread unresolved",
+    "summary_placeholder": "Summarize what was resolved and why the remaining threads stay open…",
+    "back": "Back to discussions",
+    "confirm": "Confirm review and mark done",
+    "changed": "A discussion changed. Review the refreshed list.",
+    "failed": "Failed to complete comment review"
+  },
   "create_squad": {
     "title": "Create Squad",
     "description": "Create a collaborative squad with a leader agent and optional additional members.",

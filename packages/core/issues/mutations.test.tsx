@@ -519,6 +519,36 @@ describe("useUpdateIssue — optimistic move keeps every bucketed board in sync"
     expect(qc.getQueryData<Issue>(detailKey)?.description).toBe("local edit");
   });
 
+  it("does not leak the done comment review control field into optimistic issue caches", async () => {
+    let resolve!: (issue: Issue) => void;
+    updateIssue.mockReturnValue(new Promise<Issue>((r) => { resolve = r; }));
+    const detailKey = issueKeys.detail(WS_ID, "issue-1");
+    qc.setQueryData<Issue>(detailKey, makeIssue(1));
+    const review = {
+      summary: "Reviewed the discussion.",
+      dispositions: [{
+        thread_root_id: "thread-1",
+        last_activity_at: "2025-01-01T00:00:00Z",
+        action: "keep_unresolved" as const,
+      }],
+    };
+
+    const { result } = renderHook(() => useUpdateIssue(), {
+      wrapper: createWrapper(qc),
+    });
+    act(() => {
+      result.current.mutate({ id: "issue-1", status: "done", comment_review: review });
+    });
+
+    await waitFor(() => expect(updateIssue).toHaveBeenCalledWith("issue-1", {
+      status: "done",
+      comment_review: review,
+    }));
+    expect(qc.getQueryData<Issue>(detailKey)).not.toHaveProperty("comment_review");
+    expect(qc.getQueryData<ListIssuesCache>(wsKey)).not.toHaveProperty("comment_review");
+    resolve(makeIssue(1, { status: "done" }));
+  });
+
   it("uses server move intent while keeping provisional position optimistic-only", async () => {
     moveIssue.mockResolvedValue(
       makeIssue(1, { status: "in_progress", position: 15 }),
@@ -892,6 +922,36 @@ describe("useBatchUpdateIssues — optimistic patch covers filtered boards too",
     await act(async () => {
       resolve({ updated: 1 });
     });
+  });
+
+  it("does not leak the done comment review control field into batch optimistic caches", async () => {
+    let resolve!: (r: { updated: number }) => void;
+    batchUpdateIssues.mockReturnValue(new Promise<{ updated: number }>((r) => { resolve = r; }));
+    const detailKey = issueKeys.detail(WS_ID, "issue-1");
+    qc.setQueryData<Issue>(detailKey, makeIssue(1));
+    const review = {
+      summary: "Reviewed the discussion.",
+      dispositions: [{
+        thread_root_id: "thread-1",
+        last_activity_at: "2025-01-01T00:00:00Z",
+        action: "keep_unresolved" as const,
+      }],
+    };
+
+    const { result } = renderHook(() => useBatchUpdateIssues(), {
+      wrapper: createWrapper(qc),
+    });
+    act(() => {
+      result.current.mutate({ ids: ["issue-1"], updates: { status: "done", comment_review: review } });
+    });
+
+    await waitFor(() => expect(batchUpdateIssues).toHaveBeenCalledWith(["issue-1"], {
+      status: "done",
+      comment_review: review,
+    }));
+    expect(qc.getQueryData<Issue>(detailKey)).not.toHaveProperty("comment_review");
+    expect(qc.getQueryData<ListIssuesCache>(wsKey)).not.toHaveProperty("comment_review");
+    resolve({ updated: 1 });
   });
 
   it("rolls both caches back when the request fails", async () => {

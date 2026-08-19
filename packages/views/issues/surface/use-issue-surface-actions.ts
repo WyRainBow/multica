@@ -15,6 +15,7 @@ import {
 } from "./actions-context";
 import type { IssueCreateDefaults } from "./types";
 import { useT } from "../../i18n";
+import { openDoneCommentReview } from "../actions/open-done-comment-review";
 
 export type MoveIssueUpdates = Pick<
   UpdateIssueRequest,
@@ -60,12 +61,14 @@ export function useIssueSurfaceActions({
         {
           onSuccess: () => options?.onSuccess?.(),
           onError: (err) => {
-            toast.error(
-              err instanceof Error && err.message
-                ? err.message
-                : (options?.errorMessage ??
-                    t(($) => $.detail.toast_move_issue_failed)),
-            );
+            if (!openDoneCommentReview(err)) {
+              toast.error(
+                err instanceof Error && err.message
+                  ? err.message
+                  : (options?.errorMessage ??
+                      t(($) => $.detail.toast_move_issue_failed)),
+              );
+            }
             options?.onError?.(err);
           },
           onSettled: () => options?.onSettled?.(),
@@ -90,11 +93,13 @@ export function useIssueSurfaceActions({
         },
         {
           onError: (err) => {
-            toast.error(
-              err instanceof Error && err.message
-                ? err.message
-                : t(($) => $.detail.toast_move_issue_failed),
-            );
+            if (!openDoneCommentReview(err)) {
+              toast.error(
+                err instanceof Error && err.message
+                  ? err.message
+                  : t(($) => $.detail.toast_move_issue_failed),
+              );
+            }
           },
           onSettled,
         },

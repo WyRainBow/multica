@@ -17,6 +17,7 @@ import { copyText } from "@multica/ui/lib/clipboard";
 import { useNavigation } from "../../navigation";
 import { useT } from "../../i18n";
 import { useIssueSurfaceActionsOptional } from "../surface/actions-context";
+import { openDoneCommentReview } from "./open-done-comment-review";
 
 export interface UseIssueActionsResult {
   isPinned: boolean;
@@ -107,12 +108,15 @@ export function useIssueActions(issue: Issue | null): UseIssueActionsResult {
         updateIssue.mutate(
           { id: issueId, ...updates },
           {
-            onError: (err) =>
-              toast.error(
-                err instanceof Error && err.message
-                  ? err.message
-                  : t(($) => $.detail.update_failed),
-              ),
+            onError: (err) => {
+              if (!openDoneCommentReview(err)) {
+                toast.error(
+                  err instanceof Error && err.message
+                    ? err.message
+                    : t(($) => $.detail.update_failed),
+                );
+              }
+            },
           },
         );
       }

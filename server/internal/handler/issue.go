@@ -2849,6 +2849,10 @@ type UpdateIssueRequest struct {
 	// MUL-3375). Only consumed when a run actually starts: SuppressRun=true or
 	// a parked/non-triggering write drops it. Never fabricates a comment.
 	HandoffNote string `json:"handoff_note,omitempty"`
+	// CommentReview carries the actor's explicit per-thread decisions when a
+	// non-done issue enters done. It is a control field: it is audited as one
+	// activity row and never stored on the issue itself.
+	CommentReview *DoneCommentReviewRequest `json:"comment_review,omitempty"`
 }
 
 // issueBodyFields are the two the record is made of. Everything else about a
@@ -3239,6 +3243,34 @@ func (h *Handler) UpdateIssue(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	actorType, actorID := h.resolveActor(r, userID, workspaceID)
+	var doneReview doneReviewEvaluation
+	if req.Status != nil && prevIssue.Status != "done" && *req.Status == "done" {
+		prefix := h.getIssuePrefix(r.Context(), prevIssue.WorkspaceID)
+		doneReview, err = h.evaluateDoneCommentReview(r.Context(), prevIssue, issueToResponse(prevIssue, prefix).Identifier, req.CommentReview)
+		if err != nil {
+			writeError(w, http.StatusBadRequest, err.Error())
+			return
+		}
+		if doneReview.Blocker != nil {
+			writeDoneReviewRequired(w, []doneReviewIssueBlocker{*doneReview.Blocker})
+			return
+		}
+		if err := h.applyDoneReviewResolutions(r, prevIssue, doneReview.Resolutions, actorType, actorID); err != nil {
+			writeError(w, http.StatusInternalServerError, "failed to apply comment review")
+			return
+		}
+		doneReview, err = h.recheckDoneCommentReview(r.Context(), prevIssue, issueToResponse(prevIssue, prefix).Identifier, req.CommentReview)
+		if err != nil {
+			writeError(w, http.StatusBadRequest, err.Error())
+			return
+		}
+		if doneReview.Blocker != nil {
+			writeDoneReviewRequired(w, []doneReviewIssueBlocker{*doneReview.Blocker})
+			return
+		}
+	}
+
 	var issue db.Issue
 	if req.Description != nil {
 		var lockedPrev db.Issue
@@ -3282,9 +3314,6 @@ func (h *Handler) UpdateIssue(w http.ResponseWriter, r *http.Request) {
 	prevDueDate := dateToPtr(prevIssue.DueDate)
 	dueDateChanged := prevDueDate != resp.DueDate && (prevDueDate == nil) != (resp.DueDate == nil) ||
 		(prevDueDate != nil && resp.DueDate != nil && *prevDueDate != *resp.DueDate)
-
-	// Determine actor identity: agent (via X-Agent-ID header) or member.
-	actorType, actorID := h.resolveActor(r, userID, workspaceID)
 
 	h.publish(protocol.EventIssueUpdated, workspaceID, actorType, actorID, map[string]any{
 		"issue":               resp,
@@ -3348,6 +3377,11 @@ func (h *Handler) UpdateIssue(w http.ResponseWriter, r *http.Request) {
 	// fails best-effort.
 	if statusChanged {
 		h.notifyParentOfChildDone(r.Context(), prevIssue, issue)
+	}
+	if statusChanged && issue.Status == "done" {
+		if err := h.recordDoneCommentReview(r.Context(), issue, req.CommentReview, doneReview.Accepted, actorType, actorID); err != nil {
+			slog.Warn("record done comment review failed", append(logger.RequestAttrs(r), "error", err, "issue_id", id)...)
+		}
 	}
 
 	writeJSON(w, http.StatusOK, resp)
@@ -3750,6 +3784,64 @@ func (h *Handler) BatchUpdateIssues(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
+	actorType, actorID := h.resolveActor(r, userID, workspaceID)
+	batchDoneReviews := make(map[string]doneReviewEvaluation)
+	if req.Updates.Status != nil && *req.Updates.Status == "done" {
+		blockers := make([]doneReviewIssueBlocker, 0)
+		issuesToResolve := make([]db.Issue, 0)
+		for _, issueID := range req.IssueIDs {
+			issueUUID, parseErr := util.ParseUUID(issueID)
+			if parseErr != nil {
+				continue
+			}
+			prev, getErr := h.Queries.GetIssueInWorkspace(r.Context(), db.GetIssueInWorkspaceParams{ID: issueUUID, WorkspaceID: wsUUID})
+			if getErr != nil || prev.Status == "done" {
+				continue
+			}
+			prefix := h.getIssuePrefix(r.Context(), prev.WorkspaceID)
+			evaluation, evalErr := h.evaluateDoneCommentReview(r.Context(), prev, issueToResponse(prev, prefix).Identifier, req.Updates.CommentReview)
+			if evalErr != nil {
+				writeError(w, http.StatusBadRequest, evalErr.Error())
+				return
+			}
+			batchDoneReviews[uuidToString(prev.ID)] = evaluation
+			if evaluation.Blocker != nil {
+				blockers = append(blockers, *evaluation.Blocker)
+			}
+			issuesToResolve = append(issuesToResolve, prev)
+		}
+		if len(blockers) > 0 {
+			writeDoneReviewRequired(w, blockers)
+			return
+		}
+		for _, issue := range issuesToResolve {
+			evaluation := batchDoneReviews[uuidToString(issue.ID)]
+			if err := h.applyDoneReviewResolutions(r, issue, evaluation.Resolutions, actorType, actorID); err != nil {
+				writeError(w, http.StatusInternalServerError, "failed to apply comment review")
+				return
+			}
+		}
+		// Resolutions themselves can race with a new reply. Re-evaluate every
+		// issue after applying them and before the first status write so a batch
+		// remains all-or-nothing when any thread snapshot changed.
+		blockersAfterReview := make([]doneReviewIssueBlocker, 0)
+		for _, issue := range issuesToResolve {
+			prefix := h.getIssuePrefix(r.Context(), issue.WorkspaceID)
+			evaluation, evalErr := h.recheckDoneCommentReview(r.Context(), issue, issueToResponse(issue, prefix).Identifier, req.Updates.CommentReview)
+			if evalErr != nil {
+				writeError(w, http.StatusBadRequest, evalErr.Error())
+				return
+			}
+			batchDoneReviews[uuidToString(issue.ID)] = evaluation
+			if evaluation.Blocker != nil {
+				blockersAfterReview = append(blockersAfterReview, *evaluation.Blocker)
+			}
+		}
+		if len(blockersAfterReview) > 0 {
+			writeDoneReviewRequired(w, blockersAfterReview)
+			return
+		}
+	}
 	updated := 0
 	// Children that transitioned into a terminal status this batch, collected so
 	// the parent/stage notification is evaluated once against the final state
@@ -3928,8 +4020,6 @@ func (h *Handler) BatchUpdateIssues(w http.ResponseWriter, r *http.Request) {
 
 		prefix := h.getIssuePrefix(r.Context(), issue.WorkspaceID)
 		resp := issueToResponse(issue, prefix)
-		actorType, actorID := h.resolveActor(r, userID, workspaceID)
-
 		assigneeChanged := (req.Updates.AssigneeType != nil || req.Updates.AssigneeID != nil) &&
 			(prevIssue.AssigneeType.String != issue.AssigneeType.String || uuidToString(prevIssue.AssigneeID) != uuidToString(issue.AssigneeID))
 		statusChanged := req.Updates.Status != nil && prevIssue.Status != issue.Status
@@ -3976,6 +4066,12 @@ func (h *Handler) BatchUpdateIssues(w http.ResponseWriter, r *http.Request) {
 		if statusChanged && issue.ParentIssueID.Valid &&
 			!isTerminalChildStatus(prevIssue.Status) && isTerminalChildStatus(issue.Status) {
 			childDoneCompleted = append(childDoneCompleted, issue)
+		}
+		if statusChanged && issue.Status == "done" {
+			evaluation := batchDoneReviews[uuidToString(issue.ID)]
+			if err := h.recordDoneCommentReview(r.Context(), issue, req.Updates.CommentReview, evaluation.Accepted, actorType, actorID); err != nil {
+				slog.Warn("record batch done comment review failed", "issue_id", issueID, "error", err)
+			}
 		}
 
 		updated++

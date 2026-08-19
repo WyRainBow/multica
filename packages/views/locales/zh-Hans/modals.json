@@ -64,6 +64,18 @@
     "create_will_start_squad": "创建后 {{name}} 的队长会评估并开始安排任务。",
     "create_parked": "已指派——在 backlog 中不会开始工作。"
   },
+  "done_comment_review": {
+    "title": "完成前先处理评论",
+    "description": "请检查每条讨论，只解决你认为完成前必须解决的问题，其余逐条明确保留。Multica 不会替你判断结论。",
+    "pinned": "已置顶",
+    "empty": "空评论",
+    "keep": "保留该线程为未解决",
+    "summary_placeholder": "汇总哪些讨论已解决，以及其余讨论为何继续保留……",
+    "back": "返回讨论",
+    "confirm": "确认收尾并完成任务",
+    "changed": "有讨论发生了变化，请重新检查最新列表。",
+    "failed": "评论收尾失败"
+  },
   "create_squad": {
     "title": "创建 Squad",
     "description": "创建一个由 Leader Agent 协调团队的协作 Squad，可选添加成员。",

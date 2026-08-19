@@ -117,6 +117,44 @@ JOIN comment c ON c.id = sr.id
 JOIN thread_stats ts ON ts.root_id = sr.id
 ORDER BY c.created_at ASC, c.id ASC;
 
+-- name: ListDoneReviewThreadsForIssue :many
+-- Every ordinary top-level discussion with the thread snapshot and its current
+-- conclusion, if any. The done gate must inspect the complete issue rather
+-- than the timeline's defensive display window.
+WITH RECURSIVE membership AS (
+    SELECT c.id AS comment_id, c.id AS root_id, c.created_at, c.resolved_at
+    FROM comment c
+    WHERE c.issue_id = @issue_id
+      AND c.workspace_id = @workspace_id
+      AND c.parent_id IS NULL
+      AND c.type = 'comment'
+    UNION ALL
+    SELECT c.id, m.root_id, c.created_at, c.resolved_at
+    FROM comment c
+    JOIN membership m ON c.parent_id = m.comment_id
+    WHERE c.issue_id = @issue_id
+      AND c.workspace_id = @workspace_id
+), thread_state AS (
+    SELECT root_id,
+           (COUNT(*) - 1)::int AS reply_count,
+           MAX(created_at)::timestamptz AS last_activity_at,
+           ((array_agg(comment_id ORDER BY resolved_at DESC NULLS LAST)
+               FILTER (WHERE resolved_at IS NOT NULL))[1])::uuid AS resolution_comment_id,
+           MAX(resolved_at)::timestamptz AS resolution_at
+    FROM membership
+    GROUP BY root_id
+)
+SELECT root.id AS thread_root_id,
+       root.content,
+       root.pinned_at,
+       state.reply_count,
+       state.last_activity_at,
+       state.resolution_comment_id,
+       state.resolution_at
+FROM thread_state state
+JOIN comment root ON root.id = state.root_id
+ORDER BY root.created_at ASC, root.id ASC;
+
 -- name: ListRootCommentsSinceForIssue :many
 -- Top-level comments created strictly after @since, each annotated with the
 -- same reply_count / last_activity_at stats as ListRootCommentsForIssue. The

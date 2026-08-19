@@ -249,6 +249,7 @@ export function useUpdateIssue() {
         handoff_note: _handoffNote,
         description: _description,
         description_base: _descriptionBase,
+        comment_review: _commentReview,
         ...patch
       } = data;
       // Fire-and-forget cancelQueries — keeps onMutate synchronous so the
@@ -528,6 +529,7 @@ export function useBatchUpdateIssues() {
         handoff_note: _handoffNote,
         description: _description,
         description_base: _descriptionBase,
+        comment_review: _commentReview,
         ...patch
       } = updates;
       await qc.cancelQueries({ queryKey: issueKeys.list(wsId) });

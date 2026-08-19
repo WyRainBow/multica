@@ -742,6 +742,88 @@ func (q *Queries) ListCommentsSinceForIssue(ctx context.Context, arg ListComment
 	return items, nil
 }
 
+const listDoneReviewThreadsForIssue = `-- name: ListDoneReviewThreadsForIssue :many
+WITH RECURSIVE membership AS (
+    SELECT c.id AS comment_id, c.id AS root_id, c.created_at, c.resolved_at
+    FROM comment c
+    WHERE c.issue_id = $1
+      AND c.workspace_id = $2
+      AND c.parent_id IS NULL
+      AND c.type = 'comment'
+    UNION ALL
+    SELECT c.id, m.root_id, c.created_at, c.resolved_at
+    FROM comment c
+    JOIN membership m ON c.parent_id = m.comment_id
+    WHERE c.issue_id = $1
+      AND c.workspace_id = $2
+), thread_state AS (
+    SELECT root_id,
+           (COUNT(*) - 1)::int AS reply_count,
+           MAX(created_at)::timestamptz AS last_activity_at,
+           ((array_agg(comment_id ORDER BY resolved_at DESC NULLS LAST)
+               FILTER (WHERE resolved_at IS NOT NULL))[1])::uuid AS resolution_comment_id,
+           MAX(resolved_at)::timestamptz AS resolution_at
+    FROM membership
+    GROUP BY root_id
+)
+SELECT root.id AS thread_root_id,
+       root.content,
+       root.pinned_at,
+       state.reply_count,
+       state.last_activity_at,
+       state.resolution_comment_id,
+       state.resolution_at
+FROM thread_state state
+JOIN comment root ON root.id = state.root_id
+ORDER BY root.created_at ASC, root.id ASC
+`
+
+type ListDoneReviewThreadsForIssueParams struct {
+	IssueID     pgtype.UUID `json:"issue_id"`
+	WorkspaceID pgtype.UUID `json:"workspace_id"`
+}
+
+type ListDoneReviewThreadsForIssueRow struct {
+	ThreadRootID        pgtype.UUID        `json:"thread_root_id"`
+	Content             string             `json:"content"`
+	PinnedAt            pgtype.Timestamptz `json:"pinned_at"`
+	ReplyCount          int32              `json:"reply_count"`
+	LastActivityAt      pgtype.Timestamptz `json:"last_activity_at"`
+	ResolutionCommentID pgtype.UUID        `json:"resolution_comment_id"`
+	ResolutionAt        pgtype.Timestamptz `json:"resolution_at"`
+}
+
+// Every ordinary top-level discussion with the thread snapshot and its current
+// conclusion, if any. The done gate must inspect the complete issue rather
+// than the timeline's defensive display window.
+func (q *Queries) ListDoneReviewThreadsForIssue(ctx context.Context, arg ListDoneReviewThreadsForIssueParams) ([]ListDoneReviewThreadsForIssueRow, error) {
+	rows, err := q.db.Query(ctx, listDoneReviewThreadsForIssue, arg.IssueID, arg.WorkspaceID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListDoneReviewThreadsForIssueRow{}
+	for rows.Next() {
+		var i ListDoneReviewThreadsForIssueRow
+		if err := rows.Scan(
+			&i.ThreadRootID,
+			&i.Content,
+			&i.PinnedAt,
+			&i.ReplyCount,
+			&i.LastActivityAt,
+			&i.ResolutionCommentID,
+			&i.ResolutionAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listRecentThreadCommentsForIssue = `-- name: ListRecentThreadCommentsForIssue :many
 WITH RECURSIVE membership(id, root_id, comment_created_at) AS (
     -- Each root maps to itself.

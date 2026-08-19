@@ -28,6 +28,7 @@ import {
 } from "@multica/ui/lib/motion";
 import { useIssueSurfaceActionsOptional } from "../surface/actions-context";
 import { useIssueSurfaceSelection } from "../surface/selection-context";
+import { openDoneCommentReview } from "../actions/open-done-comment-review";
 
 export function BatchActionToolbar({
   issues,
@@ -102,11 +103,13 @@ export function BatchActionToolbar({
       }
       toast.success(t(($) => $.batch.update_success, { count }));
     } catch (err) {
-      toast.error(
-        err instanceof Error && err.message
-          ? err.message
-          : t(($) => $.batch.update_failed),
-      );
+      if (!openDoneCommentReview(err, ids)) {
+        toast.error(
+          err instanceof Error && err.message
+            ? err.message
+            : t(($) => $.batch.update_failed),
+        );
+      }
     }
   };
 
