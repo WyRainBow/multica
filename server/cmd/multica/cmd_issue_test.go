@@ -428,6 +428,13 @@ func newIssueCommentEditTestCmd() *cobra.Command {
 	cmd.Flags().Bool("content-stdin", false, "")
 	cmd.Flags().String("content-file", "", "")
 	cmd.Flags().Bool("allow-external-file", false, "")
+	cmd.Flags().String("replace", "", "")
+	cmd.Flags().String("replace-start", "", "")
+	cmd.Flags().String("replace-end", "", "")
+	cmd.Flags().String("with", "", "")
+	cmd.Flags().Bool("with-stdin", false, "")
+	cmd.Flags().String("append", "", "")
+	cmd.Flags().Bool("append-stdin", false, "")
 	cmd.Flags().String("output", "json", "")
 	return cmd
 }
@@ -506,6 +513,11 @@ func TestIssueCommentEditHelpCarriesEditContract(t *testing.T) {
 	for _, want := range []string{
 		// Replace, not merge — the mistake this prevents is sending a delta.
 		"REPLACES",
+		// The splice forms exist so nobody retypes a long body to fix one
+		// passage; the help must teach them, not the old "send the whole
+		// corrected body" workaround this replaced.
+		"--replace",
+		"--append",
 		// Who may edit, in the words an agent can match a 403 against.
 		"Only the author and workspace admins may edit",
 		// Attachments are out of scope for edit, and must stay that way.
@@ -517,6 +529,9 @@ func TestIssueCommentEditHelpCarriesEditContract(t *testing.T) {
 		if !strings.Contains(long, want) {
 			t.Errorf("comment edit help missing %q, got:\n%s", want, long)
 		}
+	}
+	if strings.Contains(long, "send the whole corrected body") {
+		t.Errorf("comment edit help still tells the caller to resend the whole body; got:\n%s", long)
 	}
 }
 

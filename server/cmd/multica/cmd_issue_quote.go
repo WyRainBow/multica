@@ -52,9 +52,43 @@ type quoteSpan struct {
 // first of four candidates would produce a confident review of the wrong
 // passage, and nothing downstream could tell.
 func locateQuote(text string, spec quoteSpec) (quoteSpan, error) {
+	return locateSpan(text, spec, quoteFlagNames)
+}
+
+// spanFlagNames carries the flag names — and the noun for the searched text —
+// that locateSpan's errors speak in, so every command's errors point at flags
+// it actually has: `issue get` says --quote-start, `comment edit` says
+// --replace-start, and no remedy tells the caller to fix a flag their command
+// does not carry.
+type spanFlagNames struct {
+	Start  string
+	End    string
+	Prefix string
+	Suffix string
+	// Noun is what the searched text is called in errors — "description" for
+	// an issue, "comment" for a comment.
+	Noun string
+	// ContextFlags is true when the command exposes the --*-prefix/--*-suffix
+	// flags. When it does not, a longer anchor is the only fix for ambiguity
+	// left, and the error must not offer anything else.
+	ContextFlags bool
+}
+
+var quoteFlagNames = spanFlagNames{
+	Start:        "quote-start",
+	End:          "quote-end",
+	Prefix:       "quote-prefix",
+	Suffix:       "quote-suffix",
+	Noun:         "description",
+	ContextFlags: true,
+}
+
+// locateSpan is locateQuote with the error vocabulary supplied by the caller.
+// The matching rules and the no-guessing contract are locateQuote's.
+func locateSpan(text string, spec quoteSpec, names spanFlagNames) (quoteSpan, error) {
 	start := strings.TrimSpace(spec.Start)
 	if start == "" {
-		return quoteSpan{}, fmt.Errorf("--quote-start must not be blank")
+		return quoteSpan{}, fmt.Errorf("--%s must not be blank", names.Start)
 	}
 	end := strings.TrimSpace(spec.End)
 	prefix := strings.TrimSpace(spec.Prefix)
@@ -133,17 +167,20 @@ collect:
 	switch {
 	case startHits == 0:
 		return quoteSpan{}, fmt.Errorf(
-			"--quote-start text does not appear in the description; copy it verbatim from the passage")
+			"--%s text does not appear in the %s; copy it verbatim from the passage",
+			names.Start, names.Noun)
 	case len(spans) == 0 && endMissing == startHits:
 		return quoteSpan{}, fmt.Errorf(
-			"--quote-start matched %d time(s), but --quote-end does not appear after any of them; "+
-				"copy the end of the passage verbatim, and check it comes after the start", startHits)
+			"--%s matched %d time(s), but --%s does not appear after any of them; "+
+				"copy the end of the passage verbatim, and check it comes after the start",
+			names.Start, startHits, names.End)
 	case len(spans) == 0:
 		return quoteSpan{}, fmt.Errorf(
-			"--quote-start matched %d time(s), but none of them is surrounded by the given "+
-				"--quote-prefix/--quote-suffix; copy that text verbatim from around the passage", startHits)
+			"--%s matched %d time(s), but none of them is surrounded by the given "+
+				"--%s/--%s; copy that text verbatim from around the passage",
+			names.Start, startHits, names.Prefix, names.Suffix)
 	case len(spans) > 1:
-		return quoteSpan{}, ambiguousQuoteError(spans, capped)
+		return quoteSpan{}, ambiguousQuoteError(spans, capped, names)
 	}
 	return spans[0], nil
 }
@@ -156,7 +193,7 @@ const maxQuoteSpanCandidates = 32
 // two have different fixes: a repeated start needs surrounding context, while a
 // repeated end needs a longer end — no amount of --quote-prefix would change
 // where a span STOPS.
-func ambiguousQuoteError(spans []quoteSpan, capped bool) error {
+func ambiguousQuoteError(spans []quoteSpan, capped bool, names spanFlagNames) error {
 	count := fmt.Sprintf("%d", len(spans))
 	if capped {
 		count = fmt.Sprintf("at least %d", len(spans))
@@ -170,14 +207,25 @@ func ambiguousQuoteError(spans []quoteSpan, capped bool) error {
 		}
 	}
 	if sameStart {
+		if !names.ContextFlags {
+			return fmt.Errorf(
+				"--%s matches %s places after the start, so the passage has no single ending; "+
+					"copy more of the passage's last line into --%s", names.End, count, names.End)
+		}
 		return fmt.Errorf(
-			"--quote-end matches %s places after the start, so the passage has no single ending; "+
-				"copy more of the passage's last line into --quote-end, or add --quote-suffix with "+
-				"the text just after it", count)
+			"--%s matches %s places after the start, so the passage has no single ending; "+
+				"copy more of the passage's last line into --%s, or add --%s with "+
+				"the text just after it", names.End, count, names.End, names.Suffix)
+	}
+	if !names.ContextFlags {
+		return fmt.Errorf(
+			"the anchor matches %s spans in the %s; copy more of the passage into --%s "+
+				"so it matches only once", count, names.Noun, names.Start)
 	}
 	return fmt.Errorf(
-		"the quote matches %s spans in the description; add --quote-prefix with the text just "+
-			"before the passage (or --quote-suffix with the text just after) to say which one", count)
+		"the quote matches %s spans in the %s; add --%s with the text just "+
+			"before the passage (or --%s with the text just after) to say which one",
+		count, names.Noun, names.Prefix, names.Suffix)
 }
 
 func isQuoteSpace(r rune) bool {
