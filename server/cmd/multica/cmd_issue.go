@@ -567,6 +567,7 @@ func init() {
 	issueCmd.AddCommand(issueUsageCmd)
 	issueCmd.AddCommand(issueRerunCmd)
 	issueCmd.AddCommand(issueCancelTaskCmd)
+	issueCmd.AddCommand(issueInterruptCmd)
 	issueCmd.AddCommand(issueSearchCmd)
 
 	issueCommentCmd.AddCommand(issueCommentListCmd)
@@ -704,6 +705,9 @@ func init() {
 	// issue rerun
 	issueRerunCmd.Flags().String("output", "json", "Output format: table or json")
 	// issue cancel-task
+	// issue interrupt
+	issueInterruptCmd.Flags().String("comment", "", "Text to interject (posted with an explicit @mention of the assignee agent)")
+	issueInterruptCmd.Flags().Bool("content-stdin", false, "Read the interjection text from stdin")
 	issueCancelTaskCmd.Flags().String("output", "json", "Output format: table or json")
 	issueCancelTaskCmd.Flags().String("issue", "", "Issue ID/key to scope short task ID prefix resolution")
 	// issue run-messages
