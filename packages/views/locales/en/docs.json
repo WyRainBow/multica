@@ -30,7 +30,7 @@
   },
   "issue_section": {
     "title": "Documents",
-    "empty": "No documents yet.",
+    "empty": "No documents yet. Attach one with multica doc add --issue <key>, or link one from here.",
     "link": "Link a document",
     "link_hint": "Search your documents and attach one to this issue.",
     "unlink": "Detach document",

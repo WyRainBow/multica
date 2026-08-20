@@ -30,7 +30,7 @@
   },
   "issue_section": {
     "title": "相关文档",
-    "empty": "还没有文档。",
+    "empty": "还没有文档。可以用 multica doc add --issue <key> 挂一个，或在这里关联。",
     "link": "关联文档",
     "link_hint": "搜索你的文档，把它挂到这条 issue 上。",
     "unlink": "取消关联",
