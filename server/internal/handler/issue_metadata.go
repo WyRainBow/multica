@@ -1,15 +1,18 @@
 package handler
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"log/slog"
 	"net/http"
 	"regexp"
+	"strings"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/multica-ai/multica/server/internal/logger"
 	"github.com/multica-ai/multica/server/internal/util"
 	db "github.com/multica-ai/multica/server/pkg/db/generated"
@@ -187,6 +190,9 @@ func (h *Handler) SetIssueMetadataKey(w http.ResponseWriter, r *http.Request) {
 	workspaceID := uuidToString(updated.WorkspaceID)
 	actorType, actorID := h.resolveActor(r, userID, workspaceID)
 	metadata := parseIssueMetadata(updated.Metadata)
+	if isDeliveryDeclarationKey(key) {
+		h.logMetadataKeyActivity(r.Context(), issue, actorType, actorID, "metadata_key_changed", key, existing[key], string(req.Value))
+	}
 	h.publish(protocol.EventIssueMetadataChanged, workspaceID, actorType, actorID, map[string]any{
 		"issue_id": uuidToString(updated.ID),
 		"metadata": metadata,
@@ -229,9 +235,61 @@ func (h *Handler) DeleteIssueMetadataKey(w http.ResponseWriter, r *http.Request)
 	workspaceID := uuidToString(updated.WorkspaceID)
 	actorType, actorID := h.resolveActor(r, userID, workspaceID)
 	metadata := parseIssueMetadata(updated.Metadata)
+	if isDeliveryDeclarationKey(key) {
+		h.logMetadataKeyActivity(r.Context(), issue, actorType, actorID, "metadata_key_deleted", key, parseIssueMetadata(issue.Metadata)[key], "")
+	}
 	h.publish(protocol.EventIssueMetadataChanged, workspaceID, actorType, actorID, map[string]any{
 		"issue_id": uuidToString(updated.ID),
 		"metadata": metadata,
 	})
 	writeJSON(w, http.StatusOK, map[string]any{"metadata": metadata})
+}
+
+// isDeliveryDeclarationKey reports whether a metadata key belongs to the
+// delivery-declaration namespace (git.*/vcs.*) whose history the worktree
+// ledger needs — every change there is a branch-account event worth a
+// timeline entry (COC-295/297). Other keys are pointers by design
+// (latest_conclusion) whose history already lives in resolved comments.
+func isDeliveryDeclarationKey(key string) bool {
+	return strings.HasPrefix(key, "git.") || strings.HasPrefix(key, "vcs.")
+}
+
+// logMetadataKeyActivity writes one activity row for a delivery-declaration
+// metadata change: key, previous value, new value, actor. Best-effort — a
+// failed audit write must not fail the metadata mutation itself; the DB
+// write already committed and the value is recoverable from run snapshots
+// and receipt fingerprints.
+func (h *Handler) logMetadataKeyActivity(ctx context.Context, issue db.Issue, actorType, actorID, action, key string, oldValue any, newValue string) {
+	details, err := json.Marshal(map[string]any{
+		"key": key,
+		"old": oldValue,
+		"new": newValue,
+	})
+	if err != nil {
+		return
+	}
+	activity, err := h.Queries.CreateActivity(ctx, db.CreateActivityParams{
+		WorkspaceID: issue.WorkspaceID,
+		IssueID:     issue.ID,
+		ActorType:   pgtype.Text{String: actorType, Valid: true},
+		ActorID:     parseUUID(actorID),
+		Action:      action,
+		Details:     details,
+	})
+	if err != nil {
+		slog.Warn("metadata key activity write failed", "error", err, "issue_id", uuidToString(issue.ID), "key", key)
+		return
+	}
+	h.publish(protocol.EventActivityCreated, uuidToString(issue.WorkspaceID), actorType, actorID, map[string]any{
+		"issue_id": uuidToString(issue.ID),
+		"entry": map[string]any{
+			"type":       "activity",
+			"id":         uuidToString(activity.ID),
+			"actor_type": actorType,
+			"actor_id":   actorID,
+			"action":     activity.Action,
+			"details":    json.RawMessage(details),
+			"created_at": timestampToString(activity.CreatedAt),
+		},
+	})
 }
