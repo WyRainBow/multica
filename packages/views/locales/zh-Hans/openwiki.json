@@ -1,0 +1,14 @@
+{
+  "tab_docs": "wiki 文档",
+  "tab_skills": "skills",
+  "tab_worktree": "工作树",
+  "worktree_hint": "任务书的分支总账：凡在卡上声明过 git.* 交付键的都在这里。数据源与 issue 详情的收尾快照、activity 日志同源。",
+  "worktree_loading": "加载中…",
+  "worktree_empty": "还没有任何卡声明交付分支。派发后在卡上写 git.base_ref / git.delivery_ref 即入账。",
+  "col_issue": "任务",
+  "col_status": "状态",
+  "col_base": "基线分支",
+  "col_delivery": "交付分支",
+  "col_mr": "MR",
+  "deprecated_keys": "旧键"
+}

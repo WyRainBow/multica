@@ -1,0 +1,14 @@
+{
+  "tab_docs": "wiki ドキュメント",
+  "tab_skills": "skills",
+  "tab_worktree": "ワークツリー",
+  "worktree_hint": "ブランチ台帳：git.* キーを宣言した issue がすべてここに表示されます。",
+  "worktree_loading": "読み込み中…",
+  "worktree_empty": "まだブランチを宣言した issue はありません。git.base_ref / git.delivery_ref を設定すると表示されます。",
+  "col_issue": "Issue",
+  "col_status": "状態",
+  "col_base": "ベース",
+  "col_delivery": "配送ブランチ",
+  "col_mr": "MR",
+  "deprecated_keys": "旧キー"
+}
