@@ -270,3 +270,55 @@ func TestRunIssueCommentEditRejectsIncompleteSpanFlags(t *testing.T) {
 		})
 	}
 }
+
+// Removing a sentence is an ordinary surgical edit — the one right after
+// fixing a typo — and it was the single edit the command could not express,
+// because an empty --with was indistinguishable from no --with at all.
+func TestCommentEdit_EmptyWithDeletesThePassage(t *testing.T) {
+	target := commentEditTarget{
+		kind:  commentEditReplaceSpan,
+		spec:  quoteSpec{Start: "删掉甲。"},
+		names: spanFlagNames{Noun: "comment", Start: "replace"},
+		with:  "",
+	}
+	got, err := target.apply("保留一。\n\n删掉甲。\n\n保留二。")
+	if err != nil {
+		t.Fatalf("apply: %v", err)
+	}
+	// One blank line, not three: deleting a paragraph takes the blank line
+	// above it and the one below, so the gap would grow on every delete.
+	if want := "保留一。\n\n保留二。"; got != want {
+		t.Fatalf("body = %q, want %q", got, want)
+	}
+}
+
+// The collapse belongs to delete alone. A replacement that deliberately
+// contains a blank line must survive verbatim.
+func TestCommentEdit_NonEmptyReplacementKeepsItsBlankLines(t *testing.T) {
+	target := commentEditTarget{
+		kind:  commentEditReplaceSpan,
+		spec:  quoteSpec{Start: "换我。"},
+		names: spanFlagNames{Noun: "comment", Start: "replace"},
+		with:  "甲。\n\n乙。",
+	}
+	got, err := target.apply("换我。\n\n尾。")
+	if err != nil {
+		t.Fatalf("apply: %v", err)
+	}
+	if want := "甲。\n\n乙。\n\n尾。"; got != want {
+		t.Fatalf("body = %q, want %q", got, want)
+	}
+}
+
+func TestCollapseBlankRun(t *testing.T) {
+	for _, c := range []struct{ in, want string }{
+		{"a\n\n\n\nb", "a\n\nb"},
+		{"a\n\nb", "a\n\nb"},
+		{"a\nb", "a\nb"},
+		{"a\n\n\n", "a"},
+	} {
+		if got := collapseBlankRun(c.in); got != c.want {
+			t.Errorf("collapseBlankRun(%q) = %q, want %q", c.in, got, c.want)
+		}
+	}
+}

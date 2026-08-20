@@ -306,6 +306,9 @@ should have to retype a long comment just to change one line of it.
   --replace-start <a> --replace-end <b> --with <new>  fix a long span by its edges
   --append <text>                                     add a paragraph at the end
 
+An empty --with deletes the passage rather than replacing it; the blank line
+it leaves behind is collapsed so repeated deletes do not widen the gap.
+
 An anchor must resolve to exactly one passage. No match, several matches, or
 an end that precedes its start is an error — the command never guesses which
 passage you meant; copy a longer anchor instead. Whitespace inside anchors

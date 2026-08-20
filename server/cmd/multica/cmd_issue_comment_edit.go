@@ -136,9 +136,15 @@ func commentEditSpanTarget(cmd *cobra.Command, replace, start, end string) (comm
 	if err != nil {
 		return commentEditTarget{}, err
 	}
-	if !ok {
+	// An explicitly empty --with DELETES the passage. Removing a sentence is
+	// an ordinary surgical edit — the one right after fixing a typo — and
+	// treating "" as "flag absent" made it the one edit the command could not
+	// express. Changed() distinguishes "--with ''" from "no --with at all",
+	// which the string value alone cannot.
+	if !ok && !cmd.Flags().Changed("with") {
 		return commentEditTarget{}, fmt.Errorf(
-			"--with or --with-stdin is required with the --replace flags")
+			"--with or --with-stdin is required with the --replace flags; " +
+				"pass --with '' to delete the passage")
 	}
 	return commentEditTarget{kind: commentEditReplaceSpan, spec: spec, names: names, with: with}, nil
 }
@@ -183,7 +189,17 @@ func (t commentEditTarget) apply(current string) (string, error) {
 		// Character offsets, per quoteSpan's contract: byte slicing would
 		// land mid-character on any CJK comment.
 		runes := []rune(current)
-		return string(runes[:span.Start]) + t.with + string(runes[span.End:]), nil
+		next := string(runes[:span.Start]) + t.with + string(runes[span.End:])
+		if t.with == "" {
+			// Deleting a paragraph leaves the blank line above it AND the one
+			// below, so the gap grows every time. Collapsed to one blank line,
+			// the same normalisation appendCommentBody applies at the end —
+			// and invisible in rendered Markdown either way, which is why it
+			// would otherwise accumulate unnoticed until someone read the
+			// source. Only on delete: a real replacement is spliced verbatim.
+			next = collapseBlankRun(next)
+		}
+		return next, nil
 	default:
 		return t.body, nil
 	}
@@ -198,4 +214,13 @@ func appendCommentBody(current, addition string) string {
 		return addition
 	}
 	return base + "\n\n" + addition
+}
+
+// collapseBlankRun turns any run of three or more newlines into a single blank
+// line. Used only after a delete — see apply.
+func collapseBlankRun(text string) string {
+	for strings.Contains(text, "\n\n\n") {
+		text = strings.ReplaceAll(text, "\n\n\n", "\n\n")
+	}
+	return strings.TrimRight(text, "\n")
 }
