@@ -347,3 +347,82 @@ func TestCard_SurvivesItsRequirementBeingDeleted(t *testing.T) {
 		t.Fatalf("content = %q", got.Content)
 	}
 }
+
+// Round docs are write-once: past the correction grace, update and delete
+// both return 409 naming the supersede path (COC-281).
+func TestUpdateCard_RoundDocFrozenAfterGrace(t *testing.T) {
+	if testHandler == nil || testPool == nil {
+		t.Skip("database not available")
+	}
+	card := decodeCard(t, postCard(t, map[string]any{
+		"title": "R1", "content": "conclusion", "kind": "COC-999/rounds/R1-方案评审",
+	}))
+	cleanupCard(t, card.ID)
+	if _, err := testPool.Exec(context.Background(),
+		`UPDATE card SET created_at = now() - interval '2 hours' WHERE id = $1`, card.ID); err != nil {
+		t.Fatalf("backdate: %v", err)
+	}
+
+	recorder := httptest.NewRecorder()
+	testHandler.UpdateCard(recorder, cardRequest(t, "PUT", card.ID,
+		map[string]any{"title": "rewritten"}))
+	if recorder.Code != http.StatusConflict {
+		t.Fatalf("update past grace = %d, want 409: %s", recorder.Code, recorder.Body.String())
+	}
+	recorder = httptest.NewRecorder()
+	testHandler.DeleteCard(recorder, cardRequest(t, "DELETE", card.ID, nil))
+	if recorder.Code != http.StatusConflict {
+		t.Fatalf("delete past grace = %d, want 409: %s", recorder.Code, recorder.Body.String())
+	}
+}
+
+func TestUpdateCard_RoundDocEditableWithinGrace(t *testing.T) {
+	if testHandler == nil || testPool == nil {
+		t.Skip("database not available")
+	}
+	card := decodeCard(t, postCard(t, map[string]any{
+		"title": "R1", "content": "conclusion", "kind": "COC-999/rounds/R1-方案评审",
+	}))
+	cleanupCard(t, card.ID)
+
+	recorder := httptest.NewRecorder()
+	testHandler.UpdateCard(recorder, cardRequest(t, "PUT", card.ID,
+		map[string]any{"title": "typo fix"}))
+	updated := decodeCard(t, recorder)
+	if updated.Title != "typo fix" {
+		t.Fatalf("within grace update failed: %d %s", recorder.Code, recorder.Body.String())
+	}
+}
+
+// A spec doc freezes with its terminal issue; a plain unkinded card on the
+// same issue stays editable (backward compatibility).
+func TestUpdateCard_SpecDocFrozenOnTerminalIssue(t *testing.T) {
+	if testHandler == nil || testPool == nil {
+		t.Skip("database not available")
+	}
+	issueID := createTestIssue(t, "spec freeze", "done", "none")
+	t.Cleanup(func() { deleteTestIssue(t, issueID) })
+
+	spec := decodeCard(t, postCard(t, map[string]any{
+		"title": "spec", "content": "plan", "kind": "COC-999/spec", "issue_id": issueID,
+	}))
+	cleanupCard(t, spec.ID)
+	plain := decodeCard(t, postCard(t, map[string]any{
+		"title": "note", "content": "n", "issue_id": issueID,
+	}))
+	cleanupCard(t, plain.ID)
+
+	recorder := httptest.NewRecorder()
+	testHandler.UpdateCard(recorder, cardRequest(t, "PUT", spec.ID,
+		map[string]any{"title": "edit"}))
+	if recorder.Code != http.StatusConflict {
+		t.Fatalf("terminal spec update = %d, want 409: %s", recorder.Code, recorder.Body.String())
+	}
+
+	recorder = httptest.NewRecorder()
+	testHandler.UpdateCard(recorder, cardRequest(t, "PUT", plain.ID,
+		map[string]any{"title": "still editable"}))
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("plain card on terminal issue = %d, want 200: %s", recorder.Code, recorder.Body.String())
+	}
+}

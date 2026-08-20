@@ -1,12 +1,14 @@
 package handler
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"log/slog"
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/jackc/pgx/v5"
@@ -300,6 +302,10 @@ func (h *Handler) UpdateCard(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
+	if reason, frozen := h.cardFreezeReason(r.Context(), card); frozen {
+		writeError(w, http.StatusConflict, reason)
+		return
+	}
 
 	var req UpdateCardRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -366,6 +372,10 @@ func (h *Handler) DeleteCard(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
+	if reason, frozen := h.cardFreezeReason(r.Context(), card); frozen {
+		writeError(w, http.StatusConflict, reason)
+		return
+	}
 	if err := h.Queries.DeleteCard(r.Context(), db.DeleteCardParams{
 		ID:          card.ID,
 		WorkspaceID: card.WorkspaceID,
@@ -375,6 +385,48 @@ func (h *Handler) DeleteCard(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
+}
+
+// roundsFreezeGrace is the correction window for round docs: kind paths with
+// a "rounds" segment freeze this long after creation (COC-281). Past the
+// grace, the round conclusion is write-once — supersede it with a new round.
+const roundsFreezeGrace = time.Hour
+
+// cardFreezeReason enforces the artifact-zone immutability contract:
+//  1. a card whose kind path contains a "rounds" segment is frozen one hour
+//     after creation (grace covers typo fixes only);
+//  2. a "spec" doc (kind path with a "spec" segment) linked to an issue in a
+//     terminal state is frozen with it, mirroring the frozen-description
+//     convention for done issues. Plain unkinded cards keep the old,
+//     always-editable behaviour.
+//
+// The returned reason is a ready-to-send 409 body that names the reopen path.
+func (h *Handler) cardFreezeReason(ctx context.Context, card db.Card) (string, bool) {
+	if kindHasSegment(card.Kind, "rounds") {
+		created := card.CreatedAt.Time
+		if !card.CreatedAt.Valid || time.Since(created) > roundsFreezeGrace {
+			return "round docs are write-once (kind path contains a 'rounds' segment): " +
+				"correct a round conclusion by opening a new round, not editing the old one. " +
+				"Within one hour of creation, edits are allowed for typo fixes.", true
+		}
+	}
+	if kindHasSegment(card.Kind, "spec") && card.IssueID.Valid {
+		issue, err := h.Queries.GetIssue(ctx, card.IssueID)
+		if err == nil && (issue.Status == "done" || issue.Status == "cancelled") {
+			return "spec doc is frozen: its issue is " + issue.Status + ". Reopen path: flip the issue " +
+				"out of the terminal state, edit, then restore (same convention as frozen descriptions).", true
+		}
+	}
+	return "", false
+}
+
+func kindHasSegment(kind, want string) bool {
+	for _, seg := range strings.Split(kind, "/") {
+		if seg == want {
+			return true
+		}
+	}
+	return false
 }
 
 // ListCardsForIssue handles GET /api/issues/{id}/cards.
