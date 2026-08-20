@@ -26,7 +26,9 @@
     "edit": "編集",
     "untitled": "タイトルなし",
     "issue_missing": "リンク先の issue は利用できません",
-    "length_other": "{{count}} 文字"
+    "length_other": "{{count}} 文字",
+    "rename": "名前を変更",
+    "rename_failed": "名前の変更に失敗しました"
   },
   "issue_section": {
     "title": "関連ドキュメント",
