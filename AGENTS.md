@@ -60,6 +60,6 @@ See CLAUDE.md for the authoritative rules and common commands.
 
 Before starting on a Multica-workspace card (COC-*), check the workspace's
 on-demand knowledge: `multica skill list`, then `multica skill get <name>` for
-anything whose description matches the task. Start with `multica-pitfalls`
+anything whose description matches the task. Start with `agentwiki`
 (dispatch/checkout/test pitfalls with one-line fixes). Terminal sessions pull
 this way; dispatched runs get enabled skills injected automatically.
