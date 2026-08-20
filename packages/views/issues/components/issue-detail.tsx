@@ -563,6 +563,25 @@ function formatActivity(
         from: details.from ?? "?",
         to: details.to ?? "?",
       });
+    case "metadata_key_changed": {
+      // The server stores the raw JSON for `new` (a quoted string for text
+      // values) and the decoded value for `old` — strip the quotes so both
+      // sides read the same in the changelog row.
+      const key = details.key ?? "";
+      const next = stripJsonQuotes(details.new ?? "");
+      const prev = stripJsonQuotes(details.old ?? "");
+      return prev
+        ? t(($) => $.activity.metadata_key_changed, {
+            key,
+            from: prev,
+            to: next,
+          })
+        : t(($) => $.activity.metadata_key_set, { key, to: next });
+    }
+    case "metadata_key_deleted":
+      return t(($) => $.activity.metadata_key_deleted, {
+        key: details.key ?? "",
+      });
     case "description_updated":
       return formatDescriptionUpdate(entry, t);
     case "task_completed":
@@ -600,6 +619,16 @@ function formatActivity(
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
+
+// Metadata activity rows carry `new` as raw JSON (a quoted string for text
+// values) while `old` is the decoded value; strip the surrounding quotes so
+// "feat/a" and "feat/a" read identically in the changelog.
+function stripJsonQuotes(v: string): string {
+  if (v.length >= 2 && v.startsWith('"') && v.endsWith('"')) {
+    return v.slice(1, -1);
+  }
+  return v;
+}
 
 // Stable reference for threads with no replies. Inline `[]` would create a
 // new array on every render and bust React.memo on CommentCard / ResolvedThreadBar.
@@ -1761,6 +1790,9 @@ export function IssueDetail({
   // leave someone staring at an issue that looks empty with no memory of
   // having narrowed it.
   const [selectedPhaseId, setSelectedPhaseId] = useState<string | null>(null);
+  // Log view (COC-297): a dedicated read of the timeline that only shows
+  // change events. State lives beside the phase filter it composes with.
+  const [logOnly, setLogOnly] = useState(false);
 
   // The composer writes into whichever station is selected — one request, no
   // reassign step.
@@ -1799,11 +1831,18 @@ export function IssueDetail({
           return phaseAtTime(issuePhases, e.created_at)?.id === selectedPhaseId;
         })
       : timeline;
-    const topLevel = visible.filter(
+    // Log view (COC-297): change events only. Comments are exactly what this
+    // view exists to get away from — a changelog pushed down the page by
+    // every reply is just the mixed timeline again.
+    const scoped = logOnly
+      ? visible.filter((e) => e.type === "activity")
+      : visible;
+    const topLevel = scoped.filter(
       (e) => e.type === "activity" || !e.parent_id,
     );
+    const repliesSource = scoped;
     const repliesByParent = new Map<string, TimelineEntry[]>();
-    for (const e of visible) {
+    for (const e of repliesSource) {
       if (e.type === "comment" && e.parent_id) {
         const list = repliesByParent.get(e.parent_id) ?? [];
         list.push(e);
@@ -1905,7 +1944,7 @@ export function IssueDetail({
     });
 
     return { threadReplies, groups: orderedGroups };
-  }, [timeline, selectedPhaseId, issuePhases]);
+  }, [timeline, selectedPhaseId, issuePhases, logOnly]);
 
   // Reads the grouped result rather than the raw timeline, so the numbers
   // narrow with the list when a station is selected. A header disagreeing with
@@ -3918,6 +3957,39 @@ export function IssueDetail({
                 The per-task timeline + past runs live in the right panel
                 via ExecutionLogSection. */}
 
+              {/* Log view toggle (COC-297) — the changelog is a first-class
+                read of the same timeline: change events only, no comments
+                to push it down. Kept as two quiet text buttons next to the
+                phase track's row, not a new page-level tab: the log and the
+                discussion are two views of one stream, and the toggle is
+                how you glance across. */}
+              <div className="mt-4 flex items-center gap-1">
+                <button
+                  type="button"
+                  onClick={() => setLogOnly(false)}
+                  className={cn(
+                    "rounded px-2 py-0.5 text-caption transition-colors",
+                    !logOnly
+                      ? "bg-muted font-medium text-foreground"
+                      : "text-muted-foreground hover:text-foreground",
+                  )}
+                >
+                  {t(($) => $.timeline.view_all)}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setLogOnly(true)}
+                  className={cn(
+                    "rounded px-2 py-0.5 text-caption transition-colors",
+                    logOnly
+                      ? "bg-muted font-medium text-foreground"
+                      : "text-muted-foreground hover:text-foreground",
+                  )}
+                >
+                  {t(($) => $.timeline.view_log)}
+                </button>
+              </div>
+
               {/* Timeline entries — virtualized via react-virtuoso to keep
                 first-paint cost O(viewport) instead of O(N). On a 500-comment
                 issue the unvirtualized .map froze the page for several
@@ -4014,18 +4086,23 @@ export function IssueDetail({
                 the same request. The alternative — write, then reassign — is
                 the two-step this feature exists to remove, and it is exactly
                 the friction that would leave the route unused. */}
-              {selectedPhase && (
+              {/* Log view hides the composer: there is nothing to reply to
+                in a changelog, and an input writing into a filtered view
+                reads as "this comment will be filed under the log". */}
+              {!logOnly && selectedPhase && (
                 <p className="mb-1 text-caption text-muted-foreground">
                   {t(($) => $.phases.composer_hint, {
                     name: selectedPhase.name,
                   })}
                 </p>
               )}
-              <CommentInput
-                key={`${id}:${selectedPhaseId ?? "all"}`}
-                issueId={id}
-                onSubmit={handleSubmitComment}
-              />
+              {!logOnly && (
+                <CommentInput
+                  key={`${id}:${selectedPhaseId ?? "all"}`}
+                  issueId={id}
+                  onSubmit={handleSubmitComment}
+                />
+              )}
             </div>
           </div>
         </div>
