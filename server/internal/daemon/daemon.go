@@ -165,6 +165,10 @@ type terminalTaskReport struct {
 	// run on the issue or chat can select it again, however many clean rows
 	// still reference it.
 	retiredSessionID string
+	// snapshot is the per-run delivery snapshot (COC-285): worktree state
+	// captured before the isolated environment becomes eligible for cleanup.
+	// Nil when the workdir was not a git checkout.
+	snapshot *DeliverySnapshot
 }
 
 type executionEnvironmentCommand func() ([]string, error)
@@ -4953,6 +4957,13 @@ func (d *Daemon) reportTaskResult(ctx context.Context, taskID string, result Tas
 	switch result.Status {
 	case "completed":
 		taskLog.Info("task completed", "status", result.Status)
+		snapshot := collectDeliverySnapshot(result.WorkDir)
+		if snapshot != nil {
+			taskLog.Info("delivery snapshot collected",
+				"branch", snapshot.Branch,
+				"dirty", snapshot.Dirty,
+				"changed_files", len(snapshot.ChangedFiles))
+		}
 		err := d.reportTerminalTask(ctx, terminalTaskReport{
 			kind:                  terminalTaskReportComplete,
 			taskID:                taskID,
@@ -4962,6 +4973,7 @@ func (d *Daemon) reportTaskResult(ctx context.Context, taskID string, result Tas
 			workDir:               result.WorkDir,
 			sessionRolloutMissing: result.SessionRolloutMissing,
 			retiredSessionID:      result.RetiredSessionID,
+			snapshot:              snapshot,
 		})
 		if err == nil {
 			return
@@ -5049,7 +5061,7 @@ func (d *Daemon) reportTerminalTask(parentCtx context.Context, report terminalTa
 
 	switch report.kind {
 	case terminalTaskReportComplete:
-		return d.client.CompleteTask(ctx, report.taskID, report.output, report.branchName, report.sessionID, report.workDir, report.sessionRolloutMissing, report.retiredSessionID)
+		return d.client.CompleteTask(ctx, report.taskID, report.output, report.branchName, report.sessionID, report.workDir, report.sessionRolloutMissing, report.retiredSessionID, report.snapshot)
 	case terminalTaskReportFail:
 		return d.client.FailTask(ctx, report.taskID, report.errorMessage, report.sessionID, report.workDir, report.failureReason, report.sessionRolloutMissing, report.retiredSessionID)
 	default:

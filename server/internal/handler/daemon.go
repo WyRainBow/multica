@@ -3000,19 +3000,37 @@ func (h *Handler) ReportTaskProgress(w http.ResponseWriter, r *http.Request) {
 
 // CompleteTask marks a running task as completed.
 type TaskCompleteRequest struct {
-	PRURL     string `json:"pr_url"`
-	Output    string `json:"output"`
-	SessionID string `json:"session_id"` // Claude session ID for future resumption
-	WorkDir   string `json:"work_dir"`   // working directory used during execution
+	PRURL      string `json:"pr_url"`
+	Output     string `json:"output"`
+	SessionID  string `json:"session_id"` // Claude session ID for future resumption
+	WorkDir    string `json:"work_dir"`   // working directory used during execution
+	BranchName string `json:"branch_name,omitempty"`
+	// DeliverySnapshot: per-run worktree state captured at completion
+	// (COC-285). The whole request marshals into the task result JSONB, so
+	// this persists without a dedicated table and surfaces through the
+	// existing task/result API shape. Older daemons omit it.
+	DeliverySnapshot *DaemonDeliverySnapshot `json:"delivery_snapshot,omitempty"`
 	// SessionRolloutMissing: the daemon withheld this task's Codex session
 	// because its rollout was missing (MUL-5305). Clear the resume pointer and
-	// flag the continuity gap for the next claim.
+	// flag the continuity gap.
 	SessionRolloutMissing bool `json:"session_rollout_missing,omitempty"`
 	// RetiredSessionID: a session this run proved unresumable and abandoned
 	// (GH #6066). Distinct from an empty SessionID, which only means "nothing
 	// to report" — this says "never hand this id to a later run". Older
 	// daemons omit it, which is exactly the pre-fix behaviour.
 	RetiredSessionID string `json:"retired_session_id,omitempty"`
+}
+
+// DaemonDeliverySnapshot mirrors the daemon's DeliverySnapshot on the API
+// boundary. Kept as a handler-local type so the daemon package does not leak
+// into request decoding.
+type DaemonDeliverySnapshot struct {
+	Branch       string   `json:"branch,omitempty"`
+	HeadSHA      string   `json:"head_sha,omitempty"`
+	Upstream     string   `json:"upstream,omitempty"`
+	Dirty        bool     `json:"dirty"`
+	ChangedFiles []string `json:"changed_files,omitempty"`
+	DiffStat     string   `json:"diff_stat,omitempty"`
 }
 
 func (h *Handler) CompleteTask(w http.ResponseWriter, r *http.Request) {

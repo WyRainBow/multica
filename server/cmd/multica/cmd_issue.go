@@ -2768,7 +2768,7 @@ func runIssueRuns(cmd *cobra.Command, args []string) error {
 
 	actors := loadActorDisplayLookup(ctx, client)
 	fullID, _ := cmd.Flags().GetBool("full-id")
-	headers := []string{"ID", "AGENT", "STATUS", "STARTED", "COMPLETED", "ERROR"}
+	headers := []string{"ID", "AGENT", "STATUS", "BRANCH", "CHANGED", "STARTED", "COMPLETED", "ERROR"}
 	rows := make([][]string, 0, len(runs))
 	for _, r := range runs {
 		started := strVal(r, "started_at")
@@ -2784,10 +2784,13 @@ func runIssueRuns(cmd *cobra.Command, args []string) error {
 			runes := []rune(errMsg)
 			errMsg = string(runes[:47]) + "..."
 		}
+		branch, changed := runDeliverySummary(r)
 		rows = append(rows, []string{
 			displayID(strVal(r, "id"), fullID),
 			actors.agent(strVal(r, "agent_id")),
 			strVal(r, "status"),
+			branch,
+			changed,
 			started,
 			completed,
 			errMsg,
@@ -2795,6 +2798,29 @@ func runIssueRuns(cmd *cobra.Command, args []string) error {
 	}
 	cli.PrintTable(os.Stdout, headers, rows)
 	return nil
+}
+
+// runDeliverySummary extracts the per-run delivery snapshot (COC-285) from a
+// task-run row: the completion request persists inside the result JSONB, so
+// branch and changed-file count surface without a dedicated endpoint.
+func runDeliverySummary(run map[string]any) (branch, changed string) {
+	result, _ := run["result"].(map[string]any)
+	if result == nil {
+		return "", ""
+	}
+	snap, _ := result["delivery_snapshot"].(map[string]any)
+	if snap == nil {
+		return "", ""
+	}
+	branch, _ = snap["branch"].(string)
+	files, _ := snap["changed_files"].([]any)
+	if len(files) > 0 {
+		changed = fmt.Sprintf("%d", len(files))
+	}
+	if dirty, _ := snap["dirty"].(bool); dirty && changed == "" {
+		changed = "?"
+	}
+	return branch, changed
 }
 
 func runIssueUsage(cmd *cobra.Command, args []string) error {
