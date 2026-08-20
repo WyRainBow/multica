@@ -1325,6 +1325,9 @@ func NewRouterWithOptions(pool *pgxpool.Pool, hub *realtime.Hub, bus *events.Bus
 					r.Post("/park", h.ParkIssue)
 					r.Get("/parked", h.ListParkedFromIssue)
 					r.Get("/cards", h.ListCardsForIssue)
+					// Delivery receipts gate done on a real verification (COC-282).
+					r.Post("/delivery-receipt", h.CreateDeliveryReceipt)
+					r.Get("/delivery-receipt", h.GetDeliveryReceipt)
 					// Phases — the stations a requirement passes through.
 					// Containers, not statuses: what happened during a
 					// stretch hangs underneath it.

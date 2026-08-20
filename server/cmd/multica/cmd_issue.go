@@ -567,6 +567,7 @@ func init() {
 	issueCmd.AddCommand(issueUsageCmd)
 	issueCmd.AddCommand(issueRerunCmd)
 	issueCmd.AddCommand(issueCancelTaskCmd)
+	issueCmd.AddCommand(issueReceiptCmd)
 	issueCmd.AddCommand(issueSearchCmd)
 
 	issueCommentCmd.AddCommand(issueCommentListCmd)
@@ -704,6 +705,12 @@ func init() {
 	// issue rerun
 	issueRerunCmd.Flags().String("output", "json", "Output format: table or json")
 	// issue cancel-task
+	// issue receipt
+	issueReceiptCmd.Flags().String("result", "", "Receipt result: merged | delivered_without_mr | abandoned | unknown (omit to show latest)")
+	issueReceiptCmd.Flags().String("reason", "", "Reason (required for unknown)")
+	issueReceiptCmd.Flags().String("verify-local", "", "Local repo path: run machine checks (SHA object + ancestry) and attach evidence")
+	issueReceiptCmd.Flags().String("target", "origin/HEAD", "Target ref for the ancestry check with --verify-local")
+	issueReceiptCmd.Flags().String("output", "table", "Output format: table or json")
 	issueCancelTaskCmd.Flags().String("output", "json", "Output format: table or json")
 	issueCancelTaskCmd.Flags().String("issue", "", "Issue ID/key to scope short task ID prefix resolution")
 	// issue run-messages

@@ -3269,6 +3269,13 @@ func (h *Handler) UpdateIssue(w http.ResponseWriter, r *http.Request) {
 			writeDoneReviewRequired(w, []doneReviewIssueBlocker{*doneReview.Blocker})
 			return
 		}
+		// COC-282: done also requires a delivery verification when the card
+		// declares one (git.* metadata). Comments covered the discussion;
+		// this covers the code's whereabouts.
+		if msg, blocked := h.checkDeliveryReceiptForDone(r.Context(), prevIssue); blocked {
+			writeError(w, http.StatusConflict, msg)
+			return
+		}
 	}
 
 	var issue db.Issue

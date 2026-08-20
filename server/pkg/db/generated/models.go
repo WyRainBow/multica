@@ -672,6 +672,20 @@ type Issue struct {
 	StatusChangedAt    pgtype.Timestamptz `json:"status_changed_at"`
 }
 
+type IssueDeliveryReceipt struct {
+	ID          pgtype.UUID        `json:"id"`
+	WorkspaceID pgtype.UUID        `json:"workspace_id"`
+	IssueID     pgtype.UUID        `json:"issue_id"`
+	ActorType   string             `json:"actor_type"`
+	ActorID     pgtype.UUID        `json:"actor_id"`
+	Result      string             `json:"result"`
+	Reason      string             `json:"reason"`
+	Fingerprint string             `json:"fingerprint"`
+	DeliveryRef string             `json:"delivery_ref"`
+	Evidence    string             `json:"evidence"`
+	CreatedAt   pgtype.Timestamptz `json:"created_at"`
+}
+
 type IssueDependency struct {
 	ID               pgtype.UUID `json:"id"`
 	IssueID          pgtype.UUID `json:"issue_id"`

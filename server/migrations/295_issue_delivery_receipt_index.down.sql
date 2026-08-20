@@ -1,0 +1,1 @@
+DROP INDEX IF EXISTS issue_delivery_receipt_issue_created_idx;
