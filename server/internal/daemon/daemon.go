@@ -5689,6 +5689,8 @@ func (d *Daemon) runTask(ctx context.Context, task Task, provider string, slot i
 		ProjectResources:                 convertProjectResourcesForEnv(task.ProjectResources),
 		IssueDocs:                        convertIssueDocsForEnv(task.IssueDocs),
 		IssuePhases:                      convertIssuePhasesForEnv(task.IssuePhases),
+		IssueDecisions:                   convertIssueDecisionsForEnv(task.IssueDecisions),
+		IssueOpenQuestions:               convertIssueOpenQuestionsForEnv(task.IssueOpenQuestions),
 		ChatSessionID:                    task.ChatSessionID,
 		ChatChannelType:                  task.ChatChannelType,
 		AutopilotRunID:                   task.AutopilotRunID,
@@ -7230,6 +7232,32 @@ func convertReposForEnv(repos []RepoData) []execenv.RepoContextForEnv {
 		result[i] = execenv.RepoContextForEnv{URL: r.URL, Description: r.Description, Ref: r.Ref}
 	}
 	return result
+}
+
+func convertIssueDecisionsForEnv(in []IssueDecisionData) []execenv.IssueDecisionForEnv {
+	if len(in) == 0 {
+		return nil
+	}
+	out := make([]execenv.IssueDecisionForEnv, len(in))
+	for i, d := range in {
+		out[i] = execenv.IssueDecisionForEnv{
+			ID: d.ID, DocID: d.DocID, Question: d.Question, Summary: d.Summary,
+			DecidedBy: d.DecidedBy, RecordedBy: d.RecordedBy,
+			Superseded: d.Superseded, SupersededBy: d.SupersededBy,
+		}
+	}
+	return out
+}
+
+func convertIssueOpenQuestionsForEnv(in []IssueOpenQuestionData) []execenv.IssueOpenQuestionForEnv {
+	if len(in) == 0 {
+		return nil
+	}
+	out := make([]execenv.IssueOpenQuestionForEnv, len(in))
+	for i, q := range in {
+		out[i] = execenv.IssueOpenQuestionForEnv{Ref: q.Ref, Question: q.Question, RaisedBy: q.RaisedBy}
+	}
+	return out
 }
 
 func convertIssuePhasesForEnv(phases []IssuePhaseData) []execenv.IssuePhaseForEnv {

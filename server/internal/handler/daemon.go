@@ -1892,6 +1892,17 @@ func (h *Handler) buildClaimedTaskResponse(r *http.Request, task *db.AgentTaskQu
 					out = append(out, entry)
 				}
 				resp.IssueDocs = out
+
+				// What holds now and what is still open, worked out from the
+				// cards already loaded above. Nothing here is stored, so it
+				// cannot disagree with what the cards say.
+				forDerivation := make([]struct{ ID, Kind, Content string }, 0, len(docs))
+				for _, doc := range docs {
+					forDerivation = append(forDerivation, struct{ ID, Kind, Content string }{
+						ID: uuidToString(doc.ID), Kind: doc.Kind, Content: doc.Content,
+					})
+				}
+				resp.IssueDecisions, resp.IssueOpenQuestions = DeriveIssueDecisions(forDerivation)
 			}
 
 			// The route this issue takes and how far along it is. The agent is

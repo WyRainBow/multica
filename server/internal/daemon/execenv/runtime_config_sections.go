@@ -435,6 +435,61 @@ func nestInlinedHeadings(content string) string {
 	return strings.Join(lines, "\n")
 }
 
+// writeIssueDecisionSummary renders what the issue has decided and what it has
+// not.
+//
+// One line per decision — the question and the answer — because that pair is
+// what a later run needs and the reasoning behind it is a fetch away. A
+// superseded decision is left out entirely: it is history, and listing it here
+// beside the one that replaced it would make the reader do the sorting.
+//
+// Open questions are shown even though nobody has answered them, because an
+// unanswered question is the single most useful thing to know before starting:
+// it is where the work will stall, and where a run is most likely to invent an
+// answer nobody agreed to.
+func writeIssueDecisionSummary(b *strings.Builder, ctx TaskContextForEnv) {
+	var live []IssueDecisionForEnv
+	for _, d := range ctx.IssueDecisions {
+		if !d.Superseded {
+			live = append(live, d)
+		}
+	}
+	if len(live) == 0 && len(ctx.IssueOpenQuestions) == 0 {
+		return
+	}
+
+	if len(live) > 0 {
+		b.WriteString("#### 现在算数的决策\n\n")
+		for _, d := range live {
+			question := strings.TrimSpace(d.Question)
+			if question == "" {
+				question = "(未记问题)"
+			}
+			summary := strings.TrimSpace(d.Summary)
+			if summary == "" {
+				summary = "(未记结论)"
+			}
+			fmt.Fprintf(b, "- **%s** %s → %s", d.ID, question, summary)
+			// Naming the decider matters when it is not whoever typed it up:
+			// half of what a decision record answers is who made the call.
+			if by := strings.TrimSpace(d.DecidedBy); by != "" {
+				fmt.Fprintf(b, "（%s 定）", by)
+			}
+			fmt.Fprintf(b, " — `%s`\n", d.DocID)
+		}
+		b.WriteString("\n")
+	}
+
+	if len(ctx.IssueOpenQuestions) > 0 {
+		b.WriteString("#### 未决\n\n")
+		b.WriteString("这些是某个决策明确留下、还没有决策关闭的。**不要自行替它们作答**——需要答案时说明它挡住了什么，交给能拍板的人。\n\n")
+		for _, q := range ctx.IssueOpenQuestions {
+			fmt.Fprintf(b, "- `%s` %s\n", q.Ref, strings.TrimSpace(q.Question))
+		}
+		b.WriteString("\n")
+	}
+}
+
 // docTitleOrPlaceholder keeps a titleless document findable by id rather than
 // dropping its row, which would silently shrink the index.
 func docTitleOrPlaceholder(doc IssueDocForEnv) string {
@@ -472,10 +527,24 @@ func writeIssueDocuments(b *strings.Builder, ctx TaskContextForEnv) {
 	// it record how it got there. Rendered flat they read as peers, and an
 	// agent with a question about the present has no reason to prefer the one
 	// document that answers it.
+	// A decision that still holds is rendered as a one-liner under the state of
+	// record, so listing its card again under history would show the same
+	// decision twice and leave the reader deciding which entry to trust. A
+	// superseded one belongs to history and is listed there.
+	liveDecisionDocs := map[string]bool{}
+	for _, d := range ctx.IssueDecisions {
+		if !d.Superseded && d.DocID != "" {
+			liveDecisionDocs[d.DocID] = true
+		}
+	}
+
 	var current, history []IssueDocForEnv
 	for _, doc := range ctx.IssueDocs {
 		if doc.Current {
 			current = append(current, doc)
+			continue
+		}
+		if liveDecisionDocs[doc.ID] {
 			continue
 		}
 		history = append(history, doc)
@@ -494,6 +563,12 @@ func writeIssueDocuments(b *strings.Builder, ctx TaskContextForEnv) {
 			b.WriteString("No rounds have been closed on it yet, so it records no conclusions.\n\n")
 		}
 	}
+
+	// Decisions render inside the state of record rather than beside it. The
+	// issue has one document that says where it stands, and a second heading
+	// claiming to be current would be exactly the thing that invariant exists
+	// to prevent — so what holds now appears as part of it.
+	writeIssueDecisionSummary(b, ctx)
 
 	if len(history) == 0 {
 		b.WriteString("\n")
