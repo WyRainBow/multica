@@ -122,7 +122,7 @@ EXAMPLES
   $ multica issue list --output json
   $ multica issue create --title "..." --description-stdin < notes.md
   $ multica issue comment add COC-1 --phase 评审 --content "..."
-  $ multica doc add --title "..." --content-stdin < retro.md
+  $ multica wiki add --title "..." --content-stdin < retro.md
   $ multica daemon start
 
 ENVIRONMENT VARIABLES

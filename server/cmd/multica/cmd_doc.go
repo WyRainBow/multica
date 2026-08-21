@@ -15,7 +15,7 @@ import (
 	"github.com/multica-ai/multica/server/internal/cli"
 )
 
-// multica doc {list|get|add|update|delete} — free-form notes that are not
+// multica wiki {list|get|add|update|delete} — free-form notes that are not
 // issues.
 //
 // A card has a title and Markdown content and nothing else: no status, no
@@ -25,16 +25,20 @@ import (
 // out of is an optional link, not a parent.
 
 var cardCmd = &cobra.Command{
-	Use:   "doc",
-	Short: "Work with documents — the long-lived writing that is not an issue",
-	Long: `Work with cards.
+	Use:   "wiki",
+	Short: "Work with the Multica wiki — the long-lived writing that is not an issue",
+	Long: `Work with the Multica wiki.
 
-A card is a title plus Markdown content, owned by the workspace. Use one for a
-retrospective, a lesson learned, a decision worth keeping — anything that
+A wiki page is a title plus Markdown content, owned by the workspace. Use one
+for a manual, a lesson learned, a decision worth keeping — anything that
 outlives the issue it came out of and has no status to track.
 
 Link one to an issue with --issue when it came from a specific piece of work;
-the link is optional and can be removed later with --detach.`,
+the link is optional and can be removed later with --detach.
+
+Filed under a --kind, which is free text and takes slashes as levels. The
+Agent Wiki tab reads the AgentWiki/ prefix; everything else shows on the
+Multica wiki tab.`,
 }
 
 var cardListCmd = &cobra.Command{
@@ -59,7 +63,7 @@ var cardAddCmd = &cobra.Command{
 Pipe the body in rather than passing it inline whenever it is more than a
 sentence — a retrospective is a document, and --content mangles newlines:
 
-  multica doc add --title "COC-97 踩坑" --content-stdin < notes.md`,
+  multica wiki add --title "COC-97 踩坑" --content-stdin < notes.md`,
 	Args: cobra.NoArgs,
 	RunE: runCardAdd,
 }

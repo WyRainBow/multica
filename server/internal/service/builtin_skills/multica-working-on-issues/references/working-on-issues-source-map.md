@@ -324,11 +324,11 @@ Attaching a resource works on a FINISHED issue. The freeze covers the title and
 description; filing something next to a record is not editing the record, which
 is the same line comments already sit on.
 
-## `multica doc` — notes that are not issues
+## `multica wiki` — notes that are not issues
 
 | Behavior | File:line |
 |---|---|
-| `multica doc list/get/add/update/delete` | `server/cmd/multica/cmd_doc.go:25` |
+| `multica wiki list/get/add/update/delete` | `server/cmd/multica/cmd_doc.go:25` |
 | `--issue` on list switches endpoint, not query param | `server/cmd/multica/cmd_doc.go:165` |
 | Untitled documents fall back to the body's first line | `server/cmd/multica/cmd_doc.go:240` (`cardTitleForTable`) |
 | `--title` or `--content` required | `server/cmd/multica/cmd_doc.go:298` |
