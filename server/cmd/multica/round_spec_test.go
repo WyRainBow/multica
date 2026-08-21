@@ -60,13 +60,27 @@ func TestASummaryCannotBreakItsRow(t *testing.T) {
 	})
 	for _, line := range strings.Split(section, "\n") {
 		if strings.HasPrefix(line, "| R1 |") {
-			// Five columns means six pipes; an unescaped one in the summary
-			// would silently add a column and shift every value right.
-			if got := strings.Count(line, "|") - strings.Count(line, `\|`); got != 6 {
-				t.Errorf("row has %d structural pipes, want 6: %s", got, line)
+			// Counted against the header rather than a literal, so adding a
+			// column does not turn this into a test of last week's table. An
+			// unescaped pipe in the summary would silently add a column and
+			// shift every value one to the right.
+			want := strings.Count(headerRow(section), "|")
+			if got := strings.Count(line, "|") - strings.Count(line, `\|`); got != want {
+				t.Errorf("row has %d structural pipes, want %d: %s", got, want, line)
 			}
 		}
 	}
+}
+
+// headerRow is the table's own column count, so a row is checked against the
+// header it sits under rather than a number written down once.
+func headerRow(section string) string {
+	for _, line := range strings.Split(section, "\n") {
+		if strings.HasPrefix(line, "| 轮次 |") {
+			return line
+		}
+	}
+	return ""
 }
 
 func TestApplyRoundSectionLeavesTheRestOfTheSpecAlone(t *testing.T) {
@@ -110,5 +124,40 @@ func TestAnEmptySpecStillGetsItsSection(t *testing.T) {
 	out := ApplyRoundSection("", nil)
 	if !strings.Contains(out, specSectionOpen) || !strings.Contains(out, "尚无收口轮次") {
 		t.Errorf("empty spec did not get a section:\n%s", out)
+	}
+}
+
+func TestTheSpecCarriesWhatWasActuallyChecked(t *testing.T) {
+	t.Parallel()
+	section := RenderRoundSection([]RoundDoc{{
+		Number: 1, Phase: "测试验收", Verdict: "approve",
+		Summary:     "闭环跑通",
+		VerifiedSHA: "66dc40e79aa1bb2c3d4e5f60718293a4b5c6d7e8",
+		Evidence:    "views 4044/4044, typecheck 6/6",
+		DocID:       "d1",
+	}})
+	// An approval says someone decided; these two say what they decided on.
+	// Without them a verdict is an opinion, which is the gap this closes.
+	for _, want := range []string{"66dc40e7", "views 4044/4044"} {
+		if !strings.Contains(section, want) {
+			t.Errorf("section does not carry %q:\n%s", want, section)
+		}
+	}
+	// The full 40 characters belong in the round document; the table is read
+	// across, so it carries the short form.
+	if strings.Contains(section, "66dc40e79aa1bb2c3d4e5f60718293a4b5c6d7e8") {
+		t.Error("the table printed the full SHA instead of the short form")
+	}
+}
+
+func TestAnUncheckedRoundSaysSoRatherThanLookingChecked(t *testing.T) {
+	t.Parallel()
+	section := RenderRoundSection([]RoundDoc{{
+		Number: 1, Phase: "代码评审", Verdict: "approve", Summary: "没测就批", DocID: "d1",
+	}})
+	// Empty cells read as em dashes. A blank would look like a rendering
+	// glitch; this reads as "nobody recorded one", which is the fact.
+	if !strings.Contains(section, "| — | — |") {
+		t.Errorf("an unverified round does not show as unverified:\n%s", section)
 	}
 }

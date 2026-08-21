@@ -36,6 +36,13 @@ type RoundDoc struct {
 	Verdict string
 	// One line: what was decided.
 	Summary string
+	// The commit the round's verdict was actually checked against. Distinct
+	// from the merge SHA: a round can approve a version that never lands, and
+	// a version can land without anyone re-running the checks.
+	VerifiedSHA string
+	// What the checks said — "tests 4044/4044", "手工验收通过". A verdict with
+	// no evidence beside it is an opinion.
+	Evidence string
 	// The document's own id, so the spec can point at the full text.
 	DocID string
 }
@@ -83,14 +90,16 @@ func RenderRoundSection(rounds []RoundDoc) string {
 		b.WriteString("尚无收口轮次。\n")
 	} else {
 		b.WriteString("> 本节由 `multica issue round close` 重写，不要手改——手改会在下次收口时丢失。\n\n")
-		b.WriteString("| 轮次 | 节点 | 结论 | 要点 | 正身 |\n")
-		b.WriteString("| --- | --- | --- | --- | --- |\n")
+		b.WriteString("| 轮次 | 节点 | 结论 | 要点 | 验收版本 | 验证证据 | 正身 |\n")
+		b.WriteString("| --- | --- | --- | --- | --- | --- | --- |\n")
 		for _, r := range sorted {
-			b.WriteString(fmt.Sprintf("| R%d | %s | %s | %s | %s |\n",
+			b.WriteString(fmt.Sprintf("| R%d | %s | %s | %s | %s | %s | %s |\n",
 				r.Number,
 				cellEscape(r.Phase),
 				cellEscape(r.Verdict),
 				cellEscape(r.Summary),
+				cellEscape(shortSHA(r.VerifiedSHA)),
+				cellEscape(r.Evidence),
 				cellEscape(r.DocID),
 			))
 		}

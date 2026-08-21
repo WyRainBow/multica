@@ -65,6 +65,8 @@ func init() {
 	issueRoundCloseCmd.Flags().String("body", "", "The round's full conclusion, in Markdown")
 	issueRoundCloseCmd.Flags().Bool("body-stdin", false, "Read the full conclusion from stdin")
 	issueRoundCloseCmd.Flags().String("sha", "", "Baseline the round reviewed, so the next one can diff from it")
+	issueRoundCloseCmd.Flags().String("verified-sha", "", "The commit the verdict was actually checked against — not the merge SHA, which can differ")
+	issueRoundCloseCmd.Flags().String("evidence", "", "What the checks said, e.g. 'views 4044/4044, typecheck 6/6'. A verdict without it is an opinion")
 	issueRoundCloseCmd.Flags().String("output", "json", "Output format: table or json")
 }
 
@@ -124,7 +126,14 @@ func runIssueRoundClose(cmd *cobra.Command, args []string) error {
 	//    which is why the comment can be a summary and the thread can be
 	//    resolved without losing anything.
 	roundKind := fmt.Sprintf("%s/%s/R%d-%s", key, roundsFolder, number, phase)
-	roundBody := renderRoundBody(number, phase, verdict, summary, mustString(cmd, "sha"), body)
+	verifiedSHA := strings.TrimSpace(mustString(cmd, "verified-sha"))
+	evidence := strings.TrimSpace(mustString(cmd, "evidence"))
+	// An approval nobody checked is the failure this column exists to expose,
+	// so it is said out loud rather than left to be noticed in the table.
+	if verdict == "approve" && verifiedSHA == "" && evidence == "" {
+		fmt.Fprintf(os.Stderr, "Note: approving with no --verified-sha and no --evidence; the spec will record this round as unverified.\n")
+	}
+	roundBody := renderRoundBody(number, phase, verdict, summary, mustString(cmd, "sha"), verifiedSHA, evidence, body)
 	roundDoc, err := createDoc(ctx, client, docRequest{
 		Title:   fmt.Sprintf("%s R%d %s：%s", key, number, phase, summary),
 		Kind:    roundKind,
@@ -140,7 +149,8 @@ func runIssueRoundClose(cmd *cobra.Command, args []string) error {
 	//    written. Derived, so there is nothing to remember to update.
 	rounds = append(rounds, RoundDoc{
 		Number: number, Phase: phase, Verdict: verdict,
-		Summary: summary, DocID: roundDoc.ID,
+		Summary: summary, VerifiedSHA: verifiedSHA, Evidence: evidence,
+		DocID: roundDoc.ID,
 	})
 	specDoc, err := upsertSpec(ctx, client, issue.ID, key, docs, rounds)
 	if err != nil {
@@ -233,11 +243,13 @@ func roundsFromDocs(key string, docs []docRow) []RoundDoc {
 			continue
 		}
 		rounds = append(rounds, RoundDoc{
-			Number:  number,
-			Phase:   phase,
-			Verdict: verdictFromBody(doc.Content),
-			Summary: summaryFromTitle(doc.Title),
-			DocID:   doc.ID,
+			Number:      number,
+			Phase:       phase,
+			Verdict:     bodyField(doc.Content, "结论"),
+			Summary:     summaryFromTitle(doc.Title),
+			VerifiedSHA: bodyField(doc.Content, "验收版本"),
+			Evidence:    bodyField(doc.Content, "验证证据"),
+			DocID:       doc.ID,
 		})
 	}
 	return rounds
@@ -250,16 +262,20 @@ func summaryFromTitle(title string) string {
 	return title
 }
 
-func verdictFromBody(body string) string {
+// bodyField reads one "- 名称：值" line out of a round document. The document
+// is write-once, so this is the whole record — rebuilding the spec must not
+// silently drop a column that only lives there.
+func bodyField(body, name string) string {
+	prefix := "- " + name + "："
 	for _, line := range strings.Split(body, "\n") {
-		if rest, found := strings.CutPrefix(strings.TrimSpace(line), "- 结论："); found {
+		if rest, found := strings.CutPrefix(strings.TrimSpace(line), prefix); found {
 			return strings.TrimSpace(rest)
 		}
 	}
 	return ""
 }
 
-func renderRoundBody(number int, phase, verdict, summary, sha, body string) string {
+func renderRoundBody(number int, phase, verdict, summary, sha, verifiedSHA, evidence, body string) string {
 	var b strings.Builder
 	fmt.Fprintf(&b, "# R%d %s\n\n", number, phase)
 	fmt.Fprintf(&b, "- 结论：%s\n", verdict)
@@ -267,6 +283,12 @@ func renderRoundBody(number int, phase, verdict, summary, sha, body string) stri
 	if strings.TrimSpace(sha) != "" {
 		// The next round diffs from here rather than re-reading everything.
 		fmt.Fprintf(&b, "- 评审基线：%s\n", strings.TrimSpace(sha))
+	}
+	if verifiedSHA != "" {
+		fmt.Fprintf(&b, "- 验收版本：%s\n", verifiedSHA)
+	}
+	if evidence != "" {
+		fmt.Fprintf(&b, "- 验证证据：%s\n", evidence)
 	}
 	b.WriteString("\n")
 	if strings.TrimSpace(body) != "" {
