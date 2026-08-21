@@ -29,8 +29,11 @@ export function OpenwikiPage() {
   ];
 
   return (
-    <div>
-      <div className="flex items-center gap-1 border-b px-4 pt-3">
+    // The dashboard shell clips its own overflow, so every page owns its
+    // scrolling. A plain div here left the taller tabs cut off at the fold with
+    // no way to reach the rest.
+    <div className="flex h-full min-h-0 flex-col">
+      <div className="flex shrink-0 items-center gap-1 border-b px-4 pt-3">
         {tabs.map(({ key, label, icon: Icon }) => (
           <button
             key={key}
@@ -48,12 +51,18 @@ export function OpenwikiPage() {
           </button>
         ))}
       </div>
+      {/* Docs and skills scroll their own lists — wrapping them would nest a
+        second scrollbar inside the first. The other two are plain pages and
+        need the container. */}
       {tab === "docs" && (
         <DocsPage hideKinds={(kind) => kind.startsWith("AgentWiki/")} />
       )}
       {tab === "skills" && <SkillsPage />}
-      {tab === "worktree" && <WorktreeLedger />}
-      {tab === "agentwiki" && <AgentWikiOverview />}
+      {(tab === "worktree" || tab === "agentwiki") && (
+        <div className="min-h-0 flex-1 overflow-y-auto">
+          {tab === "worktree" ? <WorktreeLedger /> : <AgentWikiOverview />}
+        </div>
+      )}
     </div>
   );
 }
