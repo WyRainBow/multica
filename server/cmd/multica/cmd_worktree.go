@@ -81,7 +81,30 @@ A worktree row is a checkout: its branch, what it is based on, which batch
 branch it feeds, who is driving it, and a running log of what happened in it.
 
 The log is the point. A commit per round of work is not realistic, so rounds
-that never became commits would otherwise leave no trace at all.`,
+that never became commits would otherwise leave no trace at all.
+
+A round trip, in order — each command's own --help says what it does; this is
+the sequence, which no single one of them can tell you:
+
+  1. cut the branch, then register the checkout
+       worktree add <name> --repo <repo> --branch <branch> \
+                           --base <base> --role feature --parent <upstream>
+  2. claim it, from inside the session that will drive it
+       worktree session <name> --auto --next "<what happens next>"
+  3. after each round of work, one line — the first one with a card also
+     points that card at this tree
+       worktree log <name> "<what changed>" --issue COC-N
+  4. from inside the checkout, let git state the facts
+       worktree sync <name>
+  5. once it has landed, sync again: the merge is recorded only when git
+     says the commit is already contained in the target
+       worktree sync <name>
+  6. finished trees are archived, not removed — remove drops the log with it
+       worktree set <name> --status archived
+
+Handing over is step 3 with --kind handoff plus a session change; clear the
+outgoing resume pointer, or the next reader is offered a command that reopens
+the session that just left.`,
 }
 
 var worktreeListCmd = &cobra.Command{
