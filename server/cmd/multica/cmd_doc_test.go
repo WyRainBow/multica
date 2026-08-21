@@ -253,7 +253,7 @@ func TestCardList_RefusesSearchWithIssue(t *testing.T) {
 	}
 }
 
-// The count in `doc list` and the count on the document page are quoted as the
+// The count in `wiki list` and the count on the document page are quoted as the
 // same number, so they have to be counted the same way: code points, not bytes
 // and not UTF-16 units. See docLength in packages/views/docs/doc-tree.ts.
 func TestCardCharCount_CountsRunesNotBytes(t *testing.T) {

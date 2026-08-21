@@ -109,7 +109,7 @@ func init() {
 	cardListCmd.Flags().Int("offset", 0, "Number of documents to skip (for pagination)")
 	cardListCmd.Flags().String("issue", "", "Only documents linked to this issue (key or UUID)")
 	cardListCmd.Flags().String("kind", "",
-		"Only documents in this folder AND everything below it — `kind` is a PATH, so `--kind 工作流架构演进` also returns `工作流架构演进/04-验证与交付`. Pass an empty value (--kind=) for the unfiled ones; omit it for all. `doc kinds` lists what exists.")
+		"Only documents in this folder AND everything below it — `kind` is a PATH, so `--kind 工作流架构演进` also returns `工作流架构演进/04-验证与交付`. Pass an empty value (--kind=) for the unfiled ones; omit it for all. `wiki kinds` lists what exists.")
 	cardListCmd.Flags().String("search", "", "Only documents whose title or content contains this text (case-insensitive). Searches the whole workspace, not just the current page. Ignored with --issue, which returns that issue's documents in full.")
 
 	cardGetCmd.Flags().String("output", "table", "Output format: table or json")
@@ -120,7 +120,7 @@ func init() {
 	cardAddCmd.Flags().Bool("content-stdin", false, "Read document content from stdin (preserves multi-line content verbatim)")
 	cardAddCmd.Flags().String("content-file", "", "Read document content from a UTF-8 file. The path must be inside the current working directory unless --allow-external-file is set.")
 	cardAddCmd.Flags().Bool("allow-external-file", false, "Allow --content-file to read a path outside the current working directory")
-	cardAddCmd.Flags().String("kind", "", "Which folder to file it under, free text. Slashes make levels: `工作流架构演进/04-验证与交付`. A folder exists exactly as long as a document names it, so there is nothing to create first — but `doc kinds` lists what is already there, and reusing a name beats inventing a near-duplicate.")
+	cardAddCmd.Flags().String("kind", "", "Which folder to file it under, free text. Slashes make levels: `AgentWiki/playbooks_手册/issues_需求与方案`. Name each level `english_中文` so the tree reads to both, except the top-level `AgentWiki/`, which code matches on. A folder exists exactly as long as a document names it, so there is nothing to create first — but `wiki kinds` lists what is already there, and reusing a name beats inventing a near-duplicate.")
 	cardAddCmd.Flags().String("issue", "", "Link the document to this issue (key or UUID)")
 	cardAddCmd.Flags().String("output", "json", "Output format: table or json")
 
@@ -255,7 +255,7 @@ func runCardList(cmd *cobra.Command, _ []string) error {
 //
 // Runes, not bytes: a CJK document would otherwise read as roughly three times
 // its length. The app counts code points for the same reason, so the number in
-// `doc list` and the number on the page are the same number — see docLength in
+// `wiki list` and the number on the page are the same number — see docLength in
 // packages/views/docs/doc-tree.ts.
 func cardCharCount(content string) int {
 	return utf8.RuneCountInString(content)

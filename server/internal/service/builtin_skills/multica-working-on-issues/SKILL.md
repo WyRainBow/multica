@@ -351,7 +351,7 @@ multica wiki kinds                       # every kind that exists, nested ones i
 ```
 
 A folder exists exactly as long as a document names it, so there is nothing to
-create first — but read `doc kinds` before inventing a path, because a
+create first — but read `wiki kinds` before inventing a path, because a
 near-duplicate folder is worse than a wrong one: nobody looking in either finds
 both.
 
