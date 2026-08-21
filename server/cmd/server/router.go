@@ -1606,6 +1606,9 @@ func NewRouterWithOptions(pool *pgxpool.Pool, hub *realtime.Hub, bus *events.Bus
 				r.Get("/", h.ListSkills)
 				r.Post("/", h.CreateSkill)
 				r.Get("/search", h.SearchSkills)
+				// Before /{id}: "builtin" is a literal segment, and a
+				// wildcard route would swallow it as a skill id.
+				r.Get("/builtin", h.ListBuiltinSkills)
 				r.Post("/import", h.ImportSkill)
 				r.Route("/{id}", func(r chi.Router) {
 					r.Get("/", h.GetSkill)

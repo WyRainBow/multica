@@ -41,6 +41,11 @@ type pulledSkillMarker struct {
 	Workspace   string `json:"workspace"`
 	SkillID     string `json:"skill_id"`
 	Fingerprint string `json:"fingerprint"`
+	// Source separates a workspace skill from a platform built-in. A built-in
+	// ships with the server binary, so its local copy goes stale when the
+	// server moves and nothing local can tell — naming the source is what lets
+	// status say so instead of reporting it current forever.
+	Source string `json:"source,omitempty"`
 }
 
 var workspaceSkillsCmd = &cobra.Command{
@@ -91,11 +96,16 @@ func init() {
 
 	workspaceSkillsPullCmd.Flags().String("dir", "", "Local skills directory to mirror into, e.g. ~/.claude/skills (required)")
 	workspaceSkillsPullCmd.Flags().Bool("force", false, "Overwrite a directory that this command did not create")
+	workspaceSkillsPullCmd.Flags().Bool("include-builtin", false,
+		"Also mirror the platform's built-in skills. They ship with the server, so a local copy goes stale when the server moves; status reports that.")
+	workspaceSkillsStatusCmd.Flags().Bool("include-builtin", false,
+		"Also check the platform's built-in skills")
 	workspaceSkillsStatusCmd.Flags().String("dir", "", "Local skills directory to check (required)")
 }
 
 type workspaceSkill struct {
 	ID          string      `json:"id"`
+	Source      string      `json:"source,omitempty"`
 	Name        string      `json:"name"`
 	Description string      `json:"description"`
 	Content     string      `json:"content"`
@@ -142,6 +152,16 @@ func runWorkspaceSkills(cmd *cobra.Command, args []string, statusOnly bool) erro
 	skills, err := fetchWorkspaceSkills(ctx, client)
 	if err != nil {
 		return err
+	}
+	if includeBuiltin, _ := cmd.Flags().GetBool("include-builtin"); includeBuiltin {
+		builtins, err := fetchBuiltinSkills(ctx, client)
+		if err != nil {
+			// A server too old to serve built-ins still serves workspace
+			// skills; losing those too would be a worse answer than a note.
+			fmt.Fprintf(os.Stderr, "Note: built-in skills unavailable (%v); mirroring workspace skills only.\n", err)
+		} else {
+			skills = append(skills, builtins...)
+		}
 	}
 	if len(skills) == 0 {
 		return fmt.Errorf("workspace %s has no skills to mirror", ws.Slug)
@@ -325,8 +345,12 @@ func writePulledSkill(target, slug string, skill workspaceSkill, body, print str
 			return err
 		}
 	}
+	source := skill.Source
+	if source == "" {
+		source = "workspace"
+	}
 	marker, err := json.MarshalIndent(pulledSkillMarker{
-		Workspace: slug, SkillID: skill.ID, Fingerprint: print,
+		Workspace: slug, SkillID: skill.ID, Fingerprint: print, Source: source,
 	}, "", "  ")
 	if err != nil {
 		return err
@@ -364,4 +388,20 @@ func sanitizePulledSkillName(name string) string {
 		}
 	}
 	return strings.Trim(b.String(), "-_")
+}
+
+// fetchBuiltinSkills reads the platform's built-in skills. They ship with the
+// server binary rather than living in a workspace, so they carry a synthetic
+// `builtin:<name>` id and the same stable hash the daemon uses.
+func fetchBuiltinSkills(ctx context.Context, client *cli.APIClient) ([]workspaceSkill, error) {
+	var builtins []workspaceSkill
+	if err := client.GetJSON(ctx, "/api/skills/builtin", &builtins); err != nil {
+		return nil, err
+	}
+	for i := range builtins {
+		if builtins[i].Source == "" {
+			builtins[i].Source = "builtin"
+		}
+	}
+	return builtins, nil
 }

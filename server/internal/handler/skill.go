@@ -22,6 +22,8 @@ import (
 	db "github.com/multica-ai/multica/server/pkg/db/generated"
 	"github.com/multica-ai/multica/server/pkg/protocol"
 	"golang.org/x/sync/errgroup"
+
+	"github.com/multica-ai/multica/server/internal/service"
 )
 
 // sanitizeNullBytes makes a string safe for a PostgreSQL TEXT column.
@@ -2635,4 +2637,29 @@ func (h *Handler) writeUpdatedAgentSkills(w http.ResponseWriter, r *http.Request
 	actorType, actorID := h.resolveActor(r, requestUserID(r), uuidToString(agent.WorkspaceID))
 	h.publish(protocol.EventAgentStatus, uuidToString(agent.WorkspaceID), actorType, actorID, map[string]any{"agent_id": uuidToString(agent.ID), "skills": resp})
 	writeJSON(w, http.StatusOK, resp)
+}
+
+// ListBuiltinSkills returns the platform's built-in skills with their bodies.
+//
+// Built-ins reach a dispatched agent because the daemon materialises them into
+// the task's own skills directory. A session someone starts by hand reads its
+// own skills directory and never sees them, so the rules they carry — the
+// terminal-card freeze, the phase route, metadata discipline — had to be
+// hand-copied into each machine's config file to be available at all. A copy
+// like that goes stale silently when the platform's own version moves.
+//
+// Read-only and workspace-independent: these ship with the binary, so the
+// answer is the same for every caller. The bundle carries the same stable hash
+// the daemon uses, which is what lets a local mirror report itself stale
+// rather than merely present.
+func (h *Handler) ListBuiltinSkills(w http.ResponseWriter, r *http.Request) {
+	if h.TaskService == nil {
+		writeError(w, http.StatusInternalServerError, "task service unavailable")
+		return
+	}
+	bundles, _ := service.BuildAgentSkillBundles(h.TaskService.BuiltinSkills())
+	if bundles == nil {
+		bundles = []service.AgentSkillData{}
+	}
+	writeJSON(w, http.StatusOK, bundles)
 }
