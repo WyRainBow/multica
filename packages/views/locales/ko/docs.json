@@ -26,7 +26,10 @@
     "edit": "편집",
     "untitled": "제목 없음",
     "issue_missing": "연결된 issue를 사용할 수 없습니다",
-    "length_other": "{{count}}자"
+    "length_other": "{{count}}자",
+    "rename": "이름 바꾸기",
+    "rename_failed": "이름 변경 실패",
+    "rename_input": "제목 바꾸기"
   },
   "issue_section": {
     "title": "관련 문서",

@@ -1,15 +1,30 @@
 import { describe, it, expect, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { Card, Issue } from "@multica/core/types";
 import { I18nProvider } from "@multica/core/i18n/react";
 import enCards from "../../locales/en/docs.json";
+import { WorkspaceSlugProvider } from "@multica/core/paths";
 import { DocItem } from "./doc-item";
 
 function renderCard(card: Card) {
+  const qc = new QueryClient({
+    defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
+  });
+  // useCardInvalidation resolves the workspace through the cached list;
+  // seed it so the rename/delete mutations mount without a workspace route.
+  qc.setQueryData(["workspaces", "list"], [
+    { id: "ws-1", name: "Test", slug: "test-ws" },
+  ]);
   return render(
-    <I18nProvider locale="en" resources={{ en: { docs: enCards } }}>
-      <DocItem card={card} onEdit={vi.fn()} onOpenIssue={vi.fn()} />
-    </I18nProvider>,
+    <QueryClientProvider client={qc}>
+      <WorkspaceSlugProvider slug="test-ws">
+      <I18nProvider locale="en" resources={{ en: { docs: enCards } }}>
+        <DocItem card={card} onEdit={vi.fn()} onOpenIssue={vi.fn()} />
+      </I18nProvider>
+      </WorkspaceSlugProvider>
+    </QueryClientProvider>,
   );
 }
 
@@ -83,15 +98,25 @@ describe("DocItem length", () => {
 // one of them says "gone".
 describe("DocItem's linked issue", () => {
   function renderWith(props: { issue?: Issue; issueGone?: boolean }) {
+    const qc = new QueryClient({
+      defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
+    });
+    qc.setQueryData(["workspaces", "list"], [
+      { id: "ws-1", name: "Test", slug: "test-ws" },
+    ]);
     return render(
-      <I18nProvider locale="en" resources={{ en: { docs: enCards } }}>
-        <DocItem
-          card={makeCard({ issue_id: "issue-7" })}
-          onEdit={vi.fn()}
-          onOpenIssue={vi.fn()}
-          {...props}
-        />
-      </I18nProvider>,
+      <QueryClientProvider client={qc}>
+        <WorkspaceSlugProvider slug="test-ws">
+          <I18nProvider locale="en" resources={{ en: { docs: enCards } }}>
+            <DocItem
+              card={makeCard({ issue_id: "issue-7" })}
+              onEdit={vi.fn()}
+              onOpenIssue={vi.fn()}
+              {...props}
+            />
+          </I18nProvider>
+        </WorkspaceSlugProvider>
+      </QueryClientProvider>,
     );
   }
 
@@ -131,5 +156,44 @@ describe("DocItem's linked issue", () => {
   it("says so once the issue is confirmed gone", () => {
     renderWith({ issue: undefined, issueGone: true });
     expect(screen.getByText("The linked issue is gone")).toBeInTheDocument();
+  });
+});
+
+// Row-level rename and delete (COC-298): the affordances live on the row so
+// neither requires walking into the detail page.
+describe("DocItem rename and delete", () => {
+  it("exposes rename and delete buttons alongside edit", () => {
+    renderCard(makeCard());
+    expect(screen.getByLabelText("Rename")).toBeInTheDocument();
+    expect(screen.getByLabelText("Delete")).toBeInTheDocument();
+  });
+
+  it("renames inline: Enter closes the editor on the row", async () => {
+    const user = userEvent.setup();
+    renderCard(makeCard());
+    await user.click(screen.getByLabelText("Rename"));
+    const input = screen.getByLabelText("Rename title");
+    await user.clear(input);
+    await user.type(input, "新的标题{Enter}");
+    // The row keeps the old title until the invalidated query lands; what
+    // Enter must do is end the edit — no textbox left on the row.
+    expect(screen.queryByRole("textbox")).not.toBeInTheDocument();
+  });
+
+  it("cancel rename with Escape leaves the title untouched", async () => {
+    const user = userEvent.setup();
+    renderCard(makeCard());
+    await user.click(screen.getByLabelText("Rename"));
+    await user.type(screen.getByLabelText("Rename title"), "x{Escape}");
+    expect(screen.getByText("便宜的充值网站")).toBeInTheDocument();
+  });
+
+  it("delete asks for confirmation before calling the API", async () => {
+    const user = userEvent.setup();
+    renderCard(makeCard());
+    await user.click(screen.getByLabelText("Delete"));
+    expect(
+      screen.getByText(/确定删除这篇文档|delete this document/i),
+    ).toBeInTheDocument();
   });
 });

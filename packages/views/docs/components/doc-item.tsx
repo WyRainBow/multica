@@ -1,8 +1,25 @@
 "use client";
 
-import { Pencil } from "lucide-react";
+import { useRef, useState } from "react";
+import { Pencil, TextCursorInput, Trash2 } from "lucide-react";
+import { toast } from "sonner";
 import type { Issue, Card } from "@multica/core/types";
+import {
+  useDeleteCard,
+  useUpdateCard,
+} from "@multica/core/docs/mutations";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@multica/ui/components/ui/alert-dialog";
 import { Button } from "@multica/ui/components/ui/button";
+import { Input } from "@multica/ui/components/ui/input";
 import { RichContent } from "../../rich-content";
 import { StatusIcon } from "../../issues/components/status-icon";
 import { useT } from "../../i18n";
@@ -21,6 +38,10 @@ import { docLength } from "../doc-tree";
  *
  * Clicking anywhere but the requirement chip opens the editor — the common
  * action on a note is "read the rest / fix a line", not "go somewhere else".
+ * Rename and delete live here too (hover actions): walking into the detail
+ * page to reach them is the detour this row's own affordances remove. The
+ * server still has the last word — a frozen round doc answers 409 and the
+ * toast says so rather than pretending it worked.
  */
 /**
  * How much of a document's body the list shows before cutting it off.
@@ -55,28 +76,125 @@ export function DocItem({
   const title = card.title.trim();
   const body = card.content.trim();
 
+  // Inline rename: the title swaps to an input seeded with the current
+  // value. Enter or blur commits, Escape drops the edit. Unmounting on a
+  // successful update is what ends the edit — the row re-renders with the
+  // new title from the invalidated query.
+  const [renaming, setRenaming] = useState(false);
+  const [draftTitle, setDraftTitle] = useState(title);
+  const renameInputRef = useRef<HTMLInputElement>(null);
+  const update = useUpdateCard();
+
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const remove = useDeleteCard();
+
+  const commitRename = () => {
+    const next = draftTitle.trim();
+    setRenaming(false);
+    if (next === title || next === "") return;
+    update.mutate(
+      { id: card.id, title: next },
+      {
+        onError: (err) =>
+          toast.error(t(($) => $.doc.rename_failed), {
+            description: err instanceof Error ? err.message : undefined,
+          }),
+      },
+    );
+  };
+
   return (
     <div className="group rounded-lg border bg-card px-5 py-4 transition-colors hover:border-foreground/20">
       <div className="flex items-start gap-3">
-        <button
-          type="button"
-          onClick={onEdit}
-          className="min-w-0 flex-1 text-left"
-        >
-          <h3 className="text-title-sm font-semibold leading-snug group-hover:underline">
-            {title || t(($) => $.doc.untitled)}
-          </h3>
-        </button>
-        <Button
-          size="icon-xs"
-          variant="ghost"
-          onClick={onEdit}
-          aria-label={t(($) => $.doc.edit)}
-          className="shrink-0 opacity-0 transition-opacity group-hover:opacity-100"
-        >
-          <Pencil className="size-3.5" />
-        </Button>
+        {renaming ? (
+          <Input
+            ref={renameInputRef}
+            autoFocus
+            value={draftTitle}
+            onChange={(e) => setDraftTitle(e.target.value)}
+            onBlur={commitRename}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") commitRename();
+              if (e.key === "Escape") setRenaming(false);
+            }}
+            className="h-7 flex-1 text-title-sm font-semibold"
+            aria-label={t(($) => $.doc.rename_input)}
+          />
+        ) : (
+          <button
+            type="button"
+            onClick={onEdit}
+            className="min-w-0 flex-1 text-left"
+          >
+            <h3 className="text-title-sm font-semibold leading-snug group-hover:underline">
+              {title || t(($) => $.doc.untitled)}
+            </h3>
+          </button>
+        )}
+        {!renaming && (
+          <div className="flex shrink-0 items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100">
+            <Button
+              size="icon-xs"
+              variant="ghost"
+              onClick={() => {
+                setDraftTitle(title);
+                setRenaming(true);
+              }}
+              aria-label={t(($) => $.doc.rename)}
+            >
+              <TextCursorInput className="size-3.5" />
+            </Button>
+            <Button
+              size="icon-xs"
+              variant="ghost"
+              onClick={() => setConfirmDelete(true)}
+              aria-label={t(($) => $.editor.delete_action)}
+            >
+              <Trash2 className="size-3.5" />
+            </Button>
+            <Button
+              size="icon-xs"
+              variant="ghost"
+              onClick={onEdit}
+              aria-label={t(($) => $.doc.edit)}
+            >
+              <Pencil className="size-3.5" />
+            </Button>
+          </div>
+        )}
       </div>
+
+      <AlertDialog open={confirmDelete} onOpenChange={setConfirmDelete}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {t(($) => $.editor.delete_action)} ·{" "}
+              {title || t(($) => $.doc.untitled)}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {t(($) => $.editor.delete_confirm)}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>
+              {t(($) => $.editor.cancel)}
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() =>
+                remove.mutate(card.id, {
+                  onError: (err) =>
+                    toast.error(t(($) => $.editor.delete_failed), {
+                      description:
+                        err instanceof Error ? err.message : undefined,
+                    }),
+                })
+              }
+            >
+              {t(($) => $.editor.delete_action)}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {body && (
         // Rendered Markdown, not the raw source. The editor writes Markdown, so
