@@ -1,7 +1,7 @@
 {
-  "tab_docs": "wiki docs",
-  "tab_skills": "skills",
-  "tab_worktree": "worktree",
+  "tab_docs": "Wiki",
+  "tab_skills": "Skills",
+  "tab_worktree": "Worktree",
   "worktree_hint": "The branch ledger: every issue that declares git.* delivery keys. Same sources as the per-run snapshots and the activity log.",
   "worktree_loading": "Loading…",
   "worktree_empty": "No issue declares a delivery branch yet. Set git.base_ref / git.delivery_ref on a card to add it.",
@@ -11,7 +11,7 @@
   "col_delivery": "Delivery ref",
   "col_mr": "MR",
   "deprecated_keys": "legacy keys",
-  "tab_agentwiki": "Agent wiki",
+  "tab_agentwiki": "Agent Wiki",
   "agentwiki": {
     "section_cases": "cases (distilled lessons)",
     "latest_cases": "Recently distilled cases",

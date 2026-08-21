@@ -54,7 +54,9 @@ export function OpenwikiPage() {
           </button>
         ))}
       </div>
-      {tab === "docs" && <DocsPage />}
+      {tab === "docs" && (
+        <DocsPage hideKinds={(kind) => kind.startsWith("AgentWiki/")} />
+      )}
       {tab === "skills" && <SkillsPage />}
       {tab === "worktree" && <WorktreeLedger />}
       {tab === "agentwiki" && <AgentWikiOverview />}

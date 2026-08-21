@@ -1,6 +1,6 @@
 {
-  "tab_docs": "wiki 문서",
-  "tab_skills": "skills",
+  "tab_docs": "Wiki",
+  "tab_skills": "Skills",
   "tab_worktree": "워크트리",
   "worktree_hint": "브랜치 장부: git.* 키를 선언한 issue가 모두 여기에 표시됩니다.",
   "worktree_loading": "불러오는 중…",
@@ -11,7 +11,7 @@
   "col_delivery": "배포 브랜치",
   "col_mr": "MR",
   "deprecated_keys": "구형 키",
-  "tab_agentwiki": "Agent wiki",
+  "tab_agentwiki": "Agent Wiki",
   "agentwiki": {
     "section_cases": "case(증류된 교훈)",
     "latest_cases": "최근 증류된 case",

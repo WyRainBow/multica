@@ -29,7 +29,14 @@ import { DocTreeNav } from "./doc-tree-nav";
  * and grouping by the requirement it came from would bury the ones that came
  * from reading or from an incident.
  */
-export function DocsPage() {
+export function DocsPage({
+  hideKinds,
+}: {
+  /** Exclude docs whose kind matches (e.g. the Agent wiki's cases — two
+   *  different wikis: this page is the documents wiki, and the experience
+   *  shelf curates its own tab). Empty kind (unfiled docs) never matches. */
+  hideKinds?: (kind: string) => boolean;
+}) {
   const { t } = useT("docs");
   const wsId = useWorkspaceId();
   const paths = useWorkspacePaths();
@@ -93,7 +100,10 @@ export function DocsPage() {
     return gone;
   }, [unresolvedIds, fetchedIssues]);
 
-  const cards = data?.cards ?? [];
+  const cards = useMemo(
+    () => (data?.cards ?? []).filter((c) => !hideKinds?.(c.kind ?? "")),
+    [data?.cards, hideKinds],
+  );
   // Tabs come from every card, not from the search result: a tab that
   // disappeared because the current query matched nothing in it would make
   // the category look deleted.
