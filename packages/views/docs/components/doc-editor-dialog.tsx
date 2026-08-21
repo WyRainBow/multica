@@ -178,10 +178,11 @@ export function DocEditorDialog({
               defaultValue={card?.content ?? ""}
               placeholder={t(($) => $.editor.content_placeholder)}
               onUpdate={setContent}
-              // Nothing to mention in a personal note, and no slash menu:
-              // both would put an agent-shaped affordance on a human's
-              // scratchpad.
-              disableMentions
+              // Context mode, so @ reaches issues, projects and other wiki
+              // pages. Mentions were off here from when a document was a
+              // personal note; a page that cites another page is the whole
+              // point of the wiki, and a page carries no id anyone can type.
+              mentionMode="context"
             />
           </div>
         </div>

@@ -326,6 +326,36 @@ describe("createMentionSuggestion", () => {
     expect(searchProjectsMock).toHaveBeenCalledWith(expect.objectContaining({ q: "road", limit: 8 }));
   });
 
+  it("loads wiki pages, which are only reachable through the picker", async () => {
+    // A page has no MUL-123 to type and its id is a UUID, so if it is not
+    // offered here it cannot be referenced at all without leaving the editor.
+    searchIssuesMock.mockResolvedValue({ issues: [], total: 0 });
+    searchProjectsMock.mockResolvedValue({ projects: [], total: 0 });
+    listCardsMock.mockResolvedValue({
+      cards: [
+        {
+          id: "b14cbd2f-a34b-4fa0-b1e2-193aa5660227",
+          title: "Issue 需求、方案与 Spec 文档编写",
+          kind: "AgentWiki/playbooks_手册/issues_需求与方案",
+        },
+      ],
+      total: 1,
+    });
+
+    render(
+      <I18nWrapper>
+        <MentionList items={[]} query="Issue 需求" command={vi.fn()} includeProjectSearch />
+      </I18nWrapper>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText("Issue 需求、方案与 Spec 文档编写")).toBeInTheDocument();
+    });
+    expect(listCardsMock).toHaveBeenCalledWith(
+      expect.objectContaining({ search: "Issue 需求" }),
+    );
+  });
+
   it("does not call searchIssues for an empty query", () => {
     render(<I18nWrapper><MentionList items={[]} query="" command={vi.fn()} /></I18nWrapper>);
 

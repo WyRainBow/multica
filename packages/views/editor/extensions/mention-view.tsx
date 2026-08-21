@@ -150,14 +150,15 @@ function IssueMention({
 }
 
 /**
- * A wiki page inside the editor: its title, not a link.
+ * A wiki page inside the editor: its title, and a real link.
  *
- * The readonly renderer makes the same reference navigable; here it must not
- * be, because clicking inside a document you are writing should place the
- * cursor, not leave the page.
+ * The document detail page IS an editor — a page is read there, not only
+ * written — so a reference that cannot be followed there cannot be followed at
+ * all. Same shape as the issue chip beside it: an anchor, so it is reachable by
+ * Tab, opens in a new tab on modifier-click, and exposes a URL to copy.
  *
- * Resolved from the list first — a document being edited may cite several
- * pages, and one request each would be one request per citation.
+ * Resolved from the list first, since a page citing several others would
+ * otherwise be one request per citation.
  */
 function DocMention({
   docId,
@@ -167,6 +168,8 @@ function DocMention({
   fallbackLabel?: string;
 }) {
   const wsId = useWorkspaceId();
+  const p = useWorkspacePaths();
+  const { push } = useNavigation();
   const { data: listResponse } = useQuery(cardListOptions(wsId));
   const listed = listResponse?.cards?.find((card) => card.id === docId);
   const { data: detail } = useQuery({
@@ -174,11 +177,23 @@ function DocMention({
     enabled: Boolean(wsId) && !listed,
   });
   const doc = listed ?? detail;
+  const docPath = p.docDetail(docId);
 
   return (
-    <span className="doc-mention inline-flex items-baseline gap-1 rounded bg-muted px-1 align-baseline">
+    <a
+      href={docPath}
+      onClick={(event) => {
+        event.stopPropagation();
+        // Let the browser handle a modifier-click into a new tab.
+        if (event.metaKey || event.ctrlKey || event.shiftKey) return;
+        event.preventDefault();
+        push(docPath);
+      }}
+      className="doc-mention inline-flex items-baseline gap-1 rounded bg-muted px-1 align-baseline transition-colors hover:bg-accent"
+      title={doc?.title ?? docId}
+    >
       <FileText className="size-3 self-center text-muted-foreground" />
       {doc?.title ?? fallbackLabel ?? docId}
-    </span>
+    </a>
   );
 }
