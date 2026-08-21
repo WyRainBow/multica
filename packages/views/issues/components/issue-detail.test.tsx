@@ -599,6 +599,12 @@ function renderIssueDetail(issueId = "issue-1") {
   );
 }
 
+// The timeline is read two disjoint ways (COC-297): the discussion view
+// renders comments only. Anything asserting on change events has to switch.
+async function showLogView() {
+  fireEvent.click(await screen.findByRole("button", { name: "Log" }));
+}
+
 function renderIssueDetailWithHighlight(
   highlightCommentId: string,
   issueId = "issue-1",
@@ -1193,12 +1199,14 @@ describe("IssueDetail (shared)", () => {
     expect(screen.queryByRole("button", { name: "Retry task" })).not.toBeInTheDocument();
   });
 
-  it("collapses non-trailing activity blocks and expands the last one by default", async () => {
+  it("a comment between two runs of activity does not split the log view", async () => {
     // Timeline shape:
-    //   [activities: status_changed, priority_changed] ← block A (older)
+    //   [activities: status_changed, priority_changed]
     //   [comment-1]
-    //   [activities: due_date_changed]                  ← block B (latest)
-    // Block A should be collapsed; block B should be expanded.
+    //   [activities: due_date_changed]
+    // The comment is what used to separate the two runs into distinct blocks.
+    // The log view drops comments entirely, so all three activities land in
+    // one block and are read together.
     mockApiObj.listTimeline.mockResolvedValue([
       {
         type: "activity",
@@ -1243,23 +1251,18 @@ describe("IssueDetail (shared)", () => {
     ] as TimelineEntry[]);
 
     renderIssueDetail();
+    await showLogView();
 
-    // Latest block (single activity) is expanded — its rendered text is visible.
+    // All three activities are visible at once, none of them behind a summary.
     await waitFor(() => {
       expect(screen.getByText(/set due date to/i)).toBeInTheDocument();
     });
-
-    // Older block is collapsed: shows the summary, hides the individual entries.
-    expect(screen.getByText("2 activities")).toBeInTheDocument();
-    expect(screen.queryByText(/changed status/i)).not.toBeInTheDocument();
-    expect(screen.queryByText(/changed priority/i)).not.toBeInTheDocument();
-
-    // Clicking the summary expands the older block.
-    fireEvent.click(screen.getByText("2 activities"));
-    await waitFor(() => {
-      expect(screen.getByText(/changed status/i)).toBeInTheDocument();
-    });
+    expect(screen.getByText(/changed status/i)).toBeInTheDocument();
     expect(screen.getByText(/changed priority/i)).toBeInTheDocument();
+    expect(screen.queryByText("2 activities")).not.toBeInTheDocument();
+
+    // And the comment that sat between them belongs to the other view.
+    expect(screen.queryByText("Talking it through")).not.toBeInTheDocument();
   });
 
   it("renders activity rows with unknown status values without crashing", async () => {
@@ -1276,6 +1279,7 @@ describe("IssueDetail (shared)", () => {
     ] as TimelineEntry[]);
 
     renderIssueDetail();
+    await showLogView();
 
     await waitFor(() => {
       expect(screen.getByText(/from Todo to mystery_status/i)).toBeInTheDocument();
@@ -1302,6 +1306,7 @@ describe("IssueDetail (shared)", () => {
     mockApiObj.listTimeline.mockResolvedValue(trailingBlock);
 
     renderIssueDetail();
+    await showLogView();
 
     // In the truncated default state the "N activities" collapse header
     // stays hidden — the "Show N more" link is the only control we want
@@ -1344,6 +1349,7 @@ describe("IssueDetail (shared)", () => {
     mockApiObj.listTimeline.mockResolvedValue(trailingBlock);
 
     renderIssueDetail();
+    await showLogView();
 
     await waitFor(() => {
       expect(screen.getByText("8 activities")).toBeInTheDocument();
@@ -1361,10 +1367,10 @@ describe("IssueDetail (shared)", () => {
     expect(screen.queryByText(/Show \d+ more activit/i)).not.toBeInTheDocument();
   });
 
-  it("expanding a non-trailing block shows every entry — only the trailing block truncates older ones", async () => {
-    // Non-trailing block (10 activities) + comment + trailing block (1 activity).
-    // Manually expanding the older block must reveal all 10 entries — the
-    // truncate-to-8 rule applies only to the trailing block.
+  it("truncation counts the whole run, comments in the stream included", async () => {
+    // 10 activities + a comment + 1 more activity. With the comment gone, the
+    // log view sees one run of 11, so the truncate-to-8 rule applies to it and
+    // the three oldest go behind a show-more line.
     const timeline: TimelineEntry[] = [
       { type: "activity", id: "old-1", actor_type: "member", actor_id: "user-1", action: "status_changed", details: { from: "backlog", to: "todo" }, created_at: "2026-01-16T00:00:00Z" },
       { type: "activity", id: "old-2", actor_type: "member", actor_id: "user-1", action: "priority_changed", details: { from: "none", to: "low" }, created_at: "2026-01-16T00:01:00Z" },
@@ -1387,20 +1393,17 @@ describe("IssueDetail (shared)", () => {
     mockApiObj.listTimeline.mockResolvedValue(timeline);
 
     renderIssueDetail();
+    await showLogView();
 
-    // The older block defaults to collapsed; its summary reports 10.
+    // The newest 8 are on screen; the three oldest are not.
     await waitFor(() => {
-      expect(screen.getByText("10 activities")).toBeInTheDocument();
+      expect(screen.getByText(/set due date to/i)).toBeInTheDocument();
     });
-    // None of the older entries are rendered before expansion.
     expect(screen.queryByText(/from Backlog to Todo/i)).not.toBeInTheDocument();
 
-    // Expand the older block by clicking its summary line.
-    fireEvent.click(screen.getByText("10 activities"));
+    // The show-more line accounts for them, and opens them.
+    fireEvent.click(screen.getByText(/Show \d+ more activit/i));
 
-    // Every one of the 10 entries should now be visible — even though the
-    // block has more than 8 entries, the truncate-to-8 rule does not apply
-    // to non-trailing blocks, so no "Show N more activities" line appears.
     await waitFor(() => {
       expect(screen.getByText(/from Backlog to Todo/i)).toBeInTheDocument();
     });
