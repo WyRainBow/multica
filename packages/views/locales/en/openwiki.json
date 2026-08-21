@@ -10,7 +10,10 @@
     "section_cases": "cases (distilled lessons)",
     "latest_cases": "Recently distilled cases",
     "no_cases": "No cases yet. Distill one via interview-retro's Case rule after solving a meaty problem.",
-    "from_issue": "from issue"
+    "from_issue": "from issue",
+    "section_patterns": "Patterns",
+    "section_playbooks": "Playbooks",
+    "section_assets": "Assets"
   },
   "col_role": "Role",
   "role_base": "base",

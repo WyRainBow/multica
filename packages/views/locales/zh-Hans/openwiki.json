@@ -10,7 +10,10 @@
     "section_cases": "case 沉淀（经验蒸馏）",
     "latest_cases": "最近蒸馏的 case",
     "no_cases": "还没有 case。解决够分量的问题后按 interview-retro 的 Case 沉淀条款蒸馏进来。",
-    "from_issue": "来自任务"
+    "from_issue": "来自任务",
+    "section_patterns": "模式",
+    "section_playbooks": "手册",
+    "section_assets": "资产"
   },
   "col_role": "角色",
   "role_base": "基线",

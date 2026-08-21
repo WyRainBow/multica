@@ -10,7 +10,10 @@
     "section_cases": "ケース（蒸留された教訓）",
     "latest_cases": "最近蒸留されたケース",
     "no_cases": "ケースはまだありません。",
-    "from_issue": "issue から"
+    "from_issue": "issue から",
+    "section_patterns": "パターン",
+    "section_playbooks": "プレイブック",
+    "section_assets": "アセット"
   },
   "col_role": "役割",
   "role_base": "ベース",

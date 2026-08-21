@@ -10,7 +10,10 @@
     "section_cases": "case(증류된 교훈)",
     "latest_cases": "최근 증류된 case",
     "no_cases": "아직 case가 없습니다.",
-    "from_issue": "issue에서"
+    "from_issue": "issue에서",
+    "section_patterns": "패턴",
+    "section_playbooks": "플레이북",
+    "section_assets": "자산"
   },
   "col_role": "역할",
   "role_base": "베이스",
