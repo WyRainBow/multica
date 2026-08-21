@@ -25,6 +25,7 @@ import { useT, useTimeAgo } from "../i18n";
 import { useNavigation } from "../navigation";
 import { WorktreeEntryList } from "./worktree-entry-list";
 import { SessionPointer } from "../worktrees/session-pointer";
+import { attentionItems, type AttentionItem } from "../worktrees/attention";
 
 /**
  * The worktree ledger: where the code is, as opposed to how far a decision has
@@ -64,6 +65,7 @@ export function WorktreeLedger() {
   const { t } = useT("openwiki");
   const [adding, setAdding] = useState(false);
   const [showClosed, setShowClosed] = useState(false);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
 
   const { data: trees = [], isLoading } = useQuery(worktreeListOptions(wsId));
   const { data: issues = [] } = useQuery(issueListOptions(wsId));
@@ -86,15 +88,11 @@ export function WorktreeLedger() {
     (tree: Worktree) => tree.status !== "merged" && tree.status !== "archived",
   );
   const visible = showClosed ? [...open, ...closed] : open;
+  const selected = trees.find((tree: Worktree) => tree.id === selectedId);
 
-  // Grouped by repository first, then by role.
-  //
-  // Repository first because a checkout belongs to one codebase and several are
-  // in flight at once: a "feature (5)" heading mixing three repositories tells
-  // you nothing you can act on. Role second because within one codebase the
-  // roles are the branch naming rule — feature/<card>, integration/<topic>,
-  // release/<date>, hotfix/<desc> — and reading them in pipeline order is how
-  // the batch structure becomes visible.
+  // Grouped by repository. A checkout belongs to one codebase and several are
+  // in flight at once, so a heading spanning three of them tells you nothing
+  // you can act on.
   const repoNames: string[] = [];
   for (const tree of visible) {
     if (!repoNames.includes(tree.repo)) repoNames.push(tree.repo);
@@ -103,18 +101,7 @@ export function WorktreeLedger() {
   // it is a gap in the record, not a codebase.
   repoNames.sort((a, b) => (a === "" ? 1 : b === "" ? -1 : a.localeCompare(b)));
 
-  const repoGroups = repoNames.map((repo) => ({
-    repo,
-    trees: visible.filter((tree: Worktree) => tree.repo === repo),
-  }));
-
-  const byRole = (trees: Worktree[]) =>
-    [...BRANCH_ROLES, "unfiled"].map((role) => ({
-      role,
-      trees: trees.filter((tree: Worktree) =>
-        role === "unfiled" ? roleUnknown(tree.role) : tree.role === role,
-      ),
-    }));
+  const attention = attentionItems(trees, issuesByTree);
 
   return (
     <div className="p-4">
@@ -135,57 +122,44 @@ export function WorktreeLedger() {
         />
       )}
 
+      <AttentionPanel items={attention} onSelect={setSelectedId} />
+
       {isLoading ? (
         <p className="text-body text-muted-foreground">{t(($) => $.worktree_loading)}</p>
       ) : trees.length === 0 ? (
         <p className="text-body text-muted-foreground">{t(($) => $.worktree_empty)}</p>
       ) : (
-        <div className="space-y-6">
-          {repoGroups.map((repoGroup) => (
-            <section key={repoGroup.repo || "—"}>
-              <h2 className="mb-2 flex items-baseline gap-2 border-b pb-1">
-                <span className="text-title-sm font-medium">
-                  {repoGroup.repo || t(($) => $.repo_unset)}
-                </span>
-                <span className="text-caption text-muted-foreground">
-                  {t(($) => $.repo_count, { count: repoGroup.trees.length })}
-                </span>
-              </h2>
-              <div className="space-y-4">
-                {byRole(repoGroup.trees)
-                  .filter((group) => group.trees.length > 0)
-                  .map((group) => (
-                    <section key={group.role}>
-                      <h3 className="mb-1.5 flex items-baseline gap-2">
-                        <span className="text-body font-medium">
-                          {group.role === "unfiled"
-                            ? t(($) => $.role_unfiled)
-                            : t(($) => $[`role_${group.role}` as "role_base"])}
-                        </span>
-                        {group.role !== "unfiled" && group.role !== "base" && (
-                          <span className="font-mono text-caption text-muted-foreground">
-                            {group.role}/
-                          </span>
-                        )}
-                        <span className="text-caption text-muted-foreground">
-                          {group.trees.length}
-                        </span>
-                      </h3>
-                      <div className="space-y-2">
-                        {group.trees.map((tree: Worktree) => (
-                          <WorktreeRow
-                            key={tree.id}
-                            tree={tree}
-                            parent={trees.find((p: Worktree) => p.id === tree.parent_id)}
-                            issues={issuesByTree.get(tree.name) ?? []}
-                          />
-                        ))}
-                      </div>
-                    </section>
-                  ))}
-              </div>
-            </section>
-          ))}
+        <div
+          className={cn(
+            "gap-4",
+            // Without a selection the list takes the full width: branch names
+            // are the one column that must not be truncated, and
+            // feature/wy/COC-295/openwiki-tab and …-tab-v2 truncate alike.
+            selected ? "grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_22rem]" : "block",
+          )}
+        >
+          <div className="min-w-0 space-y-5">
+            {repoNames.map((repo) => (
+              <RepoSection
+                key={repo || "—"}
+                repo={repo}
+                trees={visible.filter((tree: Worktree) => tree.repo === repo)}
+                allTrees={trees}
+                issuesByTree={issuesByTree}
+                selectedId={selectedId}
+                onSelect={setSelectedId}
+              />
+            ))}
+          </div>
+
+          {selected && (
+            <TreeDetail
+              tree={selected}
+              parent={trees.find((p: Worktree) => p.id === selected.parent_id)}
+              issues={issuesByTree.get(selected.name) ?? []}
+              onClose={() => setSelectedId(null)}
+            />
+          )}
         </div>
       )}
 
@@ -207,23 +181,228 @@ export function WorktreeLedger() {
 }
 
 /**
- * One checkout, laid out as the three questions someone actually opens this
- * page with: where is the code, who has it, and what happened in it. Each is a
- * labelled band, because the previous single line — name, role, status, branch,
- * owner, next action and a resume command run together — could be read only by
- * whoever wrote it.
+ * What needs a decision, above the ledger rather than inside it.
  *
- * The bands are open by default. The information is the page; hiding it behind
- * a chevron made the ledger look empty.
+ * Every item here is a join or a comparison — a tree measured before the
+ * working copy moved, a branch that landed while its cards stayed open — so no
+ * column in the table below can show it. At three trees this is one line; at
+ * thirty it is the only part of the page anyone reads.
  */
-function WorktreeRow({
+function AttentionPanel({
+  items,
+  onSelect,
+}: {
+  items: AttentionItem[];
+  onSelect: (id: string) => void;
+}) {
+  const { t } = useT("openwiki");
+  if (items.length === 0) return null;
+
+  return (
+    <section className="mb-4 rounded-lg border">
+      <h3 className="flex items-baseline gap-2 border-b px-3 py-2">
+        <span className="text-body font-medium">{t(($) => $.attention_title)}</span>
+        <span className="text-caption text-muted-foreground">{items.length}</span>
+      </h3>
+      <ul>
+        {items.map((item) => (
+          <li
+            key={`${item.tree.id}-${item.kind}`}
+            className="flex flex-wrap items-baseline gap-x-2 border-b px-3 py-1.5 text-caption last:border-b-0"
+          >
+            <button
+              type="button"
+              className="font-medium hover:underline"
+              onClick={() => onSelect(item.tree.id)}
+            >
+              {item.tree.name}
+            </button>
+            <span
+              className={cn(
+                item.kind === "blocked" || item.kind === "uncommitted"
+                  ? "text-destructive"
+                  : "text-foreground",
+              )}
+            >
+              {t(($) => $[`attention_${item.kind}` as "attention_blocked"])}
+            </span>
+            {item.issues.length > 0 && (
+              <span className="font-mono text-muted-foreground">
+                {item.issues.map((issue) => issue.identifier).join(" ")}
+              </span>
+            )}
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+
+/** One codebase's checkouts, in merge order. */
+function RepoSection({
+  repo,
+  trees,
+  allTrees,
+  issuesByTree,
+  selectedId,
+  onSelect,
+}: {
+  repo: string;
+  trees: Worktree[];
+  allTrees: Worktree[];
+  issuesByTree: Map<string, Issue[]>;
+  selectedId: string | null;
+  onSelect: (id: string) => void;
+}) {
+  const { t } = useT("openwiki");
+
+  // Laid out by what merges into what, not by role. Roles put every feature
+  // branch in one bucket; the question being asked is which branch carries
+  // which, and that is the parent chain.
+  const ordered: { tree: Worktree; depth: number }[] = [];
+  const place = (parentId: string | null, depth: number) => {
+    for (const tree of trees) {
+      const parent = tree.parent_id ?? null;
+      // A tree whose parent is not in this section is a root here, or the
+      // chain would silently drop it.
+      const isRoot =
+        parent === null || !trees.some((candidate) => candidate.id === parent);
+      if (parentId === null ? isRoot : parent === parentId) {
+        if (ordered.some((row) => row.tree.id === tree.id)) continue;
+        ordered.push({ tree, depth });
+        place(tree.id, depth + 1);
+      }
+    }
+  };
+  place(null, 0);
+
+  return (
+    <section>
+      <h2 className="mb-1.5 flex items-baseline gap-2 border-b pb-1">
+        <span className="text-title-sm font-medium">
+          {repo || t(($) => $.repo_unset)}
+        </span>
+        <span className="text-caption text-muted-foreground">
+          {t(($) => $.repo_count, { count: trees.length })}
+        </span>
+      </h2>
+      <div>
+        {ordered.map(({ tree, depth }) => (
+          <TreeRow
+            key={tree.id}
+            tree={tree}
+            depth={depth}
+            parent={allTrees.find((p: Worktree) => p.id === tree.parent_id)}
+            issues={issuesByTree.get(tree.name) ?? []}
+            selected={tree.id === selectedId}
+            onSelect={() => onSelect(tree.id)}
+          />
+        ))}
+      </div>
+    </section>
+  );
+}
+
+/** One checkout as a row: where the code is, who has it, and whether the
+ *  ledger's claims about it were measured. */
+function TreeRow({
+  tree,
+  depth,
+  parent,
+  issues,
+  selected,
+  onSelect,
+}: {
+  tree: Worktree;
+  depth: number;
+  parent?: Worktree;
+  issues: Issue[];
+  selected: boolean;
+  onSelect: () => void;
+}) {
+  const { t } = useT("openwiki");
+  const timeAgo = useTimeAgo();
+
+  const roleLabel = roleUnknown(tree.role)
+    ? t(($) => $.role_unknown, { role: tree.role })
+    : t(($) => $[`role_${tree.role}` as "role_base"]);
+
+  return (
+    <button
+      type="button"
+      onClick={onSelect}
+      // Selection is carried by weight and a left rule, which hover does not
+      // touch — expressing it with background alone would make hovering a
+      // selected row look like deselecting it.
+      className={cn(
+        "flex w-full flex-wrap items-baseline gap-x-2 gap-y-0.5 border-b px-2 py-2 text-left text-caption last:border-b-0 hover:bg-muted/50",
+        selected && "border-l-2 border-l-foreground bg-muted/40 font-medium",
+      )}
+      style={{ paddingLeft: `${0.5 + depth * 1.25}rem` }}
+    >
+      <span className="min-w-32">{tree.name}</span>
+      <span className="text-muted-foreground">{roleLabel}</span>
+
+      <span className="min-w-0 flex-1 font-mono text-muted-foreground">
+        {tree.branch || "—"}
+        {tree.base_ref !== "" && ` ← ${tree.base_ref}`}
+        {parent && ` → ${parent.name}`}
+      </span>
+
+      {issues.map((issue) => (
+        <span key={issue.id} className="font-mono text-muted-foreground">
+          {issue.identifier}
+        </span>
+      ))}
+
+      <span className="text-muted-foreground">
+        {tree.session.agent === ""
+          ? t(($) => $.session_unclaimed)
+          : tree.session.agent}
+      </span>
+
+      {/* The evidence, stated on the row. It is the one claim here that git
+        re-checks on every sync, so it is worth more than a status word. */}
+      <span className="min-w-40 text-right">
+        {tree.merged_sha !== "" ? (
+          <span className="font-mono">
+            {tree.merged_sha.slice(0, 10)}
+            {tree.merged_into !== "" && ` → ${tree.merged_into}`}
+          </span>
+        ) : tree.dirty ? (
+          <span className="text-destructive">{t(($) => $.worktree_dirty)}</span>
+        ) : tree.verified_at === null ? (
+          <span className="text-muted-foreground">
+            {t(($) => $.worktree_never_measured)}
+          </span>
+        ) : (
+          <span className="text-muted-foreground">
+            {t(($) => $.worktree_measured, { when: timeAgo(tree.verified_at) })}
+          </span>
+        )}
+      </span>
+    </button>
+  );
+}
+
+/**
+ * The selected checkout in full: its measured facts, the session driving it,
+ * what happened in it, and the terminal commands for this tree.
+ *
+ * A panel rather than an expanded row because the log and the forms are only
+ * wanted for one tree at a time, and putting them inline pushed every other
+ * tree off the screen.
+ */
+function TreeDetail({
   tree,
   parent,
   issues,
+  onClose,
 }: {
   tree: Worktree;
   parent?: Worktree;
   issues: Issue[];
+  onClose: () => void;
 }) {
   const { t } = useT("openwiki");
   const timeAgo = useTimeAgo();
@@ -239,66 +418,75 @@ function WorktreeRow({
     tree.session.resume === "";
 
   return (
-    <div className="rounded-lg border">
-      <div className="flex flex-wrap items-center gap-x-2 gap-y-1 border-b px-3 py-2">
+    <aside className="h-fit rounded-lg border lg:sticky lg:top-0">
+      <div className="flex items-baseline gap-2 border-b px-3 py-2">
         <span className="font-medium">{tree.name}</span>
-        <span
-          className={cn(
-            "text-caption",
-            tree.status === "blocked" ? "text-destructive" : "text-muted-foreground",
-          )}
+        <span className="text-caption text-muted-foreground">{tree.status}</span>
+        <button
+          type="button"
+          className="ml-auto text-caption text-muted-foreground hover:text-foreground"
+          onClick={onClose}
         >
-          {tree.status}
-        </span>
-        {issues.map((issue) => (
-          <button
-            key={issue.id}
-            type="button"
-            className="font-mono text-caption hover:underline"
-            onClick={() => nav.push(paths.issueDetail(issue.identifier))}
-          >
-            {issue.identifier}
-          </button>
-        ))}
-        <span className="ml-auto text-caption text-muted-foreground">
-          {tree.verified_at
-            ? t(($) => $.worktree_measured, { when: timeAgo(tree.verified_at as string) })
-            : t(($) => $.worktree_never_measured)}
-        </span>
+          {t(($) => $.detail_close)}
+        </button>
       </div>
 
-      {/* Where the code is. Measured by `worktree sync`, never typed here. */}
-      <Band label={t(($) => $.band_branch)}>
-        <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
-          <span className="font-mono">{tree.branch || "—"}</span>
-          {tree.base_ref !== "" && (
-            <span className="font-mono text-muted-foreground">← {tree.base_ref}</span>
-          )}
-          {parent && (
-            <span className="text-muted-foreground">
-              {t(($) => $.band_feeds, { name: parent.name })}
-            </span>
-          )}
-          {/* A dirty working copy is why a branch head and the ledger can
-              disagree, so it is stated next to the branch, not hidden. */}
-          {tree.dirty && <span className="text-destructive">{t(($) => $.worktree_dirty)}</span>}
-        </div>
-        {tree.merged_sha !== "" && (
-          <div className="font-mono text-muted-foreground">
-            {tree.merged_sha.slice(0, 12)}
-            {tree.merged_into !== "" && ` → ${tree.merged_into}`}
-          </div>
+      <dl className="grid grid-cols-[4.5rem_1fr] gap-x-3 gap-y-1 border-b px-3 py-2 text-caption">
+        <dt className="text-muted-foreground">{t(($) => $.band_branch)}</dt>
+        <dd className="min-w-0 break-all font-mono">{tree.branch || "—"}</dd>
+        <dt className="text-muted-foreground">{t(($) => $.field_base)}</dt>
+        <dd className="min-w-0 break-all font-mono">{tree.base_ref || "—"}</dd>
+        {parent && (
+          <>
+            <dt className="text-muted-foreground">{t(($) => $.field_feeds)}</dt>
+            <dd>{parent.name}</dd>
+          </>
         )}
+        <dt className="text-muted-foreground">{t(($) => $.field_merged)}</dt>
+        <dd className="min-w-0 break-all font-mono">
+          {tree.merged_sha === ""
+            ? "—"
+            : `${tree.merged_sha.slice(0, 12)}${tree.merged_into !== "" ? ` → ${tree.merged_into}` : ""}`}
+        </dd>
+        <dt className="text-muted-foreground">{t(($) => $.worktree_measured_label)}</dt>
+        <dd>
+          {tree.verified_at === null
+            ? t(($) => $.worktree_never_measured)
+            : timeAgo(tree.verified_at)}
+        </dd>
         {tree.path !== "" && (
-          <div className="truncate font-mono text-muted-foreground">{tree.path}</div>
+          <>
+            <dt className="text-muted-foreground">{t(($) => $.field_path)}</dt>
+            <dd className="min-w-0 break-all font-mono text-muted-foreground">
+              {tree.path}
+            </dd>
+          </>
         )}
-      </Band>
+        {issues.length > 0 && (
+          <>
+            <dt className="text-muted-foreground">{t(($) => $.field_issues)}</dt>
+            <dd className="flex flex-wrap gap-x-2">
+              {issues.map((issue) => (
+                <button
+                  key={issue.id}
+                  type="button"
+                  className="font-mono hover:underline"
+                  onClick={() => nav.push(paths.issueDetail(issue.identifier))}
+                >
+                  {issue.identifier}
+                </button>
+              ))}
+            </dd>
+          </>
+        )}
+      </dl>
 
-      {/* Who has it, and the command that puts you back in their session. */}
-      <Band
-        label={t(($) => $.band_session)}
-        action={
-          !handingOff && !unclaimed ? (
+      <div className="border-b px-3 py-2">
+        <div className="mb-1 flex items-baseline justify-between gap-2">
+          <span className="text-caption font-medium text-muted-foreground">
+            {t(($) => $.band_session)}
+          </span>
+          {!handingOff && !unclaimed && (
             <button
               type="button"
               className="text-caption text-muted-foreground hover:text-foreground"
@@ -306,9 +494,8 @@ function WorktreeRow({
             >
               {t(($) => $.handoff_start)}
             </button>
-          ) : undefined
-        }
-      >
+          )}
+        </div>
         {handingOff ? (
           <HandoffForm tree={tree} onDone={() => setHandingOff(false)} />
         ) : editingSession ? (
@@ -316,7 +503,7 @@ function WorktreeRow({
         ) : unclaimed ? (
           <button
             type="button"
-            className="w-full text-left text-muted-foreground"
+            className="w-full text-left text-caption text-muted-foreground"
             onClick={() => setEditingSession(true)}
           >
             {t(($) => $.session_empty)}
@@ -327,14 +514,16 @@ function WorktreeRow({
             onEdit={() => setEditingSession(true)}
           />
         )}
-      </Band>
+      </div>
 
-      {/* What happened, round by round. */}
-      <Band label={t(($) => $.band_log)}>
+      <div className="border-b px-3 py-2">
+        <span className="text-caption font-medium text-muted-foreground">
+          {t(($) => $.band_log)}
+        </span>
         <WorktreeEntryList treeRef={tree.id} />
-      </Band>
+      </div>
 
-      <div className="border-t px-3 py-1.5">
+      <div className="px-3 py-1.5">
         <button
           type="button"
           className="text-caption text-muted-foreground hover:text-foreground"
@@ -344,29 +533,7 @@ function WorktreeRow({
         </button>
         {showCommands && <CommandList tree={tree} />}
       </div>
-    </div>
-  );
-}
-
-/** A labelled section of a tree card. The label is what makes the card
- *  readable by someone who did not build it. */
-function Band({
-  label,
-  action,
-  children,
-}: {
-  label: string;
-  action?: React.ReactNode;
-  children: React.ReactNode;
-}) {
-  return (
-    <div className="border-b px-3 py-2 last:border-b-0">
-      <div className="flex items-baseline justify-between gap-2">
-        <span className="text-caption font-medium text-muted-foreground">{label}</span>
-        {action}
-      </div>
-      <div className="mt-1 space-y-0.5 text-caption">{children}</div>
-    </div>
+    </aside>
   );
 }
 

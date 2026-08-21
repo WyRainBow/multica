@@ -80,5 +80,14 @@
   "repo_count": "{{count}} 棵树",
   "field_repo": "仓库",
   "declarations_hide_settled": "收起已完成",
-  "declarations_show_settled": "另有 {{count}} 张已完成"
+  "declarations_show_settled": "另有 {{count}} 张已完成",
+  "attention_title": "需要你处理",
+  "attention_blocked": "已阻塞",
+  "attention_uncommitted": "有未提交改动",
+  "attention_never_measured": "从未实测——这行的事实都还没核过",
+  "attention_merged_open_cards": "已合入，但这些卡还开着",
+  "attention_unclaimed": "没人认领",
+  "session_unclaimed": "未认领",
+  "worktree_measured_label": "实测于",
+  "detail_close": "关闭"
 }

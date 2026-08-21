@@ -80,5 +80,14 @@
   "repo_count": "{{count}} trees",
   "field_repo": "repo",
   "declarations_hide_settled": "hide finished",
-  "declarations_show_settled": "{{count}} finished"
+  "declarations_show_settled": "{{count}} finished",
+  "attention_title": "Needs a decision",
+  "attention_blocked": "blocked",
+  "attention_uncommitted": "has uncommitted changes",
+  "attention_never_measured": "never measured — nothing on this row was checked",
+  "attention_merged_open_cards": "merged, but these cards are still open",
+  "attention_unclaimed": "nobody is driving it",
+  "session_unclaimed": "unclaimed",
+  "worktree_measured_label": "Measured",
+  "detail_close": "Close"
 }

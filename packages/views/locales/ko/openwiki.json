@@ -80,5 +80,14 @@
   "repo_count": "{{count}}개",
   "field_repo": "저장소",
   "declarations_hide_settled": "완료 숨기기",
-  "declarations_show_settled": "완료 {{count}}건"
+  "declarations_show_settled": "완료 {{count}}건",
+  "attention_title": "처리 필요",
+  "attention_blocked": "차단됨",
+  "attention_uncommitted": "커밋되지 않은 변경 있음",
+  "attention_never_measured": "측정된 적 없음 — 이 행의 사실은 미확인",
+  "attention_merged_open_cards": "병합됐지만 카드가 열려 있음",
+  "attention_unclaimed": "담당 없음",
+  "session_unclaimed": "미담당",
+  "worktree_measured_label": "측정",
+  "detail_close": "닫기"
 }

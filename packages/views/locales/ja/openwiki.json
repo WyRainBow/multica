@@ -80,5 +80,14 @@
   "repo_count": "{{count}} 本",
   "field_repo": "リポジトリ",
   "declarations_hide_settled": "完了分を隠す",
-  "declarations_show_settled": "完了 {{count}} 件"
+  "declarations_show_settled": "完了 {{count}} 件",
+  "attention_title": "要対応",
+  "attention_blocked": "ブロック中",
+  "attention_uncommitted": "未コミットの変更あり",
+  "attention_never_measured": "未計測 — この行の事実は未確認",
+  "attention_merged_open_cards": "マージ済みだがカードが未クローズ",
+  "attention_unclaimed": "担当なし",
+  "session_unclaimed": "担当なし",
+  "worktree_measured_label": "計測",
+  "detail_close": "閉じる"
 }
