@@ -1,5 +1,11 @@
 import type {
   Card,
+  Worktree,
+  WorktreeEntry,
+  CreateWorktreeRequest,
+  UpdateWorktreeRequest,
+  UpdateWorktreeSessionRequest,
+  CreateWorktreeEntryRequest,
   IssueResource,
   CreateIssueResourceRequest,
   UpdateIssueResourceRequest,
@@ -220,6 +226,10 @@ import {
   CardListResponseSchema,
   IssueResourceSchema,
   IssueResourceListResponseSchema,
+  WorktreeSchema,
+  WorktreeListResponseSchema,
+  WorktreeEntrySchema,
+  WorktreeEntryListResponseSchema,
   IssuePhaseSchema,
   IssuePhasesResponseSchema,
   ParentIssuesResponseSchema,
@@ -1162,6 +1172,85 @@ export class ApiClient {
   async deleteIssueResource(issueId: string, resourceId: string): Promise<void> {
     await this.fetch<unknown>(`/api/issues/${issueId}/resources/${resourceId}`, {
       method: "DELETE",
+    });
+  }
+
+  // --- worktree ledger ---
+  //
+  // Trees are addressed by name as well as by id, which is how the CLI and the
+  // agents driving it refer to them. Callers pass whichever they hold.
+
+  async listWorktrees(): Promise<Worktree[]> {
+    const raw = await this.fetch<unknown>("/api/worktrees");
+    const parsed = parseWithFallback(raw, WorktreeListResponseSchema, { worktrees: [] }, {
+      endpoint: "GET /api/worktrees",
+    });
+    return parsed.worktrees;
+  }
+
+  async createWorktree(body: CreateWorktreeRequest): Promise<Worktree | null> {
+    const raw = await this.fetch<unknown>("/api/worktrees", {
+      method: "POST",
+      body: JSON.stringify(body),
+    });
+    return parseWithFallback(raw, WorktreeSchema, null, { endpoint: "POST /api/worktrees" });
+  }
+
+  async updateWorktree(ref: string, body: UpdateWorktreeRequest): Promise<Worktree | null> {
+    const raw = await this.fetch<unknown>(`/api/worktrees/${encodeURIComponent(ref)}`, {
+      method: "PUT",
+      body: JSON.stringify(body),
+    });
+    return parseWithFallback(raw, WorktreeSchema, null, { endpoint: "PUT /api/worktrees/:ref" });
+  }
+
+  async deleteWorktree(ref: string): Promise<void> {
+    await this.fetch<unknown>(`/api/worktrees/${encodeURIComponent(ref)}`, { method: "DELETE" });
+  }
+
+  async updateWorktreeSession(
+    ref: string,
+    body: UpdateWorktreeSessionRequest,
+  ): Promise<Worktree | null> {
+    const raw = await this.fetch<unknown>(`/api/worktrees/${encodeURIComponent(ref)}/session`, {
+      method: "PUT",
+      body: JSON.stringify(body),
+    });
+    return parseWithFallback(raw, WorktreeSchema, null, {
+      endpoint: "PUT /api/worktrees/:ref/session",
+    });
+  }
+
+  async listWorktreeEntries(ref: string, limit?: number): Promise<WorktreeEntry[]> {
+    const query = limit ? `?limit=${limit}` : "";
+    const raw = await this.fetch<unknown>(
+      `/api/worktrees/${encodeURIComponent(ref)}/entries${query}`,
+    );
+    const parsed = parseWithFallback(raw, WorktreeEntryListResponseSchema, { entries: [] }, {
+      endpoint: "GET /api/worktrees/:ref/entries",
+    });
+    return parsed.entries;
+  }
+
+  async listRecentWorktreeEntries(limit?: number): Promise<WorktreeEntry[]> {
+    const query = limit ? `?limit=${limit}` : "";
+    const raw = await this.fetch<unknown>(`/api/worktree-entries${query}`);
+    const parsed = parseWithFallback(raw, WorktreeEntryListResponseSchema, { entries: [] }, {
+      endpoint: "GET /api/worktree-entries",
+    });
+    return parsed.entries;
+  }
+
+  async createWorktreeEntry(
+    ref: string,
+    body: CreateWorktreeEntryRequest,
+  ): Promise<WorktreeEntry | null> {
+    const raw = await this.fetch<unknown>(`/api/worktrees/${encodeURIComponent(ref)}/entries`, {
+      method: "POST",
+      body: JSON.stringify(body),
+    });
+    return parseWithFallback(raw, WorktreeEntrySchema, null, {
+      endpoint: "POST /api/worktrees/:ref/entries",
     });
   }
 

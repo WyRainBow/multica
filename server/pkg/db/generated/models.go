@@ -1260,3 +1260,41 @@ type WorkspaceInvitation struct {
 	UpdatedAt     pgtype.Timestamptz `json:"updated_at"`
 	ExpiresAt     pgtype.Timestamptz `json:"expires_at"`
 }
+
+type Worktree struct {
+	ID               pgtype.UUID        `json:"id"`
+	WorkspaceID      pgtype.UUID        `json:"workspace_id"`
+	Name             string             `json:"name"`
+	Path             string             `json:"path"`
+	Repo             string             `json:"repo"`
+	Branch           string             `json:"branch"`
+	BaseRef          string             `json:"base_ref"`
+	Role             string             `json:"role"`
+	Status           string             `json:"status"`
+	HeadSha          string             `json:"head_sha"`
+	MergedSha        string             `json:"merged_sha"`
+	MergedInto       string             `json:"merged_into"`
+	Dirty            bool               `json:"dirty"`
+	VerifiedAt       pgtype.Timestamptz `json:"verified_at"`
+	SessionAgent     string             `json:"session_agent"`
+	SessionResume    string             `json:"session_resume"`
+	SessionOwner     string             `json:"session_owner"`
+	NextAction       string             `json:"next_action"`
+	SessionUpdatedAt pgtype.Timestamptz `json:"session_updated_at"`
+	ParentID         pgtype.UUID        `json:"parent_id"`
+	CreatedAt        pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt        pgtype.Timestamptz `json:"updated_at"`
+}
+
+type WorktreeEntry struct {
+	ID          pgtype.UUID        `json:"id"`
+	WorkspaceID pgtype.UUID        `json:"workspace_id"`
+	WorktreeID  pgtype.UUID        `json:"worktree_id"`
+	IssueID     pgtype.UUID        `json:"issue_id"`
+	Kind        string             `json:"kind"`
+	Body        string             `json:"body"`
+	Sha         string             `json:"sha"`
+	AuthorType  string             `json:"author_type"`
+	AuthorID    pgtype.UUID        `json:"author_id"`
+	CreatedAt   pgtype.Timestamptz `json:"created_at"`
+}

@@ -33,6 +33,8 @@
     "./issues/canonical-id": "./issues/canonical-id.ts",
     "./docs/queries": "./docs/queries.ts",
     "./docs/mutations": "./docs/mutations.ts",
+    "./worktrees/queries": "./worktrees/queries.ts",
+    "./worktrees/mutations": "./worktrees/mutations.ts",
     "./issue-resources/queries": "./issue-resources/queries.ts",
     "./issue-resources/mutations": "./issue-resources/mutations.ts",
     "./issues/queries": "./issues/queries.ts",

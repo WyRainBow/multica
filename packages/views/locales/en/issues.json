@@ -376,7 +376,9 @@
     "expand": "Show outline"
   },
   "timeline": {
-    "loading": "Loading..."
+    "loading": "Loading...",
+    "view_comments": "Comments",
+    "view_log": "Log"
   },
   "activity": {
     "created": "created this issue",
@@ -412,7 +414,10 @@
     "activity_count_one": "{{count}} activity",
     "activity_count_other": "{{count}} activities",
     "show_more_activities_one": "Show {{count}} more activity",
-    "show_more_activities_other": "Show {{count}} more activities"
+    "show_more_activities_other": "Show {{count}} more activities",
+    "metadata_key_set": "set {{key}}: {{to}}",
+    "metadata_key_changed": "updated {{key}}: {{from}} → {{to}}",
+    "metadata_key_deleted": "deleted {{key}}"
   },
   "comment": {
     "delete_title": "Delete comment",

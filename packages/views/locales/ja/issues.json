@@ -369,7 +369,9 @@
     "expand": "目次を表示"
   },
   "timeline": {
-    "loading": "読み込み中..."
+    "loading": "読み込み中...",
+    "view_comments": "コメント",
+    "view_log": "ログ"
   },
   "activity": {
     "created": "このタスクを作成しました",
@@ -401,7 +403,10 @@
     "squad_leader_failed_reason": "評価に失敗しました: {{reason}}",
     "coalesced_badge": "×{{count}}",
     "activity_count_other": "アクティビティ {{count}} 件",
-    "show_more_activities_other": "アクティビティをさらに {{count}} 件表示"
+    "show_more_activities_other": "アクティビティをさらに {{count}} 件表示",
+    "metadata_key_set": "{{key}} を設定: {{to}}",
+    "metadata_key_changed": "{{key}} を更新: {{from}} → {{to}}",
+    "metadata_key_deleted": "{{key}} を削除"
   },
   "comment": {
     "delete_title": "コメントを削除",

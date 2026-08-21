@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -262,4 +263,72 @@ func createMetadataTestIssue(t *testing.T, title string) string {
 		t.Fatalf("decode issue: %v", err)
 	}
 	return issue.ID
+}
+
+// git.*/vcs.* key changes leave a timestamped activity trail — the worktree
+// ledger's version history (COC-295/297). Non-namespace keys stay silent.
+func TestDeliveryMetadataChangeWritesActivity(t *testing.T) {
+	if testHandler == nil || testPool == nil {
+		t.Skip("database not available")
+	}
+	issueID := createMetadataTestIssue(t, "metadata activity")
+
+	setKey := func(key, raw string) *httptest.ResponseRecorder {
+		w := httptest.NewRecorder()
+		req := newRequest("PUT", "/api/issues/"+issueID+"/metadata/"+key, json.RawMessage(`{"value":`+raw+`}`))
+		req = withURLParams(req, "id", issueID, "key", key)
+		testHandler.SetIssueMetadataKey(w, req)
+		return w
+	}
+
+	if w := setKey("git.delivery_ref", `"feat/first"`); w.Code != http.StatusOK {
+		t.Fatalf("set git key: %d %s", w.Code, w.Body.String())
+	}
+	if w := setKey("latest_conclusion", `"approve"`); w.Code != http.StatusOK {
+		t.Fatalf("set pointer key: %d %s", w.Code, w.Body.String())
+	}
+	if w := setKey("git.delivery_ref", `"feat/second"`); w.Code != http.StatusOK {
+		t.Fatalf("re-set git key: %d %s", w.Code, w.Body.String())
+	}
+
+	var actions []string
+	var oldValues []any
+	rows, err := testPool.Query(context.Background(), `
+		SELECT action, details->>'old' FROM activity
+		WHERE issue_id = $1 AND action IN ('metadata_key_changed','metadata_key_deleted')
+		ORDER BY created_at`, issueID)
+	if err != nil {
+		t.Fatalf("query activities: %v", err)
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var action, old string
+		if err := rows.Scan(&action, &old); err != nil {
+			t.Fatal(err)
+		}
+		actions = append(actions, action)
+		oldValues = append(oldValues, old)
+	}
+	if len(actions) != 2 {
+		t.Fatalf("expected 2 metadata activities (latest_conclusion must stay silent), got %v", actions)
+	}
+	if oldValues[0] != "" || oldValues[1] != "feat/first" {
+		t.Fatalf("old values wrong: first set should have no old, re-set should show feat/first — got %v", oldValues)
+	}
+
+	del := httptest.NewRecorder()
+	req := newRequest("DELETE", "/api/issues/"+issueID+"/metadata/git.delivery_ref", nil)
+	req = withURLParams(req, "id", issueID, "key", "git.delivery_ref")
+	testHandler.DeleteIssueMetadataKey(del, req)
+	if del.Code != http.StatusOK {
+		t.Fatalf("delete git key: %d %s", del.Code, del.Body.String())
+	}
+	var deleted int
+	if err := testPool.QueryRow(context.Background(),
+		`SELECT count(*) FROM activity WHERE issue_id = $1 AND action = 'metadata_key_deleted'`, issueID).Scan(&deleted); err != nil {
+		t.Fatal(err)
+	}
+	if deleted != 1 {
+		t.Fatalf("expected 1 delete activity, got %d", deleted)
+	}
 }

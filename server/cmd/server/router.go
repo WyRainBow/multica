@@ -1416,6 +1416,26 @@ func NewRouterWithOptions(pool *pgxpool.Pool, hub *realtime.Hub, bus *events.Bus
 				})
 			})
 
+			// Worktrees — the code-progress ledger. Cards say how far a decision
+			// has got; these say where the code is: which checkout exists, what it
+			// sits on, who is driving it, and what happened in it round by round.
+			r.Route("/api/worktrees", func(r chi.Router) {
+				r.Get("/", h.ListWorktrees)
+				r.Post("/", h.CreateWorktree)
+				r.Route("/{id}", func(r chi.Router) {
+					r.Get("/", h.GetWorktree)
+					r.Put("/", h.UpdateWorktree)
+					r.Delete("/", h.DeleteWorktree)
+					r.Put("/session", h.UpdateWorktreeSession)
+					r.Post("/sync", h.SyncWorktree)
+					r.Get("/entries", h.ListWorktreeEntries)
+					r.Post("/entries", h.CreateWorktreeEntry)
+				})
+			})
+			// The cross-tree feed, so the ledger page opens on what moved lately
+			// without one request per tree.
+			r.Get("/api/worktree-entries", h.ListRecentWorktreeEntries)
+
 			// Projects
 			r.Route("/api/projects", func(r chi.Router) {
 				r.Get("/search", h.SearchProjects)

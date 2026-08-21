@@ -369,7 +369,9 @@
     "expand": "展开目录"
   },
   "timeline": {
-    "loading": "加载中…"
+    "loading": "加载中…",
+    "view_comments": "评论",
+    "view_log": "日志"
   },
   "activity": {
     "created": "创建了这个任务",
@@ -401,7 +403,10 @@
     "squad_leader_failed_reason": "评估失败：{{reason}}",
     "coalesced_badge": "×{{count}}",
     "activity_count_other": "{{count}} 条动态",
-    "show_more_activities_other": "展开更早 {{count}} 条动态"
+    "show_more_activities_other": "展开更早 {{count}} 条动态",
+    "metadata_key_set": "设置了 {{key}}: {{to}}",
+    "metadata_key_changed": "更新了 {{key}}: {{from}} → {{to}}",
+    "metadata_key_deleted": "删除了 {{key}}"
   },
   "comment": {
     "delete_title": "删除评论",

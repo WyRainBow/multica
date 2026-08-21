@@ -369,7 +369,9 @@
     "expand": "목차 표시"
   },
   "timeline": {
-    "loading": "불러오는 중..."
+    "loading": "불러오는 중...",
+    "view_comments": "댓글",
+    "view_log": "로그"
   },
   "activity": {
     "created": "이 태스크를 만들었습니다",
@@ -401,7 +403,10 @@
     "squad_leader_failed_reason": "평가 실패: {{reason}}",
     "coalesced_badge": "×{{count}}",
     "activity_count_other": "활동 {{count}}개",
-    "show_more_activities_other": "활동 {{count}}개 더 보기"
+    "show_more_activities_other": "활동 {{count}}개 더 보기",
+    "metadata_key_set": "{{key}} 설정: {{to}}",
+    "metadata_key_changed": "{{key}} 변경: {{from}} → {{to}}",
+    "metadata_key_deleted": "{{key}} 삭제"
   },
   "comment": {
     "delete_title": "댓글 삭제",

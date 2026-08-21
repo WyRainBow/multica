@@ -678,6 +678,69 @@ export const IssueResourceListResponseSchema = z.object({
   resources: z.array(IssueResourceSchema).default([]),
 }).loose();
 
+// The worktree ledger. Defaults everywhere a field could be missing: an older
+// backend that does not send `session` or `entry_count` should still render the
+// row it does send, because a ledger that blanks out on drift is worse than one
+// showing a tree with an empty session slot.
+export const WorktreeSessionSchema = z.object({
+  agent: z.string().default(""),
+  resume: z.string().default(""),
+  owner: z.string().default(""),
+  next_action: z.string().default(""),
+  updated_at: z.string().nullish().transform((v) => v ?? null),
+}).loose();
+
+export const WorktreeSchema = z.object({
+  id: z.string(),
+  workspace_id: z.string().default(""),
+  name: z.string(),
+  path: z.string().default(""),
+  repo: z.string().default(""),
+  branch: z.string().default(""),
+  base_ref: z.string().default(""),
+  // Roles and statuses are server-driven enums; kept as plain strings so a
+  // value this build has not heard of renders as itself instead of vanishing.
+  role: z.string().default("feature"),
+  status: z.string().default("active"),
+  head_sha: z.string().default(""),
+  merged_sha: z.string().default(""),
+  merged_into: z.string().default(""),
+  dirty: z.boolean().default(false),
+  verified_at: z.string().nullish().transform((v) => v ?? null),
+  session: WorktreeSessionSchema.default({
+    agent: "",
+    resume: "",
+    owner: "",
+    next_action: "",
+    updated_at: null,
+  }),
+  parent_id: z.string().nullish().transform((v) => v ?? null),
+  entry_count: z.number().default(0),
+  created_at: z.string().default(""),
+  updated_at: z.string().default(""),
+}).loose();
+
+export const WorktreeListResponseSchema = z.object({
+  worktrees: z.array(WorktreeSchema).default([]),
+}).loose();
+
+export const WorktreeEntrySchema = z.object({
+  id: z.string(),
+  workspace_id: z.string().default(""),
+  worktree_id: z.string().default(""),
+  issue_id: z.string().nullish().transform((v) => v ?? null),
+  kind: z.string().default("progress"),
+  body: z.string().default(""),
+  sha: z.string().default(""),
+  author_type: z.string().default("member"),
+  author_id: z.string().default(""),
+  created_at: z.string().default(""),
+}).loose();
+
+export const WorktreeEntryListResponseSchema = z.object({
+  entries: z.array(WorktreeEntrySchema).default([]),
+}).loose();
+
 export const CardListResponseSchema = z.object({
   cards: z.array(CardSchema).default([]),
   total: z.number().default(0),
