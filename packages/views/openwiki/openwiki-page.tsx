@@ -76,6 +76,9 @@ interface DeliveryRow {
   deliveryRef: string;
   mrUrl: string;
   deprecatedKeys: boolean;
+  /** git.branch_role — base | feature | integration | launch. Defaults to
+   *  feature: the common case is a card delivering one feature branch. */
+  role: string;
 }
 
 function deliveryRow(issue: Issue): DeliveryRow | null {
@@ -95,8 +98,19 @@ function deliveryRow(issue: Issue): DeliveryRow | null {
     deliveryRef,
     mrUrl,
     deprecatedKeys: !str("git.base_ref") && !!str("baseline_ref"),
+    role: str("git.branch_role") || "feature",
   };
 }
+
+// Branch roles render in pipeline order: what everything is based on
+// (base) → the work (feature) → the batch carriers (integration, launch).
+const BRANCH_ROLES = ["base", "feature", "integration", "launch"] as const;
+const roleOrder = (role: string) => {
+  const i = BRANCH_ROLES.indexOf(role as (typeof BRANCH_ROLES)[number]);
+  return i === -1 ? BRANCH_ROLES.length : i;
+};
+const roleUnknown = (role: string) =>
+  !BRANCH_ROLES.includes(role as (typeof BRANCH_ROLES)[number]);
 
 function WorktreeLedger() {
   const wsId = useWorkspaceId();
@@ -108,7 +122,10 @@ function WorktreeLedger() {
   const rows = issues
     .map(deliveryRow)
     .filter((r): r is DeliveryRow => r !== null)
-    .sort((a, b) => a.identifier.localeCompare(b.identifier));
+    .sort((a, b) =>
+      roleOrder(a.role) - roleOrder(b.role) ||
+      a.identifier.localeCompare(b.identifier),
+    );
 
   return (
     <div className="p-4">
@@ -148,6 +165,13 @@ function WorktreeLedger() {
                   </button>
                 </td>
                 <td className="py-1.5 pr-3 text-muted-foreground">{r.status}</td>
+                <td className="py-1.5 pr-3">
+                  <span className="rounded bg-muted px-1.5 py-0.5 text-caption">
+                    {roleUnknown(r.role)
+                      ? t(($) => $.role_unknown, { role: r.role })
+                      : t(($) => $[`role_${r.role}` as "role_base"])}
+                  </span>
+                </td>
                 <td className="py-1.5 pr-3 font-mono text-caption">{r.baseRef || "—"}</td>
                 <td className="py-1.5 pr-3 font-mono text-caption">
                   {r.deliveryRef || "—"}

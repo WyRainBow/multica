@@ -17,5 +17,11 @@
     "latest_cases": "Recently distilled cases",
     "no_cases": "No cases yet. Distill one via interview-retro's Case rule after solving a meaty problem.",
     "from_issue": "from issue"
-  }
+  },
+  "col_role": "Role",
+  "role_base": "base",
+  "role_feature": "feature",
+  "role_integration": "integration",
+  "role_launch": "launch",
+  "role_unknown": "{{role}}?"
 }

@@ -17,5 +17,11 @@
     "latest_cases": "最近蒸馏的 case",
     "no_cases": "还没有 case。解决够分量的问题后按 interview-retro 的 Case 沉淀条款蒸馏进来。",
     "from_issue": "来自任务"
-  }
+  },
+  "col_role": "角色",
+  "role_base": "基线",
+  "role_feature": "功能",
+  "role_integration": "集成",
+  "role_launch": "发车",
+  "role_unknown": "{{role}}?"
 }

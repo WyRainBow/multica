@@ -17,5 +17,11 @@
     "latest_cases": "最近蒸留されたケース",
     "no_cases": "ケースはまだありません。",
     "from_issue": "issue から"
-  }
+  },
+  "col_role": "役割",
+  "role_base": "ベース",
+  "role_feature": "機能",
+  "role_integration": "統合",
+  "role_launch": "発車",
+  "role_unknown": "{{role}}?"
 }
