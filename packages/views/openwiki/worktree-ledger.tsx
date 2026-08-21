@@ -87,16 +87,34 @@ export function WorktreeLedger() {
   );
   const visible = showClosed ? [...open, ...closed] : open;
 
-  // Grouped by role, in pipeline order. The roles are the branch naming rule —
-  // feature/<card>, integration/<topic>, release/<date>, hotfix/<desc> — so a
-  // reader can see at a glance which batch branches exist and what feeds them,
-  // which a flat list of checkouts never showed.
-  const groups = [...BRANCH_ROLES, "other"].map((role) => ({
-    role,
-    trees: visible.filter((tree: Worktree) =>
-      role === "other" ? roleUnknown(tree.role) : tree.role === role,
-    ),
+  // Grouped by repository first, then by role.
+  //
+  // Repository first because a checkout belongs to one codebase and several are
+  // in flight at once: a "feature (5)" heading mixing three repositories tells
+  // you nothing you can act on. Role second because within one codebase the
+  // roles are the branch naming rule — feature/<card>, integration/<topic>,
+  // release/<date>, hotfix/<desc> — and reading them in pipeline order is how
+  // the batch structure becomes visible.
+  const repoNames: string[] = [];
+  for (const tree of visible) {
+    if (!repoNames.includes(tree.repo)) repoNames.push(tree.repo);
+  }
+  // A tree registered without a repo still has to appear, and it sorts last:
+  // it is a gap in the record, not a codebase.
+  repoNames.sort((a, b) => (a === "" ? 1 : b === "" ? -1 : a.localeCompare(b)));
+
+  const repoGroups = repoNames.map((repo) => ({
+    repo,
+    trees: visible.filter((tree: Worktree) => tree.repo === repo),
   }));
+
+  const byRole = (trees: Worktree[]) =>
+    [...BRANCH_ROLES, "unfiled"].map((role) => ({
+      role,
+      trees: trees.filter((tree: Worktree) =>
+        role === "unfiled" ? roleUnknown(tree.role) : tree.role === role,
+      ),
+    }));
 
   return (
     <div className="p-4">
@@ -110,45 +128,64 @@ export function WorktreeLedger() {
         </Button>
       </div>
 
-      {adding && <NewWorktreeForm onDone={() => setAdding(false)} />}
+      {adding && (
+        <NewWorktreeForm
+          knownRepos={repoNames.filter((r) => r !== "")}
+          onDone={() => setAdding(false)}
+        />
+      )}
 
       {isLoading ? (
         <p className="text-body text-muted-foreground">{t(($) => $.worktree_loading)}</p>
       ) : trees.length === 0 ? (
         <p className="text-body text-muted-foreground">{t(($) => $.worktree_empty)}</p>
       ) : (
-        <div className="space-y-5">
-          {groups
-            .filter((group) => group.trees.length > 0)
-            .map((group) => (
-              <section key={group.role}>
-                <h3 className="mb-1.5 flex items-baseline gap-2">
-                  <span className="text-body font-medium">
-                    {group.role === "other"
-                      ? t(($) => $.role_unfiled)
-                      : t(($) => $[`role_${group.role}` as "role_base"])}
-                  </span>
-                  {group.role !== "other" && group.role !== "base" && (
-                    <span className="font-mono text-caption text-muted-foreground">
-                      {group.role}/
-                    </span>
-                  )}
-                  <span className="text-caption text-muted-foreground">
-                    {group.trees.length}
-                  </span>
-                </h3>
-                <div className="space-y-2">
-                  {group.trees.map((tree: Worktree) => (
-                    <WorktreeRow
-                      key={tree.id}
-                      tree={tree}
-                      parent={trees.find((p: Worktree) => p.id === tree.parent_id)}
-                      issues={issuesByTree.get(tree.name) ?? []}
-                    />
+        <div className="space-y-6">
+          {repoGroups.map((repoGroup) => (
+            <section key={repoGroup.repo || "—"}>
+              <h2 className="mb-2 flex items-baseline gap-2 border-b pb-1">
+                <span className="text-title-sm font-medium">
+                  {repoGroup.repo || t(($) => $.repo_unset)}
+                </span>
+                <span className="text-caption text-muted-foreground">
+                  {t(($) => $.repo_count, { count: repoGroup.trees.length })}
+                </span>
+              </h2>
+              <div className="space-y-4">
+                {byRole(repoGroup.trees)
+                  .filter((group) => group.trees.length > 0)
+                  .map((group) => (
+                    <section key={group.role}>
+                      <h3 className="mb-1.5 flex items-baseline gap-2">
+                        <span className="text-body font-medium">
+                          {group.role === "unfiled"
+                            ? t(($) => $.role_unfiled)
+                            : t(($) => $[`role_${group.role}` as "role_base"])}
+                        </span>
+                        {group.role !== "unfiled" && group.role !== "base" && (
+                          <span className="font-mono text-caption text-muted-foreground">
+                            {group.role}/
+                          </span>
+                        )}
+                        <span className="text-caption text-muted-foreground">
+                          {group.trees.length}
+                        </span>
+                      </h3>
+                      <div className="space-y-2">
+                        {group.trees.map((tree: Worktree) => (
+                          <WorktreeRow
+                            key={tree.id}
+                            tree={tree}
+                            parent={trees.find((p: Worktree) => p.id === tree.parent_id)}
+                            issues={issuesByTree.get(tree.name) ?? []}
+                          />
+                        ))}
+                      </div>
+                    </section>
                   ))}
-                </div>
-              </section>
-            ))}
+              </div>
+            </section>
+          ))}
         </div>
       )}
 
@@ -511,10 +548,20 @@ function SessionEditor({ tree, onDone }: { tree: Worktree; onDone: () => void })
   );
 }
 
-function NewWorktreeForm({ onDone }: { onDone: () => void }) {
+function NewWorktreeForm({
+  knownRepos,
+  onDone,
+}: {
+  knownRepos: string[];
+  onDone: () => void;
+}) {
   const { t } = useT("openwiki");
   const { t: tc } = useT("common");
   const [name, setName] = useState("");
+  // The ledger groups by repository, so a tree registered without one lands in
+  // a pile called "unset". Default to the repository already in use when there
+  // is only one — the common case is a second tree in the same codebase.
+  const [repo, setRepo] = useState(knownRepos.length === 1 ? knownRepos[0]! : "");
   const [branch, setBranch] = useState("");
   const [base, setBase] = useState("");
   const [role, setRole] = useState<string>("feature");
@@ -524,7 +571,13 @@ function NewWorktreeForm({ onDone }: { onDone: () => void }) {
     const trimmed = name.trim();
     if (trimmed === "" || createWorktree.isPending) return;
     createWorktree.mutate(
-      { name: trimmed, branch: branch.trim(), base_ref: base.trim(), role },
+      {
+        name: trimmed,
+        repo: repo.trim(),
+        branch: branch.trim(),
+        base_ref: base.trim(),
+        role,
+      },
       { onSuccess: onDone },
     );
   };
@@ -537,6 +590,18 @@ function NewWorktreeForm({ onDone }: { onDone: () => void }) {
         placeholder={t(($) => $.field_name)}
         onChange={(e) => setName(e.target.value)}
       />
+      <Input
+        className="h-7 w-32"
+        value={repo}
+        list="worktree-repos"
+        placeholder={t(($) => $.field_repo)}
+        onChange={(e) => setRepo(e.target.value)}
+      />
+      <datalist id="worktree-repos">
+        {knownRepos.map((r) => (
+          <option key={r} value={r} />
+        ))}
+      </datalist>
       <Input
         className="h-7 w-52 font-mono"
         value={branch}
@@ -608,13 +673,23 @@ function UnattachedDeclarations({ issues }: { issues: Issue[] }) {
   const { t } = useT("openwiki");
   const nav = useNavigation();
   const paths = useWorkspacePaths();
+  const [showSettled, setShowSettled] = useState(false);
 
-  const rows = issues
+  const all = issues
     .map(declarationRow)
     .filter((r): r is DeclarationRow => r !== null)
     .sort((a, b) => a.identifier.localeCompare(b.identifier));
 
-  if (rows.length === 0) return null;
+  // This list exists to be worked through — each row is a card whose branch
+  // nobody filed under a tree. A card that is already done or cancelled is not
+  // work, and there are years of them: leaving them in buries the few rows that
+  // still need a decision.
+  const settled = all.filter(
+    (r) => r.status === "done" || r.status === "cancelled",
+  );
+  const rows = showSettled ? all : all.filter((r) => !settled.includes(r));
+
+  if (all.length === 0) return null;
 
   return (
     <section className="mt-6">
@@ -624,6 +699,17 @@ function UnattachedDeclarations({ issues }: { issues: Issue[] }) {
         <span className="text-caption text-muted-foreground tabular-nums">
           {rows.length}
         </span>
+        {settled.length > 0 && (
+          <button
+            type="button"
+            className="text-caption font-normal text-muted-foreground hover:text-foreground"
+            onClick={() => setShowSettled((v) => !v)}
+          >
+            {showSettled
+              ? t(($) => $.declarations_hide_settled)
+              : t(($) => $.declarations_show_settled, { count: settled.length })}
+          </button>
+        )}
       </h3>
       <p className="mt-1 text-caption text-muted-foreground">
         {t(($) => $.declarations_hint)}

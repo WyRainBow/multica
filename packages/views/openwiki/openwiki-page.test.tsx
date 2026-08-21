@@ -1,12 +1,24 @@
 import { describe, it, expect, vi } from "vitest";
 import { screen } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
 import { renderWithI18n } from "../test/i18n";
 
-// The tabs' own contents are tested where they live. This file is about the
+vi.mock("@multica/core/paths", () => ({
+  useWorkspacePaths: () => ({
+    workspaceWiki: () => "/acme/workspace/wiki",
+    workspaceSkills: () => "/acme/workspace/skills",
+    workspaceWorktree: () => "/acme/workspace/worktree",
+    workspaceAgentWiki: () => "/acme/workspace/agentwiki",
+  }),
+}));
+
+vi.mock("../navigation", () => ({
+  useNavigation: () => ({ push: vi.fn() }),
+}));
+
+// The views' own contents are tested where they live. This file is about the
 // shell around them, so each is a marker.
 vi.mock("@multica/views/docs", () => ({
-  DocsPage: () => <div data-testid="docs">docs</div>,
+  DocsPage: () => <div data-testid="wiki">wiki</div>,
 }));
 vi.mock("@multica/views/skills", () => ({
   SkillsPage: () => <div data-testid="skills">skills</div>,
@@ -18,13 +30,15 @@ vi.mock("./agentwiki-overview", () => ({
   AgentWikiOverview: () => <div data-testid="agentwiki">agentwiki</div>,
 }));
 
-import { OpenwikiPage } from "./openwiki-page";
+import { OpenwikiPage, type OpenwikiTab } from "./openwiki-page";
+
+const TABS: OpenwikiTab[] = ["wiki", "skills", "worktree", "agentwiki"];
 
 /**
  * The dashboard shell sets overflow-hidden, so a page that does not carry its
  * own scroll container simply loses everything below the fold — no scrollbar,
  * no keyboard scrolling, nothing to indicate there is more. That is invisible
- * to a render test unless it is asserted directly, and it shipped once.
+ * to a render test unless asserted directly, and it shipped once.
  */
 function scrollContainerOf(element: HTMLElement | null): HTMLElement | null {
   for (let node = element; node; node = node.parentElement) {
@@ -34,30 +48,34 @@ function scrollContainerOf(element: HTMLElement | null): HTMLElement | null {
 }
 
 describe("OpenwikiPage", () => {
-  it("gives the plain tabs a scroll container, and the self-scrolling ones none", async () => {
-    renderWithI18n(<OpenwikiPage />);
-    const user = userEvent.setup();
+  it("renders the view its address names", () => {
+    for (const tab of TABS) {
+      const { unmount } = renderWithI18n(<OpenwikiPage tab={tab} />);
+      expect(screen.getByTestId(tab)).toBeInTheDocument();
+      unmount();
+    }
+  });
 
+  it("gives the plain views a scroll container, and the self-scrolling ones none", () => {
     // Docs and skills scroll their own lists; a wrapper here would nest a
     // second scrollbar inside the first.
-    expect(scrollContainerOf(screen.getByTestId("docs"))).toBeNull();
+    for (const tab of ["wiki", "skills"] as OpenwikiTab[]) {
+      const { unmount } = renderWithI18n(<OpenwikiPage tab={tab} />);
+      expect(scrollContainerOf(screen.getByTestId(tab))).toBeNull();
+      unmount();
+    }
 
-    await user.click(screen.getByRole("button", { name: "Skills" }));
-    expect(scrollContainerOf(screen.getByTestId("skills"))).toBeNull();
-
-    for (const [tab, label] of [
-      ["worktree", "Worktree"],
-      ["agentwiki", "Agent Wiki"],
-    ]) {
-      await user.click(screen.getByRole("button", { name: label! }));
+    for (const tab of ["worktree", "agentwiki"] as OpenwikiTab[]) {
+      const { unmount } = renderWithI18n(<OpenwikiPage tab={tab} />);
       const container = scrollContainerOf(screen.getByTestId(tab));
       expect(
         container,
-        `the ${tab} tab renders past the fold and has nothing to scroll it`,
+        `the ${tab} view renders past the fold and has nothing to scroll it`,
       ).not.toBeNull();
       // A flex child scrolls only if it is allowed to be shorter than its
       // content; without min-h-0 it grows instead and the clip comes back.
       expect(container?.className).toContain("min-h-0");
+      unmount();
     }
   });
 });

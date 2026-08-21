@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 
-// Kept so links and bookmarks written before the assets page had one address
-// per view still land somewhere.
+// The assets page has one address per view; this one is the entry and lands on
+// the wiki, so the address bar always names what is on screen.
 export default async function Page({
   params,
 }: {

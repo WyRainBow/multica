@@ -52,9 +52,19 @@ function workspaceScoped(slug: string) {
     runtimeSettings: (machineId: string, runtimeId: string) =>
       `${ws}/runtimes/${encode(machineId)}/runtime/${encode(runtimeId)}`,
     skills: () => `${ws}/skills`,
-    docs: () => `${ws}/docs`,
+    // The wiki list moved onto the assets page; /docs still redirects here.
+    docs: () => `${ws}/workspace/wiki`,
     docDetail: (id: string) => `${ws}/docs/${encode(id)}`,
     skillDetail: (id: string) => `${ws}/skills/${encode(id)}`,
+    // The workspace's own assets, one address per view. They were tabs held in
+    // component state, so a view could not be linked to, survive a reload, or
+    // be reached with the back button — and the address bar said `openwiki`
+    // while the navigation said workspace.
+    workspaceAssets: () => `${ws}/workspace`,
+    workspaceWiki: () => `${ws}/workspace/wiki`,
+    workspaceSkills: () => `${ws}/workspace/skills`,
+    workspaceWorktree: () => `${ws}/workspace/worktree`,
+    workspaceAgentWiki: () => `${ws}/workspace/agentwiki`,
     settings: () => `${ws}/settings`,
     attachmentPreview: (id: string) => `${ws}/attachments/${encode(id)}/preview`,
   };

@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { createMemoryRouter, Outlet, useMatches } from "react-router-dom";
+import { createMemoryRouter, Navigate, Outlet, useMatches } from "react-router-dom";
 import type { RouteObject } from "react-router-dom";
 import { IssueDetailPage } from "./pages/issue-detail-page";
 import { ProjectDetailPage } from "./pages/project-detail-page";
@@ -20,6 +20,7 @@ import { AutopilotsPage } from "@multica/views/autopilots/components";
 import { MyIssuesPage } from "@multica/views/my-issues";
 import { SkillsPage } from "@multica/views/skills";
 import { DocsPage } from "@multica/views/docs";
+import { OpenwikiPage } from "@multica/views/openwiki";
 import { DocDetailPage } from "./pages/doc-detail-page";
 import { DesktopRuntimesPage } from "./components/desktop-runtimes-page";
 import { DesktopAgentsPage } from "./components/desktop-agents-page";
@@ -181,6 +182,33 @@ export const appRoutes: RouteObject[] = [
           },
           { path: "skills", element: <SkillsPage />, handle: { title: "Skills" } },
           { path: "docs", element: <DocsPage />, handle: { title: "Docs" } },
+          // The workspace's assets, one address per view — same four as web, so
+          // a link pasted from one opens the same place in the other.
+          {
+            path: "workspace",
+            element: <Navigate to="wiki" replace />,
+            handle: { title: "Workspace" },
+          },
+          {
+            path: "workspace/wiki",
+            element: <OpenwikiPage tab="wiki" />,
+            handle: { title: "Workspace" },
+          },
+          {
+            path: "workspace/skills",
+            element: <OpenwikiPage tab="skills" />,
+            handle: { title: "Workspace" },
+          },
+          {
+            path: "workspace/worktree",
+            element: <OpenwikiPage tab="worktree" />,
+            handle: { title: "Workspace" },
+          },
+          {
+            path: "workspace/agentwiki",
+            element: <OpenwikiPage tab="agentwiki" />,
+            handle: { title: "Workspace" },
+          },
           { path: "docs/:id", element: <DocDetailPage />, handle: { title: "Docs" } },
           {
             path: "skills/:id",

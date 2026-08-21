@@ -73,6 +73,11 @@ export type WorkspacePageKey =
   | "runtimes"
   | "skills"
   | "docs"
+  | "workspaceAssets"
+  | "workspaceWiki"
+  | "workspaceSkills"
+  | "workspaceWorktree"
+  | "workspaceAgentWiki"
   | "settings";
 
 export interface WorkspacePage {
@@ -100,7 +105,15 @@ export const WORKSPACE_PAGES: Record<WorkspacePageKey, WorkspacePage> = {
   usage: { segment: "usage", icon: "BarChart3", navKey: "usage" },
   runtimes: { segment: "runtimes", icon: "Monitor", navKey: "runtimes" },
   skills: { segment: "skills", icon: "BookOpenText", navKey: "skills" },
+  // The assets page and its four views. They share an icon and a nav entry:
+  // the sidebar has one "workspace" destination, and which view it opens on is
+  // a property of the address, not a separate place to go.
   docs: { segment: "docs", icon: "FileText", navKey: "docs" },
+  workspaceAssets: { segment: "workspace", icon: "FileText", navKey: "docs" },
+  workspaceWiki: { segment: "workspace/wiki", icon: "FileText", navKey: "docs" },
+  workspaceSkills: { segment: "workspace/skills", icon: "FileText", navKey: "docs" },
+  workspaceWorktree: { segment: "workspace/worktree", icon: "FileText", navKey: "docs" },
+  workspaceAgentWiki: { segment: "workspace/agentwiki", icon: "FileText", navKey: "docs" },
   settings: { segment: "settings", icon: "Settings", navKey: "settings" },
 };
 

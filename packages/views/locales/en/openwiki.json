@@ -75,5 +75,10 @@
   "cmd_sync": "Measure",
   "cmd_session": "Claim",
   "cmd_handoff": "Hand over",
-  "role_unfiled": "unfiled"
+  "role_unfiled": "unfiled",
+  "repo_unset": "unset",
+  "repo_count": "{{count}} trees",
+  "field_repo": "repo",
+  "declarations_hide_settled": "hide finished",
+  "declarations_show_settled": "{{count}} finished"
 }

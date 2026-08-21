@@ -75,5 +75,10 @@
   "cmd_sync": "量事实",
   "cmd_session": "认领",
   "cmd_handoff": "交接",
-  "role_unfiled": "未归类"
+  "role_unfiled": "未归类",
+  "repo_unset": "未指定仓库",
+  "repo_count": "{{count}} 棵树",
+  "field_repo": "仓库",
+  "declarations_hide_settled": "收起已完成",
+  "declarations_show_settled": "另有 {{count}} 张已完成"
 }

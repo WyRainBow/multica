@@ -75,5 +75,10 @@
   "cmd_sync": "측정",
   "cmd_session": "담당",
   "cmd_handoff": "인계",
-  "role_unfiled": "미분류"
+  "role_unfiled": "미분류",
+  "repo_unset": "저장소 미지정",
+  "repo_count": "{{count}}개",
+  "field_repo": "저장소",
+  "declarations_hide_settled": "완료 숨기기",
+  "declarations_show_settled": "완료 {{count}}건"
 }

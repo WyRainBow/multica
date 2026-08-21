@@ -75,5 +75,10 @@
   "cmd_sync": "計測",
   "cmd_session": "担当",
   "cmd_handoff": "引き継ぎ",
-  "role_unfiled": "未分類"
+  "role_unfiled": "未分類",
+  "repo_unset": "リポジトリ未設定",
+  "repo_count": "{{count}} 本",
+  "field_repo": "リポジトリ",
+  "declarations_hide_settled": "完了分を隠す",
+  "declarations_show_settled": "完了 {{count}} 件"
 }
