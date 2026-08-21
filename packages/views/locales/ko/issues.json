@@ -370,7 +370,7 @@
   },
   "timeline": {
     "loading": "불러오는 중...",
-    "view_all": "전체",
+    "view_comments": "댓글",
     "view_log": "로그"
   },
   "activity": {

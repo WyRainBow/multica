@@ -1831,12 +1831,12 @@ export function IssueDetail({
           return phaseAtTime(issuePhases, e.created_at)?.id === selectedPhaseId;
         })
       : timeline;
-    // Log view (COC-297): change events only. Comments are exactly what this
-    // view exists to get away from — a changelog pushed down the page by
-    // every reply is just the mixed timeline again.
+    // Comments vs log (COC-297): two disjoint reads of one stream. The
+    // discussion view shows comments only — change events live entirely in
+    // the log view, so neither side pushes the other down the page.
     const scoped = logOnly
       ? visible.filter((e) => e.type === "activity")
-      : visible;
+      : visible.filter((e) => e.type !== "activity");
     const topLevel = scoped.filter(
       (e) => e.type === "activity" || !e.parent_id,
     );
@@ -3957,12 +3957,11 @@ export function IssueDetail({
                 The per-task timeline + past runs live in the right panel
                 via ExecutionLogSection. */}
 
-              {/* Log view toggle (COC-297) — the changelog is a first-class
-                read of the same timeline: change events only, no comments
-                to push it down. Kept as two quiet text buttons next to the
-                phase track's row, not a new page-level tab: the log and the
-                discussion are two views of one stream, and the toggle is
-                how you glance across. */}
+              {/* Log view toggle (COC-297) — comments and change events are
+                two disjoint reads of one timeline: the discussion side never
+                renders activities, the log side never renders comments. Kept
+                as two quiet text buttons next to the phase track's row, not a
+                new page-level tab: the toggle is how you glance across. */}
               <div className="mt-4 flex items-center gap-1">
                 <button
                   type="button"
@@ -3974,7 +3973,7 @@ export function IssueDetail({
                       : "text-muted-foreground hover:text-foreground",
                   )}
                 >
-                  {t(($) => $.timeline.view_all)}
+                  {t(($) => $.timeline.view_comments)}
                 </button>
                 <button
                   type="button"
