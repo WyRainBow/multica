@@ -1806,6 +1806,11 @@ func profilesRootDir() (string, error) {
 	return filepath.Join(home, ".multica", "profiles"), nil
 }
 
+// samePath reports whether two paths name the same location. Symlinks are
+// resolved when both sides exist: on macOS /var and /private/var are the same
+// directory, and callers that refuse on a mismatch would otherwise refuse on a
+// difference that is not one. Paths that cannot be resolved — one of them not
+// created yet — fall back to comparing absolute forms.
 func samePath(a, b string) bool {
 	if a == "" || b == "" {
 		return false
@@ -1815,7 +1820,15 @@ func samePath(a, b string) bool {
 	if errA != nil || errB != nil {
 		return a == b
 	}
-	return aa == bb
+	if aa == bb {
+		return true
+	}
+	ra, errA := filepath.EvalSymlinks(aa)
+	rb, errB := filepath.EvalSymlinks(bb)
+	if errA != nil || errB != nil {
+		return false
+	}
+	return ra == rb
 }
 
 func pluralS(n int) string {

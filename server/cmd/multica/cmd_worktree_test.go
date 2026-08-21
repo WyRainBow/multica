@@ -123,6 +123,7 @@ func newSyncCmd(t *testing.T, dir, into string) *cobra.Command {
 	f := cmd.Flags()
 	f.String("dir", dir, "")
 	f.String("into", into, "")
+	f.Bool("force", false, "")
 	f.String("output", "json", "")
 	f.String("profile", "", "")
 	f.String("server-url", "", "")
@@ -349,5 +350,63 @@ func TestLogBindsTheCardOnlyWhenItIsUnbound(t *testing.T) {
 				t.Errorf("wrote %#v (present=%v), want %#v", got, ok, c.want)
 			}
 		})
+	}
+}
+
+
+// TestSyncRefusesToMeasureTheWrongCheckout guards the facts account against the
+// easy slip: `sync <name>` names a row, not a directory, so running it from the
+// wrong repository would write this checkout's HEAD onto another tree.
+func TestSyncRefusesToMeasureTheWrongCheckout(t *testing.T) {
+	measured := gitRepo(t)
+	recorded := gitRepo(t)
+	row := map[string]any{
+		"id": "w1", "name": "tree", "path": recorded, "branch": "side",
+		"base_ref": "main", "role": "feature", "status": "active",
+	}
+
+	srv, url := newSyncServer(t, row)
+	t.Setenv("HOME", t.TempDir())
+	if err := cli.SaveCLIConfigForProfile(cli.CLIConfig{ServerURL: url, Token: "t"}, ""); err != nil {
+		t.Fatal(err)
+	}
+	cmd := newSyncCmd(t, measured, "")
+	cmd.SetContext(context.Background())
+
+	if err := runWorktreeSync(cmd, []string{"tree"}); err == nil {
+		t.Fatal("sync measured a different checkout than the row records and wrote it anyway")
+	}
+	if srv.payload() != nil {
+		t.Errorf("posted %#v; nothing should reach the ledger when the checkout is not the one it names", srv.payload())
+	}
+
+	// --force is the deliberate override, and it does write.
+	if err := cmd.Flags().Set("force", "true"); err != nil {
+		t.Fatal(err)
+	}
+	if err := runWorktreeSync(cmd, []string{"tree"}); err != nil {
+		t.Fatalf("sync --force: %v", err)
+	}
+	if srv.payload() == nil {
+		t.Error("--force posted nothing")
+	}
+}
+
+// A checkout reached through a symlinked path is the same checkout. macOS
+// serves /var as a link to /private/var, and refusing there would make --force
+// routine, which is how a guard stops being one.
+func TestSyncTreatsASymlinkedPathAsTheSamePlace(t *testing.T) {
+	real := gitRepo(t)
+	link := filepath.Join(t.TempDir(), "link")
+	if err := os.Symlink(real, link); err != nil {
+		t.Skipf("symlinks unavailable: %v", err)
+	}
+	row := map[string]any{
+		"id": "w1", "name": "tree", "path": link, "branch": "side",
+		"base_ref": "main", "role": "feature", "status": "active",
+	}
+
+	if sent := runSync(t, row, real, ""); sent == nil {
+		t.Error("sync refused a checkout reached by another name for the same directory")
 	}
 }

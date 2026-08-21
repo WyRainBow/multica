@@ -230,6 +230,7 @@ func init() {
 
 	worktreeSyncCmd.Flags().String("dir", "", "Checkout to measure (default: the tree's path, else the current directory)")
 	worktreeSyncCmd.Flags().String("into", "", "Branch to test HEAD against, overriding the parent/base default")
+	worktreeSyncCmd.Flags().Bool("force", false, "Write the measurements even when they come from a different checkout than the row records")
 	worktreeSyncCmd.Flags().String("output", "json", "Output format: table or json")
 
 	rootCmd.AddCommand(worktreeCmd)
@@ -770,11 +771,17 @@ func runWorktreeSync(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return fmt.Errorf("%s is not a git working tree; pass --dir", dashIfEmpty(dir))
 	}
-	// A path recorded on the row that no longer matches where we measured is
-	// worth saying out loud: the numbers below are about this directory, not
-	// about the one the ledger names.
-	if tree.Path != "" && dir != "" && root != tree.Path {
-		fmt.Fprintf(os.Stderr, "Note: measured %s, but the ledger records %s.\n", root, tree.Path)
+	// Measuring one checkout and writing the numbers onto another row is how
+	// the facts account starts lying — and it is an easy mistake to make with
+	// several repositories open, since `sync <name>` names the row, not the
+	// directory. So a mismatch stops here rather than being noted and written
+	// anyway. Symlinks are resolved on both sides first: on macOS /var and
+	// /private/var are the same directory, and a spurious refusal teaches
+	// people to reach for --force.
+	if force, _ := cmd.Flags().GetBool("force"); !force && tree.Path != "" && !samePath(root, tree.Path) {
+		return fmt.Errorf(
+			"measured %s, but %s is recorded at %s.\nMove the row with `worktree set %s --path`, or pass --force to write these numbers anyway",
+			root, tree.Name, tree.Path, tree.Name)
 	}
 
 	branch, err := runGit(root, "rev-parse", "--abbrev-ref", "HEAD")
