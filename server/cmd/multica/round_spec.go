@@ -92,7 +92,7 @@ func NextRoundNumber(rounds []RoundDoc, phase string) int {
 // RenderRoundSection builds the block the spec carries. Newest first: the
 // question it answers is "where does this stand", and the answer is the last
 // line written, not the first.
-func RenderRoundSection(rounds []RoundDoc) string {
+func RenderRoundSection(rounds []RoundDoc, watermark string) string {
 	sorted := append([]RoundDoc(nil), rounds...)
 	sort.Slice(sorted, func(i, j int) bool { return sorted[i].Number > sorted[j].Number })
 
@@ -103,6 +103,13 @@ func RenderRoundSection(rounds []RoundDoc) string {
 		b.WriteString("尚无收口轮次。\n")
 	} else {
 		b.WriteString("> 本节由 `multica issue round close` 重写，不要手改——手改会在下次收口时丢失。\n\n")
+		// The watermark is what makes "is this still current?" answerable.
+		// Without it a reader can see the conclusions but not whether anything
+		// was argued after them, so the only safe move is re-reading every
+		// comment — the cost this section exists to remove.
+		if strings.TrimSpace(watermark) != "" {
+			fmt.Fprintf(&b, "> **结论计入截至 %s。** 该时刻之后的评论尚未计入本表——只读那之后的，不必通读全部。\n\n", strings.TrimSpace(watermark))
+		}
 		b.WriteString("| 轮次 | 节点 | 结论 | 要点 | 验收版本 | 验证证据 | 正身 |\n")
 		b.WriteString("| --- | --- | --- | --- | --- | --- | --- |\n")
 		for _, r := range sorted {
@@ -137,8 +144,8 @@ func cellEscape(s string) string {
 //
 // Anything outside the markers is returned untouched, including a spec that is
 // empty: the closure action owns one section, not the document.
-func ApplyRoundSection(spec string, rounds []RoundDoc) string {
-	section := RenderRoundSection(rounds)
+func ApplyRoundSection(spec string, rounds []RoundDoc, watermark string) string {
+	section := RenderRoundSection(rounds, watermark)
 
 	start := strings.Index(spec, specSectionOpen)
 	end := strings.LastIndex(spec, specSectionClose)

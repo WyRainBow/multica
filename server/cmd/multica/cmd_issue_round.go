@@ -7,6 +7,7 @@ import (
 	"net/url"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/spf13/cobra"
 
@@ -172,7 +173,12 @@ func runIssueRoundClose(cmd *cobra.Command, args []string) error {
 		Summary: summary, VerifiedSHA: verifiedSHA, Evidence: evidence,
 		DocID: roundDoc.ID,
 	})
-	specDoc, err := upsertSpec(ctx, client, issue.ID, key, docs, rounds)
+	// Closing is the moment the conclusions become true, so it is also the
+	// moment everything argued so far is accounted for. Recording it lets a
+	// later reader tell "these conclusions are current" from "these
+	// conclusions predate the last three comments" without reading any of them.
+	watermark := time.Now().UTC().Format(time.RFC3339)
+	specDoc, err := upsertSpec(ctx, client, issue.ID, key, docs, rounds, watermark)
 	if err != nil {
 		// The round is already recorded; failing here must not read as though
 		// nothing happened.
@@ -374,13 +380,14 @@ func upsertSpec(
 	issueID, key string,
 	docs []docRow,
 	rounds []RoundDoc,
+	watermark string,
 ) (string, error) {
 	specKind := key + "/" + specFolder
 	for _, doc := range docs {
 		if doc.Kind != specKind {
 			continue
 		}
-		updated := ApplyRoundSection(doc.Content, rounds)
+		updated := ApplyRoundSection(doc.Content, rounds, watermark)
 		if updated == doc.Content {
 			return doc.ID, nil
 		}
@@ -395,7 +402,7 @@ func upsertSpec(
 	created, err := createDoc(ctx, client, docRequest{
 		Title:   key + " spec",
 		Kind:    specKind,
-		Content: ApplyRoundSection("", rounds),
+		Content: ApplyRoundSection("", rounds, watermark),
 		IssueID: issueID,
 	})
 	if err != nil {

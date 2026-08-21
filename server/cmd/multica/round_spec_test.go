@@ -65,7 +65,7 @@ func TestRoundSectionLeadsWithTheLatestRound(t *testing.T) {
 	section := RenderRoundSection([]RoundDoc{
 		{Number: 1, Phase: "方案评审", Verdict: "approve", Summary: "定了三本账", DocID: "d1"},
 		{Number: 2, Phase: "代码评审", Verdict: "request_changes", Summary: "撤回假绿", DocID: "d2"},
-	})
+	}, "")
 	r1 := strings.Index(section, "| R1 |")
 	r2 := strings.Index(section, "| R2 |")
 	if r2 < 0 || r1 < 0 || r2 > r1 {
@@ -77,7 +77,7 @@ func TestASummaryCannotBreakItsRow(t *testing.T) {
 	t.Parallel()
 	section := RenderRoundSection([]RoundDoc{
 		{Number: 1, Phase: "代码评审", Verdict: "approve", Summary: "a | b", DocID: "d1"},
-	})
+	}, "")
 	for _, line := range strings.Split(section, "\n") {
 		if strings.HasPrefix(line, "| R1 |") {
 			// Counted against the header rather than a literal, so adding a
@@ -106,14 +106,14 @@ func headerRow(section string) string {
 func TestApplyRoundSectionLeavesTheRestOfTheSpecAlone(t *testing.T) {
 	t.Parallel()
 	spec := "# 目标\n\n把三本账分开。\n"
-	once := ApplyRoundSection(spec, []RoundDoc{{Number: 1, Summary: "一"}})
+	once := ApplyRoundSection(spec, []RoundDoc{{Number: 1, Summary: "一"}}, "")
 	if !strings.HasPrefix(once, spec) {
 		t.Errorf("prose was disturbed:\n%s", once)
 	}
 
 	// Closing a second round rewrites the section, not the document — and does
 	// not leave the first one behind.
-	twice := ApplyRoundSection(once, []RoundDoc{{Number: 1, Summary: "一"}, {Number: 2, Summary: "二"}})
+	twice := ApplyRoundSection(once, []RoundDoc{{Number: 1, Summary: "一"}, {Number: 2, Summary: "二"}}, "")
 	if !strings.HasPrefix(twice, spec) {
 		t.Errorf("prose was disturbed on the second pass:\n%s", twice)
 	}
@@ -130,7 +130,7 @@ func TestApplyRoundSectionRepairsHandEditedMarkers(t *testing.T) {
 	// Someone deleted the closing marker. Appending a fresh section would
 	// leave the spec claiming two sets of current conclusions.
 	damaged := "# 目标\n\n" + specSectionOpen + "\n\n旧内容\n"
-	fixed := ApplyRoundSection(damaged, []RoundDoc{{Number: 1, Summary: "一"}})
+	fixed := ApplyRoundSection(damaged, []RoundDoc{{Number: 1, Summary: "一"}}, "")
 	if n := strings.Count(fixed, specSectionOpen); n != 1 {
 		t.Errorf("%d opening markers, want 1:\n%s", n, fixed)
 	}
@@ -141,7 +141,7 @@ func TestApplyRoundSectionRepairsHandEditedMarkers(t *testing.T) {
 
 func TestAnEmptySpecStillGetsItsSection(t *testing.T) {
 	t.Parallel()
-	out := ApplyRoundSection("", nil)
+	out := ApplyRoundSection("", nil, "")
 	if !strings.Contains(out, specSectionOpen) || !strings.Contains(out, "尚无收口轮次") {
 		t.Errorf("empty spec did not get a section:\n%s", out)
 	}
@@ -155,7 +155,7 @@ func TestTheSpecCarriesWhatWasActuallyChecked(t *testing.T) {
 		VerifiedSHA: "66dc40e79aa1bb2c3d4e5f60718293a4b5c6d7e8",
 		Evidence:    "views 4044/4044, typecheck 6/6",
 		DocID:       "d1",
-	}})
+	}}, "")
 	// An approval says someone decided; these two say what they decided on.
 	// Without them a verdict is an opinion, which is the gap this closes.
 	for _, want := range []string{"66dc40e7", "views 4044/4044"} {
@@ -174,10 +174,50 @@ func TestAnUncheckedRoundSaysSoRatherThanLookingChecked(t *testing.T) {
 	t.Parallel()
 	section := RenderRoundSection([]RoundDoc{{
 		Number: 1, Phase: "代码评审", Verdict: "approve", Summary: "没测就批", DocID: "d1",
-	}})
+	}}, "")
 	// Empty cells read as em dashes. A blank would look like a rendering
 	// glitch; this reads as "nobody recorded one", which is the fact.
 	if !strings.Contains(section, "| — | — |") {
 		t.Errorf("an unverified round does not show as unverified:\n%s", section)
+	}
+}
+
+func TestTheWatermarkSaysWhatTheConclusionsAccountFor(t *testing.T) {
+	t.Parallel()
+	// Without it a reader sees the conclusions but not whether anything was
+	// argued after them, so the only safe move is re-reading every comment —
+	// the cost this section exists to remove.
+	section := RenderRoundSection([]RoundDoc{{Number: 1, Phase: "方案评审", Summary: "定了"}},
+		"2026-08-21T09:00:00Z")
+
+	if !strings.Contains(section, "2026-08-21T09:00:00Z") {
+		t.Errorf("the watermark did not travel:\n%s", section)
+	}
+	// It has to say what to do with it, or it reads as decoration.
+	if !strings.Contains(section, "只读那之后的") {
+		t.Error("the watermark must say the comments after it are the ones to read")
+	}
+}
+
+func TestNoWatermarkIsBetterThanAWrongOne(t *testing.T) {
+	t.Parallel()
+	// A section rebuilt without a close time must not imply one. Claiming
+	// conclusions are current as of some moment they are not is worse than
+	// saying nothing, because the reader then skips the comments.
+	section := RenderRoundSection([]RoundDoc{{Number: 1, Summary: "定了"}}, "   ")
+	if strings.Contains(section, "结论计入截至") {
+		t.Errorf("a blank watermark still rendered a claim:\n%s", section)
+	}
+}
+
+func TestAnEmptySectionCarriesNoWatermarkEither(t *testing.T) {
+	t.Parallel()
+	// Nothing has been concluded, so nothing has been accounted for.
+	section := RenderRoundSection(nil, "2026-08-21T09:00:00Z")
+	if strings.Contains(section, "结论计入截至") {
+		t.Error("a section with no rounds claimed to account for comments")
+	}
+	if !strings.Contains(section, "尚无收口轮次") {
+		t.Error("an empty section must say it is empty")
 	}
 }

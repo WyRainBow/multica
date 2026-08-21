@@ -661,6 +661,37 @@ func writeWorkflowAutopilot(b *strings.Builder, ctx TaskContextForEnv) {
 	b.WriteString("- " + AutopilotIssueCommandsGuard + "\n\n")
 }
 
+// writeIssueCatchUpStep emits step 3 — how the run learns what it is walking
+// into.
+//
+// The step used to say one thing: read every comment, always. That was the only
+// honest instruction while the decided state lived nowhere else, and the step
+// said so — skipping it was named as the most common cause of a run acting on
+// stale instructions. It also meant every run rebuilt the same answer from the
+// same chat history, and the cost grew with the issue.
+//
+// When the issue carries documents, the answer is already in this file: the
+// state of record and its conclusions, and the station the work is at. The
+// comment read narrows to what came after the conclusions were written, which
+// the watermark names. It narrows rather than disappears — comments still carry
+// questions nobody answered and constraints stated in passing, and no document
+// has those yet.
+//
+// When the issue carries none, the wording is unchanged. Most issues are in
+// that state, pointing them at a section that is not there would be a dead
+// instruction, and byte-identical output keeps their cached prompt prefix
+// intact.
+func writeIssueCatchUpStep(b *strings.Builder, ctx TaskContextForEnv) {
+	if len(ctx.IssueDocs) == 0 && len(ctx.IssuePhases) == 0 {
+		b.WriteString("3. Catch up on the comment history — this is mandatory, not optional — in two bounded reads, never one bulk pull: scan every thread cheaply (`--roots-only --summary --compact`), then expand only the threads that matter (`--thread <id> --tail 30 --compact`). Earlier comments often carry context the issue body lacks. Skipping this step is the most common cause of agents acting on stale or incomplete instructions — so always run the scan, even when the trigger looks self-contained. In Reply mode the per-turn user message names the thread to expand first; the scan is how you decide whether any OTHER thread is also relevant.\n")
+		return
+	}
+	b.WriteString("3. **Read what was decided before reading what was said, then catch up on the rest.**\n")
+	b.WriteString("   - **Start with this file.** `## Issue Documents` carries the state of record with the conclusions of every closed round inlined under it; `## Issue Phases` says which station the work is at. No command needed. What is settled there is settled — do not re-derive it, and do not reopen it without new evidence.\n")
+	b.WriteString("   - **Then read the comments the conclusions do not cover.** When the conclusions carry a watermark (\"结论计入截至 <time>\"), everything up to that moment is already in the table: read only what came after, with `--since <that time> --compact`, plus the thread the per-turn user message names in Reply mode. With no conclusions or no watermark, do the full catch-up instead — scan every thread cheaply (`--roots-only --summary --compact`), then expand only the threads that matter (`--thread <id> --tail 30 --compact`), never one bulk pull.\n")
+	b.WriteString("   Do not skip the comment read either way. Comments carry what no document has yet — a question nobody answered, a constraint stated in passing, work someone did and only mentioned. Acting on stale or incomplete instructions is the most common way a run goes wrong; the watermark narrows that read, it does not remove it.\n")
+}
+
 // writeWorkflowIssue emits the single issue workflow used by BOTH
 // assignment-triggered and comment-triggered runs.
 //
@@ -711,7 +742,7 @@ func writeWorkflowIssue(b *strings.Builder, ctx TaskContextForEnv) {
 	b.WriteString("**Steps 1–6 — both modes** (the per-turn user message carries this issue's real id and ready-to-run context-read commands; assemble other calls from `## Available Commands`)\n\n")
 	b.WriteString("1. Read the issue (`multica issue get`) to understand the context.\n")
 	b.WriteString("2. Read the metadata bag (`multica issue metadata list`) — best-effort, empty `{}` and CLI failures are normal. What to look for: `## Issue Metadata`.\n")
-	b.WriteString("3. Catch up on the comment history — this is mandatory, not optional — in two bounded reads, never one bulk pull: scan every thread cheaply (`--roots-only --summary --compact`), then expand only the threads that matter (`--thread <id> --tail 30 --compact`). Earlier comments often carry context the issue body lacks. Skipping this step is the most common cause of agents acting on stale or incomplete instructions — so always run the scan, even when the trigger looks self-contained. In Reply mode the per-turn user message names the thread to expand first; the scan is how you decide whether any OTHER thread is also relevant.\n")
+	writeIssueCatchUpStep(b, ctx)
 	b.WriteString("4. Complete the task within your Agent Identity boundaries (`## Instruction Precedence` lists the actions Agent Identity can forbid). If your role is delegation-only, perform the allowed delegation work and stop once that outcome is delivered.\n")
 	if ctx.IsSquadLeader {
 		b.WriteString("5. **Post your final results as a comment** (unless your outcome is `no_action` — in that case, calling `multica squad activity <issue-id> no_action --reason \"...\"` alone is sufficient; you MUST exit without posting any comment. DO NOT post a comment announcing no_action or saying you are exiting silently): post it with `multica issue comment add` using the platform-correct non-inline mode from ## Comment Formatting (never inline `--content`). Your results are only visible to the user if posted via this CLI call; text in your terminal or run logs is NOT delivered.\n")
