@@ -86,5 +86,14 @@
   "attention_unclaimed": "担当なし",
   "session_unclaimed": "担当なし",
   "worktree_measured_label": "計測",
-  "detail_close": "閉じる"
+  "detail_close": "閉じる",
+  "tab_instructions": "Instructions",
+  "instructions_hint": "このワークスペースの全エージェントが毎回のタスクで従う内容。Wiki は理由、Skills は契機、ここは常時。タスクブリーフとして届き、ランタイム固有の CLAUDE.md / AGENTS.md が優先されます。",
+  "instructions_placeholder": "例：done には 40 文字のマージ SHA が必須。ブランチ名は証拠にならない。",
+  "instructions_save": "保存",
+  "instructions_saving": "保存中…",
+  "instructions_saved": "保存しました",
+  "instructions_save_failed": "保存できませんでした",
+  "instructions_unsaved": "未保存 — エージェントには前の版が届きます。",
+  "instructions_effect": "次のタスクから全エージェントに適用されます。"
 }

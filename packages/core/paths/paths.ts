@@ -63,6 +63,7 @@ function workspaceScoped(slug: string) {
     workspaceAssets: () => `${ws}/workspace`,
     workspaceWiki: () => `${ws}/workspace/wiki`,
     workspaceSkills: () => `${ws}/workspace/skills`,
+    workspaceInstructions: () => `${ws}/workspace/instructions`,
     workspaceWorktree: () => `${ws}/workspace/worktree`,
     workspaceAgentWiki: () => `${ws}/workspace/agentwiki`,
     settings: () => `${ws}/settings`,

@@ -86,5 +86,14 @@
   "attention_unclaimed": "没人认领",
   "session_unclaimed": "未认领",
   "worktree_measured_label": "实测于",
-  "detail_close": "关闭"
+  "detail_close": "关闭",
+  "tab_instructions": "Instructions",
+  "instructions_hint": "这个 workspace 里每个 Agent 在每次任务中都要遵守的东西——事实源、授权边界、状态语义。Wiki 讲为什么，Skills 讲什么时候，这里讲始终。它随任务简报进入 Agent；Runtime 自己的 CLAUDE.md / AGENTS.md 仍然优先于它。",
+  "instructions_placeholder": "例如：done 必须带完整 40 位合入 SHA，分支名不算证据。",
+  "instructions_save": "保存",
+  "instructions_saving": "保存中…",
+  "instructions_saved": "已保存",
+  "instructions_save_failed": "保存失败",
+  "instructions_unsaved": "未保存——Agent 拿到的还是上一版。",
+  "instructions_effect": "下次派发起对每个 Agent 生效。"
 }

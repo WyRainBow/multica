@@ -86,5 +86,14 @@
   "attention_unclaimed": "nobody is driving it",
   "session_unclaimed": "unclaimed",
   "worktree_measured_label": "Measured",
-  "detail_close": "Close"
+  "detail_close": "Close",
+  "tab_instructions": "Instructions",
+  "instructions_hint": "What every agent in this workspace obeys, on every task — the facts of record, the limits of authority, what a status means. Wiki explains why; Skills say when; this says always. It reaches an agent as part of the task brief, and a runtime's own CLAUDE.md or AGENTS.md still wins over it.",
+  "instructions_placeholder": "e.g. done requires a full 40-character merge SHA; a branch name is not evidence.",
+  "instructions_save": "Save",
+  "instructions_saving": "Saving…",
+  "instructions_saved": "Instructions saved",
+  "instructions_save_failed": "Could not save the instructions",
+  "instructions_unsaved": "Unsaved — agents still get the previous version.",
+  "instructions_effect": "In effect for every agent on their next task."
 }

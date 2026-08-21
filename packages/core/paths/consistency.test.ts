@@ -37,6 +37,7 @@ describe("paths.workspace() shape", () => {
         "workspaceAssets",
         "workspaceWiki",
         "workspaceSkills",
+        "workspaceInstructions",
         "workspaceWorktree",
         "workspaceAgentWiki",
       ]),
@@ -68,6 +69,7 @@ describe("paths.workspace() shape", () => {
       ["workspaceAssets", "workspace"],
       ["workspaceWiki", "workspace/wiki"],
       ["workspaceSkills", "workspace/skills"],
+      ["workspaceInstructions", "workspace/instructions"],
       ["workspaceWorktree", "workspace/worktree"],
       ["workspaceAgentWiki", "workspace/agentwiki"],
     ];

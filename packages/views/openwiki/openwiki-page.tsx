@@ -1,9 +1,10 @@
 "use client";
 
-import { BookMarked, BookOpen, GitBranch, Sparkles } from "lucide-react";
+import { BookMarked, BookOpen, GitBranch, ScrollText, Sparkles } from "lucide-react";
 import { DocsPage } from "@multica/views/docs";
 import { SkillsPage } from "@multica/views/skills";
 import { WorktreeLedger } from "./worktree-ledger";
+import { InstructionsPage } from "./instructions-page";
 import { useWorkspacePaths } from "@multica/core/paths";
 import { cn } from "@multica/ui/lib/utils";
 import { useT } from "../i18n";
@@ -22,7 +23,12 @@ import { useNavigation } from "../navigation";
  *  the Multica wiki. One prefix, read from both sides. */
 const AGENT_WIKI_PREFIX = "AgentWiki/";
 
-export type OpenwikiTab = "wiki" | "skills" | "worktree" | "agentwiki";
+export type OpenwikiTab =
+  | "wiki"
+  | "skills"
+  | "instructions"
+  | "worktree"
+  | "agentwiki";
 
 export function OpenwikiPage({ tab = "wiki" }: { tab?: OpenwikiTab }) {
   const { t } = useT("openwiki");
@@ -46,6 +52,12 @@ export function OpenwikiPage({ tab = "wiki" }: { tab?: OpenwikiTab }) {
       label: t(($) => $.tab_skills),
       icon: Sparkles,
       href: paths.workspaceSkills(),
+    },
+    {
+      key: "instructions",
+      label: t(($) => $.tab_instructions),
+      icon: ScrollText,
+      href: paths.workspaceInstructions(),
     },
     {
       key: "worktree",
@@ -102,6 +114,9 @@ export function OpenwikiPage({ tab = "wiki" }: { tab?: OpenwikiTab }) {
         />
       )}
       {tab === "skills" && <SkillsPage />}
+      {/* Its own scroll: the editor fills the pane and must not add a second
+        scrollbar inside the shell's. */}
+      {tab === "instructions" && <InstructionsPage />}
       {tab === "worktree" && (
         <div className="min-h-0 flex-1 overflow-y-auto">
           <WorktreeLedger />

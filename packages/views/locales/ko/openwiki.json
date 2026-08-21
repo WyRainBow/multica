@@ -86,5 +86,14 @@
   "attention_unclaimed": "담당 없음",
   "session_unclaimed": "미담당",
   "worktree_measured_label": "측정",
-  "detail_close": "닫기"
+  "detail_close": "닫기",
+  "tab_instructions": "Instructions",
+  "instructions_hint": "이 워크스페이스의 모든 에이전트가 매 작업에서 지켜야 할 내용. Wiki는 이유를, Skills는 시점을, 여기는 항상을 말합니다. 작업 브리프로 전달되며 런타임의 CLAUDE.md / AGENTS.md가 우선합니다.",
+  "instructions_placeholder": "예: done은 40자 병합 SHA가 있어야 하며 브랜치 이름은 증거가 아닙니다.",
+  "instructions_save": "저장",
+  "instructions_saving": "저장 중…",
+  "instructions_saved": "저장됨",
+  "instructions_save_failed": "저장하지 못했습니다",
+  "instructions_unsaved": "저장 안 됨 — 에이전트는 이전 버전을 받습니다.",
+  "instructions_effect": "다음 작업부터 모든 에이전트에 적용됩니다."
 }

@@ -6,6 +6,7 @@ vi.mock("@multica/core/paths", () => ({
   useWorkspacePaths: () => ({
     workspaceWiki: () => "/acme/workspace/wiki",
     workspaceSkills: () => "/acme/workspace/skills",
+    workspaceInstructions: () => "/acme/workspace/instructions",
     workspaceWorktree: () => "/acme/workspace/worktree",
     workspaceAgentWiki: () => "/acme/workspace/agentwiki",
   }),
@@ -32,11 +33,20 @@ vi.mock("@multica/views/skills", () => ({
 vi.mock("./worktree-ledger", () => ({
   WorktreeLedger: () => <div data-testid="worktree">worktree</div>,
 }));
+vi.mock("./instructions-page", () => ({
+  InstructionsPage: () => <div data-testid="instructions">instructions</div>,
+}));
 
 
 import { OpenwikiPage, type OpenwikiTab } from "./openwiki-page";
 
-const TABS: OpenwikiTab[] = ["wiki", "skills", "worktree", "agentwiki"];
+const TABS: OpenwikiTab[] = [
+  "wiki",
+  "skills",
+  "instructions",
+  "worktree",
+  "agentwiki",
+];
 
 /**
  * The dashboard shell sets overflow-hidden, so a page that does not carry its
@@ -63,7 +73,7 @@ describe("OpenwikiPage", () => {
   it("gives the plain views a scroll container, and the self-scrolling ones none", () => {
     // Both wikis and skills scroll their own lists; a wrapper here would nest
     // a second scrollbar inside the first.
-    for (const tab of ["wiki", "skills", "agentwiki"] as OpenwikiTab[]) {
+    for (const tab of ["wiki", "skills", "agentwiki", "instructions"] as OpenwikiTab[]) {
       const { unmount } = renderWithI18n(<OpenwikiPage tab={tab} />);
       expect(scrollContainerOf(screen.getByTestId(tab))).toBeNull();
       unmount();
