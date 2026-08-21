@@ -44,6 +44,12 @@ Go backend + monorepo frontend (pnpm workspaces + Turborepo) with shared package
 - Never add database foreign keys or cascading actions. Enforce relationships and perform dependent cleanup explicitly in the application layer, using transactions when the operation must be atomic.
 - Every index created by a migration, including unique indexes and indexes on new tables, must use `CREATE [UNIQUE] INDEX CONCURRENTLY`. Keep each concurrent index build in its own single-statement migration file.
 
+### Branches
+
+Branch off `main` in the main checkout, merge back, delete the branch. **No git
+worktree for a change here** — this repository overrides any global rule that
+says code changes need one. `main` is the only long-lived branch.
+
 ### Commands
 
 ```bash
