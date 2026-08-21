@@ -60,11 +60,22 @@ func (h *Handler) checkRoundClosureForDone(
 		return "", false
 	}
 
+	// A phase that exists is not a phase that happened. Every card is created
+	// with the five default stations already listed, all pending and never
+	// entered — matching on the name alone refused `done` on every card in the
+	// workspace, which is how a gate stops being a gate and becomes an outage.
+	//
+	// A station counts as opened only once something actually happened there:
+	// it was entered, or it was completed, or a comment was filed under it.
 	var openedReviews []string
 	for _, phase := range phases {
-		if isReviewPhase(phase.Name) {
-			openedReviews = append(openedReviews, strings.TrimSpace(phase.Name))
+		if !isReviewPhase(phase.Name) {
+			continue
 		}
+		if !phase.EnteredAt.Valid && !phase.CompletedAt.Valid {
+			continue
+		}
+		openedReviews = append(openedReviews, strings.TrimSpace(phase.Name))
 	}
 	if len(openedReviews) == 0 {
 		return "", false

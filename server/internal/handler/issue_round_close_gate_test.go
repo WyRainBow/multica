@@ -52,3 +52,28 @@ func TestRoundDocKindMatchesWhereTheCLIFiles(t *testing.T) {
 		t.Errorf("roundDocKindFor = %q, want COC-300/rounds/", got)
 	}
 }
+
+// phaseOpened mirrors the gate's test for "this station actually happened",
+// so the rule can be exercised without a database.
+func phaseOpened(entered, completed bool) bool {
+	return entered || completed
+}
+
+func TestADefaultPhaseIsNotAnOpenedOne(t *testing.T) {
+	t.Parallel()
+	// Every card is created with the five default stations already listed, all
+	// pending and never entered. Matching on the name alone refused done on
+	// every card in the workspace — the gate became an outage. Caught by
+	// running it against a real card, not by the unit tests that existed.
+	if phaseOpened(false, false) {
+		t.Error("a listed-but-never-entered station counted as opened")
+	}
+	if !phaseOpened(true, false) {
+		t.Error("an entered station should count as opened")
+	}
+	// Completed without a recorded entry still happened — an older card may
+	// carry one, and refusing to see it would let a real gap through.
+	if !phaseOpened(false, true) {
+		t.Error("a completed station should count as opened")
+	}
+}
