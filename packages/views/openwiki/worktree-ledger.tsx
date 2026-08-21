@@ -194,34 +194,7 @@ function WorktreeRow({
         {editingSession ? (
           <SessionEditor tree={tree} onDone={() => setEditingSession(false)} />
         ) : (
-          <button
-            type="button"
-            className="w-full text-left"
-            onClick={() => setEditingSession(true)}
-          >
-            {tree.session.agent === "" && tree.session.next_action === "" ? (
-              <span className="text-caption text-muted-foreground">
-                {t(($) => $.session_empty)}
-              </span>
-            ) : (
-              <span className="flex flex-wrap items-baseline gap-x-2 text-caption">
-                <span className="font-medium">
-                  {tree.session.agent || t(($) => $.session_no_agent)}
-                </span>
-                {tree.session.owner !== "" && (
-                  <span className="text-muted-foreground">{tree.session.owner}</span>
-                )}
-                {tree.session.next_action !== "" && (
-                  <span>→ {tree.session.next_action}</span>
-                )}
-                {tree.session.resume !== "" && (
-                  <span className="truncate font-mono text-muted-foreground">
-                    {tree.session.resume}
-                  </span>
-                )}
-              </span>
-            )}
-          </button>
+          <SessionPanel tree={tree} onEdit={() => setEditingSession(true)} />
         )}
       </div>
 
@@ -264,6 +237,76 @@ function WorktreeRow({
             )}
           </dl>
           <WorktreeEntryList treeRef={tree.id} />
+        </div>
+      )}
+    </div>
+  );
+}
+
+/**
+ * The navigation account, read.
+ *
+ * Its one job is to get someone back into the session driving this tree, so the
+ * resume command is a line of its own with a copy button rather than trailing
+ * text inside a click-to-edit block — reaching for it used to open the editor.
+ *
+ * It also says when it was written, which the other accounts do not need to.
+ * `sync` re-measures a merge claim every time it runs; nothing can re-check a
+ * resume pointer, and the session behind it may have ended hours ago. The date
+ * is the only signal the reader gets.
+ */
+function SessionPanel({ tree, onEdit }: { tree: Worktree; onEdit: () => void }) {
+  const { t } = useT("openwiki");
+  const timeAgo = useTimeAgo();
+  const [copied, setCopied] = useState(false);
+  const session = tree.session;
+
+  if (session.agent === "" && session.next_action === "" && session.resume === "") {
+    return (
+      <button type="button" className="w-full text-left" onClick={onEdit}>
+        <span className="text-caption text-muted-foreground">
+          {t(($) => $.session_empty)}
+        </span>
+      </button>
+    );
+  }
+
+  const copy = () => {
+    void navigator.clipboard?.writeText(session.resume).then(() => {
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 1500);
+    });
+  };
+
+  return (
+    <div className="flex flex-col gap-1">
+      <button
+        type="button"
+        className="flex flex-wrap items-baseline gap-x-2 text-left text-caption"
+        onClick={onEdit}
+      >
+        <span className="font-medium">
+          {session.agent || t(($) => $.session_no_agent)}
+        </span>
+        {session.owner !== "" && (
+          <span className="text-muted-foreground">{session.owner}</span>
+        )}
+        {session.next_action !== "" && <span>→ {session.next_action}</span>}
+        {session.updated_at !== null && (
+          <span className="ml-auto text-muted-foreground">
+            {t(($) => $.session_stated, { when: timeAgo(session.updated_at) })}
+          </span>
+        )}
+      </button>
+
+      {session.resume !== "" && (
+        <div className="flex items-center gap-2">
+          <code className="min-w-0 flex-1 truncate rounded bg-muted px-1.5 py-0.5 font-mono text-caption">
+            {session.resume}
+          </code>
+          <Button variant="ghost" size="sm" onClick={copy}>
+            {copied ? t(($) => $.session_copied) : t(($) => $.session_copy)}
+          </Button>
         </div>
       )}
     </div>
