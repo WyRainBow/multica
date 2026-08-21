@@ -98,6 +98,30 @@ describe("issue → its documents", () => {
     expect(screen.queryByText("SECRET BODY TEXT")).not.toBeInTheDocument();
   });
 
+  // When it decides whether to open the document now, staleness matters as
+  // much as length: last week's round notes and this morning's are different
+  // reads.
+  it("says when it was last updated", async () => {
+    render([doc({ updated_at: "2026-07-23T12:00:00Z" })]);
+    expect(await screen.findByText(/2026/)).toBeInTheDocument();
+  });
+
+  // Rounds of one review share a first segment; a heading per root keeps them
+  // visibly together. The row still carries its full path — a row gets quoted
+  // on its own, and `rounds/R1` without its root names nothing.
+  it("groups rows under the first kind segment, keeping the full path on the row", async () => {
+    render([
+      doc({ id: "d1", title: "方案评审记录", kind: "COC-199/rounds/R1-方案评审" }),
+      doc({ id: "d2", title: "实现 Spec", kind: "COC-199/spec" }),
+      doc({ id: "d3", title: "联调 SOP", kind: "联调" }),
+    ]);
+    await screen.findByText("方案评审记录");
+    // Exactly one heading for the shared root, not one per document.
+    expect(screen.getAllByText("COC-199")).toHaveLength(1);
+    expect(screen.getByText("COC-199/rounds/R1-方案评审")).toBeInTheDocument();
+    expect(screen.getByText("COC-199/spec")).toBeInTheDocument();
+  });
+
   // It used to render nothing when empty, on the theory that a permanent "no
   // documents" line was noise. But an invisible section cannot be told apart
   // from a missing feature — and this one was invisible on every issue for as
@@ -105,14 +129,23 @@ describe("issue → its documents", () => {
   // the resources section directly above it does.
   it("still shows the section when there are none", async () => {
     render([]);
-    expect(await screen.findByText("No documents yet.")).toBeInTheDocument();
+    expect(await screen.findByText(/No documents yet/)).toBeInTheDocument();
+  });
+
+  // An empty section on a card an agent works from should say how the link is
+  // made where the agent makes it: the CLI.
+  it("points at the CLI command when empty", async () => {
+    render([]);
+    expect(
+      await screen.findByText(/multica doc add --issue <key>/),
+    ).toBeInTheDocument();
   });
 
   // The count is a fact about a non-empty list; "0" next to an empty-state
   // sentence says the same thing twice.
   it("omits the count when empty", async () => {
     render([]);
-    await screen.findByText("No documents yet.");
+    await screen.findByText(/No documents yet/);
     expect(screen.queryByText("0")).not.toBeInTheDocument();
   });
 });

@@ -4,15 +4,16 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { FileText, Plus, X } from "lucide-react";
 import { toast } from "sonner";
+import type { Card } from "@multica/core/types";
 import { useWorkspaceId } from "@multica/core/hooks";
 import { cardsForIssueOptions } from "@multica/core/docs/queries";
 import { useUpdateCard } from "@multica/core/docs/mutations";
 import { useWorkspacePaths } from "@multica/core/paths";
 import { Button } from "@multica/ui/components/ui/button";
 import { AppLink } from "../../navigation";
-import { useT } from "../../i18n";
+import { useExactTime, useT } from "../../i18n";
 import { DocPickerModal } from "./doc-picker-modal";
-import { docLength } from "../doc-tree";
+import { docLength, groupDocsByKindRoot } from "../doc-tree";
 
 /**
  * The documents this issue needs, listed on the issue.
@@ -33,6 +34,11 @@ import { docLength } from "../doc-tree";
  * issue and remembering the SOP that belongs to it is as common as writing the
  * SOP and knowing which issue it serves.
  *
+ * Rows sit under one heading per first kind segment (`COC-199` for
+ * `COC-199/rounds/R1-方案评审`), so the rounds of one review read as a set.
+ * One level only — see `groupDocsByKindRoot` for why the full tree would
+ * organise more than an issue's handful of documents can bear.
+ *
  * Still no "new document" action. Documents are written from the Docs tab,
  * where the whole set is in view; offering it here invites a second copy of
  * something already written.
@@ -47,6 +53,7 @@ export function IssueDocsSection({ issueId }: { issueId: string }) {
   const { t } = useT("docs");
   const wsId = useWorkspaceId();
   const wsPaths = useWorkspacePaths();
+  const exactTime = useExactTime();
   const { data: docs = [] } = useQuery(cardsForIssueOptions(wsId, issueId));
   const update = useUpdateCard();
   const [picking, setPicking] = useState(false);
@@ -58,6 +65,48 @@ export function IssueDocsSection({ issueId }: { issueId: string }) {
       { id: docId, issue_id: next },
       { onError: () => toast.error(t(($) => $.issue_section.link_failed)) },
     );
+
+  const { unfiled, groups } = groupDocsByKindRoot(docs);
+
+  const row = (doc: Card) => (
+    <li
+      key={doc.id}
+      className="group flex items-center gap-2 rounded-lg border bg-card px-3 py-2 transition-colors hover:border-foreground/20"
+    >
+      <FileText className="size-3.5 shrink-0 text-muted-foreground" />
+      <AppLink
+        href={wsPaths.docDetail(doc.id)}
+        className="min-w-0 flex-1 truncate text-body group-hover:underline"
+      >
+        {doc.title.trim() || t(($) => $.doc.untitled)}
+      </AppLink>
+      {/* The full path even under a group heading: a row gets quoted and
+          screenshotted on its own, and `rounds/R1` without its root names
+          nothing. */}
+      {doc.kind && (
+        <span className="shrink-0 text-caption text-muted-foreground">
+          {doc.kind}
+        </span>
+      )}
+      <span className="shrink-0 text-caption text-faint-foreground">
+        {exactTime(doc.updated_at, false)}
+      </span>
+      {/* How much there is to read, the same number the document's own
+          row carries — it is what decides whether to open it now. */}
+      <span className="shrink-0 text-caption tabular-nums text-faint-foreground">
+        {t(($) => $.doc.length, { count: docLength(doc.content) })}
+      </span>
+      <Button
+        size="icon-sm"
+        variant="ghost"
+        className="size-5 shrink-0 text-muted-foreground hover:text-destructive"
+        onClick={() => link(doc.id, null)}
+        aria-label={t(($) => $.issue_section.unlink)}
+      >
+        <X className="size-3" />
+      </Button>
+    </li>
+  );
 
   return (
     <section className="mt-6">
@@ -86,44 +135,25 @@ export function IssueDocsSection({ issueId }: { issueId: string }) {
           {t(($) => $.issue_section.empty)}
         </p>
       ) : (
-        <ul className="mt-2 flex flex-col gap-1">
-          {/* The row is the container and the link only wraps the text: an
-              unlink button nested inside an anchor is invalid HTML, and
-              clicking it would navigate as well as detach. */}
-          {docs.map((doc) => (
-            <li
-              key={doc.id}
-              className="group flex items-center gap-2 rounded-lg border bg-card px-3 py-2 transition-colors hover:border-foreground/20"
-            >
-              <FileText className="size-3.5 shrink-0 text-muted-foreground" />
-              <AppLink
-                href={wsPaths.docDetail(doc.id)}
-                className="min-w-0 flex-1 truncate text-body group-hover:underline"
-              >
-                {doc.title.trim() || t(($) => $.doc.untitled)}
-              </AppLink>
-              {doc.kind && (
-                <span className="shrink-0 text-caption text-muted-foreground">
-                  {doc.kind}
-                </span>
-              )}
-              {/* How much there is to read, the same number the document's own
-                  row carries — it is what decides whether to open it now. */}
-              <span className="shrink-0 text-caption tabular-nums text-faint-foreground">
-                {t(($) => $.doc.length, { count: docLength(doc.content) })}
-              </span>
-              <Button
-                size="icon-sm"
-                variant="ghost"
-                className="size-5 shrink-0 text-muted-foreground hover:text-destructive"
-                onClick={() => link(doc.id, null)}
-                aria-label={t(($) => $.issue_section.unlink)}
-              >
-                <X className="size-3" />
-              </Button>
-            </li>
+        /* The row is the container and the link only wraps the text: an
+           unlink button nested inside an anchor is invalid HTML, and
+           clicking it would navigate as well as detach.
+
+           Unfiled documents come first with no heading — a heading invented
+           for them would be a category nobody chose. */
+        <div className="mt-2 flex flex-col gap-2">
+          {unfiled.length > 0 && (
+            <ul className="flex flex-col gap-1">{unfiled.map(row)}</ul>
+          )}
+          {groups.map((group) => (
+            <div key={group.root}>
+              <div className="mb-1 text-caption font-medium text-muted-foreground">
+                {group.root}
+              </div>
+              <ul className="flex flex-col gap-1">{group.cards.map(row)}</ul>
+            </div>
           ))}
-        </ul>
+        </div>
       )}
 
       <DocPickerModal

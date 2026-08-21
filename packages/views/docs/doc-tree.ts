@@ -124,6 +124,54 @@ export function allDocPaths(cards: readonly Card[]): string[] {
   return out;
 }
 
+/** Documents sharing one first-level kind segment, for a flat grouped list. */
+export interface DocKindRootGroup {
+  /** The first path segment: `COC-199` for a card filed under
+   *  `COC-199/rounds/R1`. */
+  root: string;
+  cards: Card[];
+}
+
+/**
+ * One-level grouping by the first kind segment, for the issue's document
+ * section.
+ *
+ * The full tree would be wrong here: an issue rarely holds more than a handful
+ * of documents, and nesting a handful two levels deep hides more than it
+ * organises. One heading per root keeps rounds of the same review visibly
+ * together, which is all the grouping has to do.
+ *
+ * Uncategorised documents come back separately rather than under a made-up
+ * root — same reason `buildDocTree` gives them no node: a blank heading has
+ * nothing to render. Groups are ordered most-used first then by name, matching
+ * the tree's sibling order; cards inside a group keep the order they arrived
+ * in.
+ */
+export function groupDocsByKindRoot(cards: readonly Card[]): {
+  unfiled: Card[];
+  groups: DocKindRootGroup[];
+} {
+  const unfiled: Card[] = [];
+  const byRoot = new Map<string, Card[]>();
+  for (const card of cards) {
+    const [root] = kindSegments(card.kind ?? "");
+    if (!root) {
+      unfiled.push(card);
+      continue;
+    }
+    const group = byRoot.get(root);
+    if (group) group.push(card);
+    else byRoot.set(root, [card]);
+  }
+  const groups = [...byRoot.entries()]
+    .map(([root, groupCards]) => ({ root, cards: groupCards }))
+    .sort(
+      (a, b) =>
+        b.cards.length - a.cards.length || a.root.localeCompare(b.root),
+    );
+  return { unfiled, groups };
+}
+
 /**
  * How long a document is, in characters.
  *

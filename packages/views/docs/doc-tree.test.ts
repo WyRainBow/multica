@@ -6,6 +6,7 @@ import {
   kindSegments,
   allDocPaths,
   docLength,
+  groupDocsByKindRoot,
 } from "./doc-tree";
 
 function doc(kind: string, id = kind): Card {
@@ -115,6 +116,50 @@ describe("filterDocsByPath", () => {
 describe("allDocPaths", () => {
   it("lists every folder, parents included", () => {
     expect(allDocPaths([doc("a/b/c")]).sort()).toEqual(["a", "a/b", "a/b/c"]);
+  });
+});
+
+// One heading per first segment is all the issue's document section needs —
+// the full tree over a handful of rows would hide more than it organises.
+describe("groupDocsByKindRoot", () => {
+  it("groups by the first segment only, whatever the depth", () => {
+    const { unfiled, groups } = groupDocsByKindRoot([
+      doc("COC-199/rounds/R1-方案评审", "a"),
+      doc("COC-199/spec", "b"),
+      doc("联调", "c"),
+    ]);
+    expect(unfiled).toEqual([]);
+    expect(groups.map((g) => g.root)).toEqual(["COC-199", "联调"]);
+    expect(groups[0]?.cards.map((c) => c.id)).toEqual(["a", "b"]);
+  });
+
+  // Same reason buildDocTree gives them no node: a blank heading has nothing
+  // to render.
+  it("keeps uncategorised documents out of the groups", () => {
+    const { unfiled, groups } = groupDocsByKindRoot([doc("", "a"), doc("联调", "b")]);
+    expect(unfiled.map((c) => c.id)).toEqual(["a"]);
+    expect(groups.map((g) => g.root)).toEqual(["联调"]);
+  });
+
+  it("orders groups most-used first, then by name", () => {
+    const { groups } = groupDocsByKindRoot([
+      doc("b/x", "1"),
+      doc("a", "2"),
+      doc("b", "3"),
+      doc("c", "4"),
+    ]);
+    expect(groups.map((g) => g.root)).toEqual(["b", "a", "c"]);
+  });
+
+  it("keeps arrival order inside a group", () => {
+    const { groups } = groupDocsByKindRoot([
+      doc("k/z", "later-named"),
+      doc("k/a", "first-named"),
+    ]);
+    expect(groups[0]?.cards.map((c) => c.id)).toEqual([
+      "later-named",
+      "first-named",
+    ]);
   });
 });
 
