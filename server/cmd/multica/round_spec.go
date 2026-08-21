@@ -66,9 +66,22 @@ func ParseRoundKind(segment string) (number int, phase string, ok bool) {
 // NextRoundNumber is one past the highest round already closed. Numbering from
 // the documents rather than from a counter means a round cannot be closed twice
 // under the same number, and a missing document is visible as a gap.
-func NextRoundNumber(rounds []RoundDoc) int {
+// NextRoundNumber returns the next round number AT ONE STATION.
+//
+// Rounds belong to the station they were argued at, not to the issue. Counting
+// across the whole card made an issue that closed one round at 方案评审 print
+// its first 代码评审 round as "R2", which reads as a second attempt at code
+// review and sends the next reader looking for an R1 that was never held.
+//
+// Rounds recorded at other stations are ignored rather than skipped over, so
+// each station's sequence starts at 1 and stays readable on its own.
+func NextRoundNumber(rounds []RoundDoc, phase string) int {
+	phase = strings.TrimSpace(phase)
 	highest := 0
 	for _, r := range rounds {
+		if strings.TrimSpace(r.Phase) != phase {
+			continue
+		}
 		if r.Number > highest {
 			highest = r.Number
 		}

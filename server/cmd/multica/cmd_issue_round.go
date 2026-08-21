@@ -62,6 +62,10 @@ func init() {
 	issueRoundCloseCmd.Flags().String("phase", "", "Review station this round closes, e.g. 代码评审 (required)")
 	issueRoundCloseCmd.Flags().String("verdict", "", "approve | request_changes | block (required)")
 	issueRoundCloseCmd.Flags().String("summary", "", "One line: what was decided (required)")
+	issueRoundCloseCmd.Flags().Int("round", 0,
+		"Round number at this station. Defaults to one past the highest already recorded HERE. "+
+			"Pass it when earlier rounds were argued somewhere that left no round document — a terminal, "+
+			"a chat, a comment thread — so this one lands after them instead of overwriting the sequence.")
 	issueRoundCloseCmd.Flags().String("body", "", "The round's full conclusion, in Markdown")
 	issueRoundCloseCmd.Flags().Bool("body-stdin", false, "Read the full conclusion from stdin")
 	issueRoundCloseCmd.Flags().String("sha", "", "Baseline the round reviewed, so the next one can diff from it")
@@ -120,7 +124,23 @@ func runIssueRoundClose(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("read the issue's documents: %w", err)
 	}
 	rounds := roundsFromDocs(key, docs)
-	number := NextRoundNumber(rounds)
+	number := NextRoundNumber(rounds, phase)
+	// A round argued in a terminal, a chat, or a comment thread leaves no
+	// document, so the count above cannot see it. Closing such a station for
+	// the first time writes R1 over a history that already ran further, and a
+	// write-once document has no second chance to say so. --round places it.
+	if explicit, _ := cmd.Flags().GetInt("round"); explicit > 0 {
+		if explicit < number {
+			return fmt.Errorf(
+				"--round %d would collide with R%d, already recorded at %s; pass %d or higher",
+				explicit, explicit, phase, number)
+		}
+		number = explicit
+	} else if number == 1 {
+		fmt.Fprintf(os.Stderr,
+			"Note: recording this as %s R1. If that station already argued rounds that were never closed here, "+
+				"pass --round to place this one after them — a round document cannot be edited later.\n", phase)
+	}
 
 	// 1. The round's own document, write-once. It is the conclusion's body,
 	//    which is why the comment can be a summary and the thread can be
@@ -174,6 +194,17 @@ func runIssueRoundClose(cmd *cobra.Command, args []string) error {
 		setIssueMetadata(ctx, client, issue.ID, latestConclusion, commentID)
 	}
 
+	// 5. Move the station itself. Archiving a round used to leave every phase
+	//    untouched, so a card could close two rounds and still show five
+	//    stations nobody had entered — and the done gate, which only checks
+	//    stations that were entered or completed, stayed inert for exactly the
+	//    flow that produces round documents.
+	//
+	//    Entering is unconditional: the argument happened there whatever the
+	//    verdict. Completing is not — request_changes and block mean the
+	//    station runs again, and marking it finished would say the opposite.
+	advanceRoundPhase(ctx, client, issue.ID, phase, verdict == "approve")
+
 	result := roundCloseResult{
 		Round: number, Phase: phase, Verdict: verdict,
 		RoundDoc: roundDoc.ID, SpecDoc: specDoc, CommentID: commentID,
@@ -185,6 +216,43 @@ func runIssueRoundClose(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 	return cli.PrintJSON(os.Stdout, result)
+}
+
+// advanceRoundPhase enters the station this round closed, and completes it
+// when the verdict was an approval.
+//
+// Best-effort by design. The round document, the spec and the conclusion are
+// already written by the time this runs; a phase that will not move is worth
+// reporting but is not worth failing a recorded archive over. `enter` is
+// idempotent on the server (it keeps the first arrival time), and `complete`
+// is refused with 409 unless the phase was entered, which is why the order
+// here is fixed rather than conditional.
+func advanceRoundPhase(
+	ctx context.Context,
+	client *cli.APIClient,
+	issueID, phase string,
+	complete bool,
+) {
+	resolved, err := resolveIssuePhase(ctx, client, issueID, phase)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Note: the round is recorded, but phase %q could not be resolved (%v).\n", phase, err)
+		return
+	}
+	base := "/api/issues/" + issueID + "/phases/" + resolved.ID + "/"
+	var discard map[string]any
+	if err := client.PostJSON(ctx, base+"enter", map[string]any{}, &discard); err != nil {
+		fmt.Fprintf(os.Stderr, "Note: the round is recorded, but phase %q could not be entered (%v).\n", resolved.Name, err)
+		return
+	}
+	if !complete {
+		fmt.Fprintf(os.Stderr, "Phase %q entered; left open — the verdict was not an approval.\n", resolved.Name)
+		return
+	}
+	if err := client.PostJSON(ctx, base+"complete", map[string]any{}, &discard); err != nil {
+		fmt.Fprintf(os.Stderr, "Note: the round is recorded, but phase %q could not be completed (%v).\n", resolved.Name, err)
+		return
+	}
+	fmt.Fprintf(os.Stderr, "Phase %q completed.\n", resolved.Name)
 }
 
 func readRoundBody(cmd *cobra.Command) (string, error) {

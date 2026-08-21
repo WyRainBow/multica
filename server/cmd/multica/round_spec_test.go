@@ -29,14 +29,34 @@ func TestParseRoundKind(t *testing.T) {
 
 func TestNextRoundNumberComesFromTheDocuments(t *testing.T) {
 	t.Parallel()
-	if got := NextRoundNumber(nil); got != 1 {
+	if got := NextRoundNumber(nil, "代码评审"); got != 1 {
 		t.Errorf("first round = %d, want 1", got)
 	}
 	// Counting from the documents rather than from a stored counter: a gap
 	// stays visible, and a round cannot be closed twice under one number.
-	rounds := []RoundDoc{{Number: 1}, {Number: 3}}
-	if got := NextRoundNumber(rounds); got != 4 {
+	rounds := []RoundDoc{{Number: 1, Phase: "代码评审"}, {Number: 3, Phase: "代码评审"}}
+	if got := NextRoundNumber(rounds, "代码评审"); got != 4 {
 		t.Errorf("after R1 and R3 = %d, want 4", got)
+	}
+}
+
+func TestEachStationCountsItsOwnRounds(t *testing.T) {
+	t.Parallel()
+	// Counting across the whole card made a card that closed one round at
+	// 方案评审 print its first 代码评审 round as R2 — which reads as a second
+	// attempt and sends the next reader hunting for an R1 nobody held.
+	closed := []RoundDoc{{Number: 1, Phase: "方案评审"}, {Number: 2, Phase: "方案评审"}}
+
+	if got := NextRoundNumber(closed, "代码评审"); got != 1 {
+		t.Errorf("first round at an untouched station = %d, want 1", got)
+	}
+	if got := NextRoundNumber(closed, "方案评审"); got != 3 {
+		t.Errorf("next round at the station that ran twice = %d, want 3", got)
+	}
+	// Station names arrive from a flag and from a document kind; one of them
+	// having picked up whitespace must not start a parallel sequence.
+	if got := NextRoundNumber([]RoundDoc{{Number: 1, Phase: " 代码评审 "}}, "代码评审"); got != 2 {
+		t.Errorf("whitespace around a station name split its sequence: got %d, want 2", got)
 	}
 }
 
