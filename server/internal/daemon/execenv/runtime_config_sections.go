@@ -490,6 +490,53 @@ func writeIssueDecisionSummary(b *strings.Builder, ctx TaskContextForEnv) {
 	}
 }
 
+// writeWorkspaceAssets names the workspace's own writing: what has been
+// learned here, and how things are done here.
+//
+// Both existed and neither reached an agent. Six recorded cases and ten
+// manuals that no run had ever been told about, which makes "archived
+// experience feeds the next round" a claim rather than a mechanism — an agent
+// cannot look up a lesson it does not know was written.
+//
+// Titles only, and one line per group saying when to reach for it. A case
+// title already states its own trigger, so the name is enough to decide
+// whether to open it; shipping the bodies would repeat the mistake that once
+// cost 40% of a brief.
+//
+// Not gated on task kind. These belong to the workspace rather than to an
+// issue, and a chat is where "have we hit this before" gets asked most often.
+func writeWorkspaceAssets(b *strings.Builder, ctx TaskContextForEnv) {
+	if len(ctx.WorkspaceAssets) == 0 {
+		return
+	}
+	b.WriteString("## Workspace Assets\n\n")
+	b.WriteString("What this workspace has written down. Open one with `multica wiki get <id> --output json` when it bears on the task — not by default:\n\n")
+
+	for _, group := range ctx.WorkspaceAssets {
+		if len(group.Docs) == 0 {
+			continue
+		}
+		fmt.Fprintf(b, "**%s**", group.Label)
+		if when := strings.TrimSpace(group.When); when != "" {
+			fmt.Fprintf(b, " — %s", when)
+		}
+		b.WriteString("\n\n")
+		for _, doc := range group.Docs {
+			title := strings.TrimSpace(doc.Title)
+			if title == "" {
+				title = "(untitled)"
+			}
+			fmt.Fprintf(b, "- %s — `%s`\n", title, doc.ID)
+		}
+		// A truncated list that does not admit it reads as the whole set, and
+		// the reader stops looking exactly where the older entries are.
+		if group.Dropped > 0 {
+			fmt.Fprintf(b, "- …%d more, list them with `multica wiki list --kind <folder>`\n", group.Dropped)
+		}
+		b.WriteString("\n")
+	}
+}
+
 // docTitleOrPlaceholder keeps a titleless document findable by id rather than
 // dropping its row, which would silently shrink the index.
 func docTitleOrPlaceholder(doc IssueDocForEnv) string {
@@ -1012,6 +1059,7 @@ func writeOutput(b *strings.Builder, kind taskKind, ctx TaskContextForEnv) {
 //	Comment Formatting    |    ✓    |   ✓    |     —     |      —       |  —
 //	Repositories          |    △    |   △    |     △     |      —       |  △
 //	Project Context       |    △    |   △    |     △     |      △       |  △
+//	Workspace Assets      |    △    |   △    |     △     |      △       |  △
 //	Issue Phases          |    △    |   △    |     —     |      —       |  —
 //	Issue Documents       |    △    |   △    |     —     |      —       |  —
 //	Issue Metadata        |    ✓    |   ✓    |     —     |      —       |  —
@@ -1038,6 +1086,7 @@ func buildMetaSkillContentSlim(provider string, ctx TaskContextForEnv) string {
 	writeAgentIdentity(&b, ctx)
 	writeRequestingUser(&b, ctx)
 	writeWorkspaceContext(&b, ctx)
+	writeWorkspaceAssets(&b, ctx)
 
 	switch kind {
 	case kindQuickCreate:

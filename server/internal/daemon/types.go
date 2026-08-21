@@ -81,6 +81,23 @@ type IssueOpenQuestionData struct {
 	RaisedBy string `json:"raised_by,omitempty"`
 }
 
+// WorkspaceAssetData names one document the workspace wrote. Mirror of
+// handler.WorkspaceAssetData.
+type WorkspaceAssetData struct {
+	ID    string `json:"id"`
+	Title string `json:"title"`
+	Kind  string `json:"kind,omitempty"`
+}
+
+// WorkspaceAssetGroup is one folder's worth. Mirror of
+// handler.WorkspaceAssetGroup.
+type WorkspaceAssetGroup struct {
+	Label   string               `json:"label"`
+	When    string               `json:"when,omitempty"`
+	Docs    []WorkspaceAssetData `json:"docs"`
+	Dropped int                  `json:"dropped,omitempty"`
+}
+
 // IssuePhaseData names one station on the issue's route. Mirror of
 // handler.IssuePhaseData.
 type IssuePhaseData struct {
@@ -118,6 +135,7 @@ type Task struct {
 	IssuePhases                   []IssuePhaseData        `json:"issue_phases,omitempty"`                     // the issue's route in track order, with how far it got
 	IssueDecisions                []IssueDecisionData     `json:"issue_decisions,omitempty"`                  // decisions taken on this issue; superseded state derived server-side
 	IssueOpenQuestions            []IssueOpenQuestionData `json:"issue_open_questions,omitempty"`             // questions a decision left open that none has closed
+	WorkspaceAssets               []WorkspaceAssetGroup   `json:"workspace_assets,omitempty"`                 // the workspace's own cases and manuals; titles only
 	IsLeaderTask                  bool                    `json:"is_leader_task,omitempty"`                   // true when executing in the squad-leader coordinator role
 	LeaderRoleResolved            bool                    `json:"leader_role_resolved,omitempty"`             // server capability: IsLeaderTask/SquadID authoritatively answer "is this a leader run". Absent on servers predating it — those before #4951 never sent is_leader_task at all, later ones send it without this guarantee — so taskIsSquadLeader falls back to the briefing marker for both (MUL-5811)
 	PriorSessionID                string                  `json:"prior_session_id,omitempty"`                 // Claude session ID from a previous task on this issue

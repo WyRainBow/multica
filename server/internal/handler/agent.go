@@ -362,6 +362,7 @@ type AgentTaskResponse struct {
 	IssuePhases        []IssuePhaseData      `json:"issue_phases,omitempty"`         // the issue's route, in track order, with how far it got
 	IssueDecisions     []IssueDecision       `json:"issue_decisions,omitempty"`      // decisions taken on this issue; superseded state is derived, never stored
 	IssueOpenQuestions []IssueOpenQuestion   `json:"issue_open_questions,omitempty"` // questions a decision left open that none has closed
+	WorkspaceAssets    []WorkspaceAssetGroup `json:"workspace_assets,omitempty"`     // the workspace's own cases and manuals; titles only
 	CreatedAt          string                `json:"created_at"`
 	PriorSessionID     string                `json:"prior_session_id,omitempty"` // session ID from a previous task on same issue
 	PriorWorkDir       string                `json:"prior_work_dir,omitempty"`   // work_dir from a previous task on same issue

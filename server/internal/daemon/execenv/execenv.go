@@ -67,6 +67,22 @@ type IssueOpenQuestionForEnv struct {
 	RaisedBy string `json:"raised_by,omitempty"`
 }
 
+// WorkspaceAssetForEnv names one document the workspace wrote.
+type WorkspaceAssetForEnv struct {
+	ID    string `json:"id"`
+	Title string `json:"title"`
+	Kind  string `json:"kind,omitempty"`
+}
+
+// WorkspaceAssetGroupForEnv is one folder's worth, with the line saying when
+// to reach for it.
+type WorkspaceAssetGroupForEnv struct {
+	Label   string                 `json:"label"`
+	When    string                 `json:"when,omitempty"`
+	Docs    []WorkspaceAssetForEnv `json:"docs"`
+	Dropped int                    `json:"dropped,omitempty"`
+}
+
 // IssuePhaseForEnv names one station on the issue's route, in track order.
 type IssuePhaseForEnv struct {
 	Name      string `json:"name"`
@@ -160,16 +176,17 @@ type TaskContextForEnv struct {
 	AgentInstructions             string // agent identity/persona instructions, injected into CLAUDE.md
 	AgentSkills                   []SkillContextForEnv
 	DisabledRuntimeSkills         []RuntimeSkillRefForEnv
-	Repos                         []RepoContextForEnv       // workspace repos available for checkout
-	ProjectID                     string                    // active project for this task, when present
-	ProjectTitle                  string                    // human-readable project title
-	ProjectDescription            string                    // durable project-level context, rendered into the brief's Project Context section
-	ProjectResources              []ProjectResourceForEnv   // resources attached to the project
-	IssueDocs                     []IssueDocForEnv          // documents written for this issue; titles only, bodies fetched on demand
-	IssuePhases                   []IssuePhaseForEnv        // the issue's route in track order, with how far it got
-	IssueDecisions                []IssueDecisionForEnv     // decisions taken on this issue; superseded state derived
-	IssueOpenQuestions            []IssueOpenQuestionForEnv // questions a decision left open that none has closed
-	ChatSessionID                 string                    // non-empty for chat tasks
+	Repos                         []RepoContextForEnv         // workspace repos available for checkout
+	ProjectID                     string                      // active project for this task, when present
+	ProjectTitle                  string                      // human-readable project title
+	ProjectDescription            string                      // durable project-level context, rendered into the brief's Project Context section
+	ProjectResources              []ProjectResourceForEnv     // resources attached to the project
+	IssueDocs                     []IssueDocForEnv            // documents written for this issue; titles only, bodies fetched on demand
+	IssuePhases                   []IssuePhaseForEnv          // the issue's route in track order, with how far it got
+	IssueDecisions                []IssueDecisionForEnv       // decisions taken on this issue; superseded state derived
+	IssueOpenQuestions            []IssueOpenQuestionForEnv   // questions a decision left open that none has closed
+	WorkspaceAssets               []WorkspaceAssetGroupForEnv // the workspace's own cases and manuals; titles only
+	ChatSessionID                 string                      // non-empty for chat tasks
 	// ChatChannelType is the IM platform behind a chat session ("slack",
 	// "feishu", "wecom"); empty for a web/mobile chat. Any non-empty value
 	// means the reply leaves Multica for an external channel, so `multica

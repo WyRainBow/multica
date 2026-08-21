@@ -5691,6 +5691,7 @@ func (d *Daemon) runTask(ctx context.Context, task Task, provider string, slot i
 		IssuePhases:                      convertIssuePhasesForEnv(task.IssuePhases),
 		IssueDecisions:                   convertIssueDecisionsForEnv(task.IssueDecisions),
 		IssueOpenQuestions:               convertIssueOpenQuestionsForEnv(task.IssueOpenQuestions),
+		WorkspaceAssets:                  convertWorkspaceAssetsForEnv(task.WorkspaceAssets),
 		ChatSessionID:                    task.ChatSessionID,
 		ChatChannelType:                  task.ChatChannelType,
 		AutopilotRunID:                   task.AutopilotRunID,
@@ -7232,6 +7233,23 @@ func convertReposForEnv(repos []RepoData) []execenv.RepoContextForEnv {
 		result[i] = execenv.RepoContextForEnv{URL: r.URL, Description: r.Description, Ref: r.Ref}
 	}
 	return result
+}
+
+func convertWorkspaceAssetsForEnv(in []WorkspaceAssetGroup) []execenv.WorkspaceAssetGroupForEnv {
+	if len(in) == 0 {
+		return nil
+	}
+	out := make([]execenv.WorkspaceAssetGroupForEnv, len(in))
+	for i, g := range in {
+		docs := make([]execenv.WorkspaceAssetForEnv, len(g.Docs))
+		for j, d := range g.Docs {
+			docs[j] = execenv.WorkspaceAssetForEnv{ID: d.ID, Title: d.Title, Kind: d.Kind}
+		}
+		out[i] = execenv.WorkspaceAssetGroupForEnv{
+			Label: g.Label, When: g.When, Docs: docs, Dropped: g.Dropped,
+		}
+	}
+	return out
 }
 
 func convertIssueDecisionsForEnv(in []IssueDecisionData) []execenv.IssueDecisionForEnv {

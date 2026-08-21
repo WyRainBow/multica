@@ -2637,6 +2637,10 @@ func (h *Handler) buildClaimedTaskResponse(r *http.Request, task *db.AgentTaskQu
 		if ws.Context.Valid {
 			resp.WorkspaceContext = ws.Context.String
 		}
+		// The workspace's own writing rides the same claim. Not gated on task
+		// kind: cases and manuals belong to the workspace, not to an issue, and
+		// a chat is where "have we hit this before" gets asked most often.
+		resp.WorkspaceAssets = h.loadWorkspaceAssets(r.Context(), resp.WorkspaceID)
 	} else {
 		slog.Warn("task claim: failed to load workspace for context injection",
 			"task_id", uuidToString(task.ID),
