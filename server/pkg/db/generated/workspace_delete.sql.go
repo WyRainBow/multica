@@ -266,6 +266,15 @@ deleted_cards AS (
 deleted_issue_resources AS (
     DELETE FROM issue_resource WHERE workspace_id = $1
 ),
+deleted_worktree_entries AS (
+    -- The worktree ledger is workspace-keyed on both tables, so both are swept
+    -- with the other leaves. Entries go before trees for readability only;
+    -- neither carries an FK to the other.
+    DELETE FROM worktree_entry WHERE workspace_id = $1
+),
+deleted_worktrees AS (
+    DELETE FROM worktree WHERE workspace_id = $1
+),
 deleted_issue_phases AS (
     -- comment.phase_id points here but carries no FK, and the comments go in
     -- DeleteWorkspaceComments later in the same transaction, so the phases can
