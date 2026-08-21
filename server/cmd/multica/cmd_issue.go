@@ -568,6 +568,7 @@ func init() {
 	issueCmd.AddCommand(issueRerunCmd)
 	issueCmd.AddCommand(issueCancelTaskCmd)
 	issueCmd.AddCommand(issueReceiptCmd)
+	issueCmd.AddCommand(issueInterruptCmd)
 	issueCmd.AddCommand(issueSearchCmd)
 
 	issueCommentCmd.AddCommand(issueCommentListCmd)
@@ -711,6 +712,9 @@ func init() {
 	issueReceiptCmd.Flags().String("verify-local", "", "Local repo path: run machine checks (SHA object + ancestry) and attach evidence")
 	issueReceiptCmd.Flags().String("target", "origin/HEAD", "Target ref for the ancestry check with --verify-local")
 	issueReceiptCmd.Flags().String("output", "table", "Output format: table or json")
+	// issue interrupt
+	issueInterruptCmd.Flags().String("comment", "", "Text to interject (posted with an explicit @mention of the assignee agent)")
+	issueInterruptCmd.Flags().Bool("content-stdin", false, "Read the interjection text from stdin")
 	issueCancelTaskCmd.Flags().String("output", "json", "Output format: table or json")
 	issueCancelTaskCmd.Flags().String("issue", "", "Issue ID/key to scope short task ID prefix resolution")
 	// issue run-messages
