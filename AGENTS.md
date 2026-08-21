@@ -55,3 +55,11 @@ make check            # Full verification pipeline
 ```
 
 See CLAUDE.md for the authoritative rules and common commands.
+
+### Workspace Knowledge (AgentWiki)
+
+Before starting on a Multica-workspace card (COC-*), check the workspace's
+on-demand knowledge: `multica skill list`, then `multica skill get <name>` for
+anything whose description matches the task. Start with `multica-playbook` (the AgentWiki skills asset)
+(dispatch/checkout/test pitfalls with one-line fixes). Terminal sessions pull
+this way; dispatched runs get enabled skills injected automatically.
