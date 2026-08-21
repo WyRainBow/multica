@@ -300,6 +300,16 @@ type IssueDocData struct {
 	Kind  string `json:"kind,omitempty"`
 }
 
+// IssuePhaseData names one station on the issue's route and how far it got.
+// The agent is asked to file its comments at the right station; it cannot do
+// that without knowing which stations exist and which one the work is at.
+// Mirror field: internal/daemon/types.go, same JSON names.
+type IssuePhaseData struct {
+	Name      string `json:"name"`
+	Entered   bool   `json:"entered,omitempty"`
+	Completed bool   `json:"completed,omitempty"`
+}
+
 // ConnectedAppData keeps the daemon-claim wire field local to handler types
 // while sharing the canonical JSON shape with the runtime app metadata package.
 type ConnectedAppData = runtimeapps.ConnectedApp
@@ -338,6 +348,7 @@ type AgentTaskResponse struct {
 	ProjectDescription string                `json:"project_description,omitempty"` // durable project-level context injected into the brief
 	ProjectResources   []ProjectResourceData `json:"project_resources,omitempty"`   // resources attached to the project
 	IssueDocs          []IssueDocData        `json:"issue_docs,omitempty"`          // documents written for this issue (spec, plans, closed rounds); titles only
+	IssuePhases        []IssuePhaseData      `json:"issue_phases,omitempty"`        // the issue's route, in track order, with how far it got
 	CreatedAt          string                `json:"created_at"`
 	PriorSessionID     string                `json:"prior_session_id,omitempty"` // session ID from a previous task on same issue
 	PriorWorkDir       string                `json:"prior_work_dir,omitempty"`   // work_dir from a previous task on same issue

@@ -41,6 +41,13 @@ type IssueDocForEnv struct {
 	Kind  string `json:"kind,omitempty"` // the document's slot, e.g. "COC-305/spec"
 }
 
+// IssuePhaseForEnv names one station on the issue's route, in track order.
+type IssuePhaseForEnv struct {
+	Name      string `json:"name"`
+	Entered   bool   `json:"entered,omitempty"`
+	Completed bool   `json:"completed,omitempty"`
+}
+
 // PrepareParams holds all inputs needed to set up an execution environment.
 type PrepareParams struct {
 	WorkspacesRoot string // base path for all envs (e.g., ~/multica_workspaces)
@@ -133,6 +140,7 @@ type TaskContextForEnv struct {
 	ProjectDescription            string                  // durable project-level context, rendered into the brief's Project Context section
 	ProjectResources              []ProjectResourceForEnv // resources attached to the project
 	IssueDocs                     []IssueDocForEnv        // documents written for this issue; titles only, bodies fetched on demand
+	IssuePhases                   []IssuePhaseForEnv      // the issue's route in track order, with how far it got
 	ChatSessionID                 string                  // non-empty for chat tasks
 	// ChatChannelType is the IM platform behind a chat session ("slack",
 	// "feishu", "wecom"); empty for a web/mobile chat. Any non-empty value

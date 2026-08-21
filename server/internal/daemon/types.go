@@ -58,6 +58,14 @@ type IssueDocData struct {
 	Kind  string `json:"kind,omitempty"`
 }
 
+// IssuePhaseData names one station on the issue's route. Mirror of
+// handler.IssuePhaseData.
+type IssuePhaseData struct {
+	Name      string `json:"name"`
+	Entered   bool   `json:"entered,omitempty"`
+	Completed bool   `json:"completed,omitempty"`
+}
+
 // ConnectedAppData keeps the claim-response field local to daemon types while
 // sharing the canonical JSON shape with the runtime app metadata package.
 type ConnectedAppData = runtimeapps.ConnectedApp
@@ -84,6 +92,7 @@ type Task struct {
 	ProjectDescription            string                 `json:"project_description,omitempty"`              // durable project-level context injected into the brief
 	ProjectResources              []ProjectResourceData  `json:"project_resources,omitempty"`                // project-scoped resources to expose to the agent
 	IssueDocs                     []IssueDocData         `json:"issue_docs,omitempty"`                       // documents written for this issue (spec, plans, closed rounds); titles only, bodies fetched on demand
+	IssuePhases                   []IssuePhaseData       `json:"issue_phases,omitempty"`                     // the issue's route in track order, with how far it got
 	IsLeaderTask                  bool                   `json:"is_leader_task,omitempty"`                   // true when executing in the squad-leader coordinator role
 	LeaderRoleResolved            bool                   `json:"leader_role_resolved,omitempty"`             // server capability: IsLeaderTask/SquadID authoritatively answer "is this a leader run". Absent on servers predating it — those before #4951 never sent is_leader_task at all, later ones send it without this guarantee — so taskIsSquadLeader falls back to the briefing marker for both (MUL-5811)
 	PriorSessionID                string                 `json:"prior_session_id,omitempty"`                 // Claude session ID from a previous task on this issue

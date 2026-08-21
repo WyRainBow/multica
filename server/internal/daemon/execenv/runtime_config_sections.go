@@ -364,6 +364,56 @@ func writeProjectContext(b *strings.Builder, ctx TaskContextForEnv) {
 	}
 }
 
+// writeIssuePhases names the stations this issue passes through and where the
+// work currently stands.
+//
+// The brief asks the agent to file its comments at the station they belong to.
+// It never said which stations existed, so that instruction had no way to be
+// obeyed: an agent could not name a station it had not been shown, and every
+// comment landed unfiled regardless of what stretch of work it described.
+//
+// Position order, not creation order — the stations are a route, and reading
+// them out of order says nothing. A station is CURRENT once it has been
+// entered and not yet completed; more than one can be open at a time, and
+// listing both is more honest than picking one.
+//
+// Omitted entirely for an issue with no route. Issues predating phases have
+// none, and that is not a defect to paper over.
+func writeIssuePhases(b *strings.Builder, ctx TaskContextForEnv) {
+	if len(ctx.IssuePhases) == 0 {
+		return
+	}
+	b.WriteString("## Issue Phases\n\n")
+	b.WriteString("The route this issue takes. File a comment at the station the work is at with `multica issue comment add <id> --phase <name>`:\n\n")
+	for _, phase := range ctx.IssuePhases {
+		name := strings.TrimSpace(phase.Name)
+		if name == "" {
+			continue
+		}
+		switch {
+		case phase.Completed:
+			fmt.Fprintf(b, "- %s — done\n", name)
+		case phase.Entered:
+			fmt.Fprintf(b, "- **%s — CURRENT**\n", name)
+		default:
+			fmt.Fprintf(b, "- %s — not reached\n", name)
+		}
+	}
+	// An issue whose route exists but was never walked is the common case, and
+	// silence there reads as "no station applies to me". Say what to do.
+	anyOpen := false
+	for _, phase := range ctx.IssuePhases {
+		if phase.Entered && !phase.Completed {
+			anyOpen = true
+			break
+		}
+	}
+	if !anyOpen {
+		b.WriteString("\nNo station is open. File under the one your work belongs to rather than leaving the comment unfiled.\n")
+	}
+	b.WriteString("\n")
+}
+
 // issueDocsBriefLimit caps how many documents the brief names. An issue that
 // has run many review rounds accumulates one document per round, and the brief
 // is paid for on every turn of every run; past this many the list stops being
@@ -793,6 +843,7 @@ func writeOutput(b *strings.Builder, kind taskKind, ctx TaskContextForEnv) {
 //	Comment Formatting    |    ✓    |   ✓    |     —     |      —       |  —
 //	Repositories          |    △    |   △    |     △     |      —       |  △
 //	Project Context       |    △    |   △    |     △     |      △       |  △
+//	Issue Phases          |    △    |   △    |     —     |      —       |  —
 //	Issue Documents       |    △    |   △    |     —     |      —       |  —
 //	Issue Metadata        |    ✓    |   ✓    |     —     |      —       |  —
 //	Instruction Precedence|    —    |   ✓    |     —     |      —       |  —
@@ -838,6 +889,7 @@ func buildMetaSkillContentSlim(provider string, ctx TaskContextForEnv) string {
 	writeProjectContext(&b, ctx)
 
 	if kind.hasIssueContext() {
+		writeIssuePhases(&b, ctx)
 		writeIssueDocuments(&b, ctx)
 		writeIssueMetadata(&b)
 	}

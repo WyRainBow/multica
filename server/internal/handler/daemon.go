@@ -1884,6 +1884,24 @@ func (h *Handler) buildClaimedTaskResponse(r *http.Request, task *db.AgentTaskQu
 				resp.IssueDocs = out
 			}
 
+			// The route this issue takes and how far along it is. The agent is
+			// asked to file its comments at the station the work is at, which
+			// it cannot do without being told the stations exist.
+			if phases, err := h.Queries.ListIssuePhases(r.Context(), db.ListIssuePhasesParams{
+				WorkspaceID: issue.WorkspaceID,
+				IssueID:     issue.ID,
+			}); err == nil && len(phases) > 0 {
+				route := make([]IssuePhaseData, 0, len(phases))
+				for _, phase := range phases {
+					route = append(route, IssuePhaseData{
+						Name:      phase.Name,
+						Entered:   phase.EnteredAt.Valid,
+						Completed: phase.CompletedAt.Valid,
+					})
+				}
+				resp.IssuePhases = route
+			}
+
 			var projectRepos []RepoData
 			if issue.ProjectID.Valid {
 				resp.ProjectID = uuidToString(issue.ProjectID)
