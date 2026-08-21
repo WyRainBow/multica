@@ -284,6 +284,27 @@ func worktreeFactsAge(verifiedAt *string) string {
 	return shortTimestamp(*verifiedAt)
 }
 
+// What `git merge-base --is-ancestor` found. Its exit status carries three
+// different answers and only the first two are measurements: 0 is contained,
+// 1 is not contained, and anything else (an unknown target ref, a broken
+// repository) means the question was never answered.
+type containment int
+
+const (
+	containsYes containment = iota
+	containsNo
+	containsUnknown
+)
+
+func contains(dir, commit, target string) containment {
+	if _, err := runGit(dir, "merge-base", "--is-ancestor", commit, target); err == nil {
+		return containsYes
+	} else if exit, ok := err.(*exec.ExitError); ok && exit.ExitCode() == 1 {
+		return containsNo
+	}
+	return containsUnknown
+}
+
 func runGit(dir string, args ...string) (string, error) {
 	cmd := exec.Command("git", args...)
 	if dir != "" {
@@ -691,13 +712,29 @@ func runWorktreeSync(cmd *cobra.Command, args []string) error {
 
 	if target != "" {
 		// The evidence, not the claim: git says whether this commit is already
-		// contained in the target. Exit status 0 means it is.
-		if _, err := runGit(root, "merge-base", "--is-ancestor", head, target); err == nil {
+		// contained in the target.
+		switch contains(root, head, target) {
+		case containsYes:
 			payload["merged_sha"] = head
 			payload["merged_into"] = target
 			payload["status"] = "merged"
-		} else {
-			fmt.Fprintf(os.Stderr, "HEAD is not yet contained in %s.\n", target)
+		case containsNo:
+			// A merge claim is only true of the commit it was measured on. The
+			// branch has moved since — rebased, reset, amended — so the old
+			// claim describes a commit this tree no longer carries. Retract it
+			// rather than leave a row reading "merged" next to a HEAD that is
+			// not in the target.
+			payload["merged_sha"] = ""
+			payload["merged_into"] = ""
+			if tree.Status == "merged" {
+				payload["status"] = "active"
+			}
+			fmt.Fprintf(os.Stderr, "HEAD is not contained in %s.\n", target)
+		case containsUnknown:
+			// Not the same thing as "not merged": git could not answer, so
+			// there is no measurement either way and the row keeps what it
+			// had. Say so, or a missing target ref reads as a clean check.
+			fmt.Fprintf(os.Stderr, "Could not check %s against %s; the merge fields are left as they were.\n", shortSHA(head), target)
 		}
 	}
 
