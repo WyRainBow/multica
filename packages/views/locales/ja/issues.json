@@ -758,5 +758,11 @@
     "open": "新しいタブで開く",
     "rename": "名前を変更",
     "remove": "削除"
+  },
+  "worktree": {
+    "title": "ワークツリー",
+    "measured": "{when}に計測",
+    "never_measured": "未計測",
+    "missing": "{name} を指していますが、台帳にありません。"
   }
 }

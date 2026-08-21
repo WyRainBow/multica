@@ -758,5 +758,11 @@
     "open": "새 탭에서 열기",
     "rename": "이름 변경",
     "remove": "제거"
+  },
+  "worktree": {
+    "title": "워크트리",
+    "measured": "{when} 측정",
+    "never_measured": "측정된 적 없음",
+    "missing": "{name}을(를) 가리키지만 원장에 없습니다."
   }
 }

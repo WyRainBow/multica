@@ -150,6 +150,7 @@ import { LocalDirectoryHint } from "../../projects/components/local-directory-hi
 import { CommentCard } from "./comment-card";
 import { IssueResourcesSection } from "./issue-resources-section";
 import { IssueDocsSection } from "../../docs";
+import { IssueWorktreeSection } from "./issue-worktree-section";
 import { PhaseTrack } from "./phase-track";
 import { phaseAtTime } from "./phase-window";
 import type { IssuePhase } from "@multica/core/types";
@@ -3610,6 +3611,11 @@ export function IssueDetail({
               here — you reach for the pointer more often, but when you need
               the document you need all of it. */}
             <IssueDocsSection issueId={id} />
+
+            {/* Where this card's code is, and whose session is driving it.
+              Renders nothing unless the card names a tree, which most never
+              do. */}
+            <IssueWorktreeSection issueId={id} />
 
             {/* Sub-issues — Linear-style */}
             {childIssues.length === 0 && (

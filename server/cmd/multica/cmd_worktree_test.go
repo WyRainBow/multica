@@ -262,3 +262,92 @@ func TestAutoSessionReadsTheAgentItRunsIn(t *testing.T) {
 		}
 	})
 }
+
+// bindServer serves an issue's metadata map and records any key written to it.
+type bindServer struct {
+	mu       sync.Mutex
+	metadata map[string]any
+	readable bool
+	wrote    map[string]any
+}
+
+func newBindServer(t *testing.T, metadata map[string]any, readable bool) (*bindServer, string) {
+	t.Helper()
+	s := &bindServer{metadata: metadata, readable: readable, wrote: map[string]any{}}
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		s.mu.Lock()
+		defer s.mu.Unlock()
+		switch {
+		case strings.HasSuffix(r.URL.Path, "/entries") && r.Method == http.MethodPost:
+			w.Header().Set("Content-Type", "application/json")
+			_ = json.NewEncoder(w).Encode(map[string]any{"id": "e1", "issue_id": "i1"})
+		case strings.HasSuffix(r.URL.Path, "/metadata") && r.Method == http.MethodGet:
+			if !s.readable {
+				http.Error(w, "nope", http.StatusInternalServerError)
+				return
+			}
+			w.Header().Set("Content-Type", "application/json")
+			_ = json.NewEncoder(w).Encode(map[string]any{"metadata": s.metadata})
+		case strings.Contains(r.URL.Path, "/metadata/") && r.Method == http.MethodPut:
+			var body map[string]any
+			_ = json.NewDecoder(r.Body).Decode(&body)
+			key := r.URL.Path[strings.LastIndex(r.URL.Path, "/")+1:]
+			s.wrote[key] = body["value"]
+			w.Header().Set("Content-Type", "application/json")
+			_ = json.NewEncoder(w).Encode(body)
+		default:
+			w.Header().Set("Content-Type", "application/json")
+			_ = json.NewEncoder(w).Encode(map[string]any{"id": "i1", "identifier": "COC-1"})
+		}
+	}))
+	t.Cleanup(srv.Close)
+	return s, srv.URL
+}
+
+func (s *bindServer) written(key string) (any, bool) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	v, ok := s.wrote[key]
+	return v, ok
+}
+
+// TestLogBindsTheCardOnlyWhenItIsUnbound is the rule that makes the link
+// trustworthy. Binding on every log would let the last tree to record a line
+// win, quietly replacing a pointer someone set on purpose.
+func TestLogBindsTheCardOnlyWhenItIsUnbound(t *testing.T) {
+	cases := []struct {
+		name     string
+		metadata map[string]any
+		readable bool
+		want     any
+	}{
+		{"unbound card gets the tree", map[string]any{}, true, "tree"},
+		{"an existing pointer is left alone", map[string]any{issueWorktreeKey: "other-tree"}, true, nil},
+		{"an unreadable map is not overwritten", nil, false, nil},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			srv, url := newBindServer(t, c.metadata, c.readable)
+			t.Setenv("HOME", t.TempDir())
+			if err := cli.SaveCLIConfigForProfile(cli.CLIConfig{ServerURL: url, Token: "t"}, ""); err != nil {
+				t.Fatal(err)
+			}
+			client, err := newAPIClient(newSyncCmd(t, "", ""))
+			if err != nil {
+				t.Fatal(err)
+			}
+			bindIssueToWorktree(context.Background(), client, "i1", "tree")
+
+			got, ok := srv.written(issueWorktreeKey)
+			if c.want == nil {
+				if ok {
+					t.Errorf("wrote %#v; the pointer should have been left as it was", got)
+				}
+				return
+			}
+			if !ok || got != c.want {
+				t.Errorf("wrote %#v (present=%v), want %#v", got, ok, c.want)
+			}
+		})
+	}
+}

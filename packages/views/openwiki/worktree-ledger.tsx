@@ -22,6 +22,7 @@ import { cn } from "@multica/ui/lib/utils";
 import { useT, useTimeAgo } from "../i18n";
 import { useNavigation } from "../navigation";
 import { WorktreeEntryList } from "./worktree-entry-list";
+import { SessionPointer } from "../worktrees/session-pointer";
 
 /**
  * The worktree ledger: where the code is, as opposed to how far a decision has
@@ -193,8 +194,23 @@ function WorktreeRow({
       <div className="border-t px-3 py-2">
         {editingSession ? (
           <SessionEditor tree={tree} onDone={() => setEditingSession(false)} />
+        ) : tree.session.agent === "" &&
+          tree.session.next_action === "" &&
+          tree.session.resume === "" ? (
+          <button
+            type="button"
+            className="w-full text-left"
+            onClick={() => setEditingSession(true)}
+          >
+            <span className="text-caption text-muted-foreground">
+              {t(($) => $.session_empty)}
+            </span>
+          </button>
         ) : (
-          <SessionPanel tree={tree} onEdit={() => setEditingSession(true)} />
+          <SessionPointer
+            session={tree.session}
+            onEdit={() => setEditingSession(true)}
+          />
         )}
       </div>
 
@@ -237,76 +253,6 @@ function WorktreeRow({
             )}
           </dl>
           <WorktreeEntryList treeRef={tree.id} />
-        </div>
-      )}
-    </div>
-  );
-}
-
-/**
- * The navigation account, read.
- *
- * Its one job is to get someone back into the session driving this tree, so the
- * resume command is a line of its own with a copy button rather than trailing
- * text inside a click-to-edit block — reaching for it used to open the editor.
- *
- * It also says when it was written, which the other accounts do not need to.
- * `sync` re-measures a merge claim every time it runs; nothing can re-check a
- * resume pointer, and the session behind it may have ended hours ago. The date
- * is the only signal the reader gets.
- */
-function SessionPanel({ tree, onEdit }: { tree: Worktree; onEdit: () => void }) {
-  const { t } = useT("openwiki");
-  const timeAgo = useTimeAgo();
-  const [copied, setCopied] = useState(false);
-  const session = tree.session;
-
-  if (session.agent === "" && session.next_action === "" && session.resume === "") {
-    return (
-      <button type="button" className="w-full text-left" onClick={onEdit}>
-        <span className="text-caption text-muted-foreground">
-          {t(($) => $.session_empty)}
-        </span>
-      </button>
-    );
-  }
-
-  const copy = () => {
-    void navigator.clipboard?.writeText(session.resume).then(() => {
-      setCopied(true);
-      window.setTimeout(() => setCopied(false), 1500);
-    });
-  };
-
-  return (
-    <div className="flex flex-col gap-1">
-      <button
-        type="button"
-        className="flex flex-wrap items-baseline gap-x-2 text-left text-caption"
-        onClick={onEdit}
-      >
-        <span className="font-medium">
-          {session.agent || t(($) => $.session_no_agent)}
-        </span>
-        {session.owner !== "" && (
-          <span className="text-muted-foreground">{session.owner}</span>
-        )}
-        {session.next_action !== "" && <span>→ {session.next_action}</span>}
-        {session.updated_at !== null && (
-          <span className="ml-auto text-muted-foreground">
-            {t(($) => $.session_stated, { when: timeAgo(session.updated_at) })}
-          </span>
-        )}
-      </button>
-
-      {session.resume !== "" && (
-        <div className="flex items-center gap-2">
-          <code className="min-w-0 flex-1 truncate rounded bg-muted px-1.5 py-0.5 font-mono text-caption">
-            {session.resume}
-          </code>
-          <Button variant="ghost" size="sm" onClick={copy}>
-            {copied ? t(($) => $.session_copied) : t(($) => $.session_copy)}
-          </Button>
         </div>
       )}
     </div>

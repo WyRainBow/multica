@@ -790,5 +790,11 @@
     "open": "Open in new tab",
     "rename": "Rename",
     "remove": "Remove"
+  },
+  "worktree": {
+    "title": "Worktree",
+    "measured": "measured {when}",
+    "never_measured": "never measured",
+    "missing": "Points at {name}, which the ledger does not have."
   }
 }

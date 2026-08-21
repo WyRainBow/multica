@@ -758,5 +758,11 @@
     "open": "在新标签页打开",
     "rename": "重命名",
     "remove": "移除"
+  },
+  "worktree": {
+    "title": "工作树",
+    "measured": "{when}实测",
+    "never_measured": "未实测",
+    "missing": "指向 {name}，但总账里没有这棵树。"
   }
 }
