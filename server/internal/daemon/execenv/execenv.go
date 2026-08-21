@@ -33,6 +33,14 @@ type ProjectResourceForEnv struct {
 	Label        string          `json:"label,omitempty"` // optional user-supplied label
 }
 
+// IssueDocForEnv names one document written for this issue: a spec, a plan, a
+// closed review round. The brief lists it so the agent knows it exists.
+type IssueDocForEnv struct {
+	ID    string `json:"id"`
+	Title string `json:"title"`
+	Kind  string `json:"kind,omitempty"` // the document's slot, e.g. "COC-305/spec"
+}
+
 // PrepareParams holds all inputs needed to set up an execution environment.
 type PrepareParams struct {
 	WorkspacesRoot string // base path for all envs (e.g., ~/multica_workspaces)
@@ -124,6 +132,7 @@ type TaskContextForEnv struct {
 	ProjectTitle                  string                  // human-readable project title
 	ProjectDescription            string                  // durable project-level context, rendered into the brief's Project Context section
 	ProjectResources              []ProjectResourceForEnv // resources attached to the project
+	IssueDocs                     []IssueDocForEnv        // documents written for this issue; titles only, bodies fetched on demand
 	ChatSessionID                 string                  // non-empty for chat tasks
 	// ChatChannelType is the IM platform behind a chat session ("slack",
 	// "feishu", "wecom"); empty for a web/mobile chat. Any non-empty value

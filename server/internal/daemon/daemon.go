@@ -5687,6 +5687,7 @@ func (d *Daemon) runTask(ctx context.Context, task Task, provider string, slot i
 		ProjectTitle:                     task.ProjectTitle,
 		ProjectDescription:               task.ProjectDescription,
 		ProjectResources:                 convertProjectResourcesForEnv(task.ProjectResources),
+		IssueDocs:                        convertIssueDocsForEnv(task.IssueDocs),
 		ChatSessionID:                    task.ChatSessionID,
 		ChatChannelType:                  task.ChatChannelType,
 		AutopilotRunID:                   task.AutopilotRunID,
@@ -7226,6 +7227,17 @@ func convertReposForEnv(repos []RepoData) []execenv.RepoContextForEnv {
 	result := make([]execenv.RepoContextForEnv, len(repos))
 	for i, r := range repos {
 		result[i] = execenv.RepoContextForEnv{URL: r.URL, Description: r.Description, Ref: r.Ref}
+	}
+	return result
+}
+
+func convertIssueDocsForEnv(docs []IssueDocData) []execenv.IssueDocForEnv {
+	if len(docs) == 0 {
+		return nil
+	}
+	result := make([]execenv.IssueDocForEnv, len(docs))
+	for i, d := range docs {
+		result[i] = execenv.IssueDocForEnv{ID: d.ID, Title: d.Title, Kind: d.Kind}
 	}
 	return result
 }

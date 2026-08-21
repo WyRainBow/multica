@@ -364,6 +364,55 @@ func writeProjectContext(b *strings.Builder, ctx TaskContextForEnv) {
 	}
 }
 
+// issueDocsBriefLimit caps how many documents the brief names. An issue that
+// has run many review rounds accumulates one document per round, and the brief
+// is paid for on every turn of every run; past this many the list stops being
+// an index and starts being a wall.
+const issueDocsBriefLimit = 20
+
+// writeIssueDocuments names the documents written for this issue.
+//
+// The issue's own artefacts — its spec, its plans, the conclusion of each
+// closed review round — were invisible to the agent working on it. Description
+// and comments arrived, the documents did not, so whoever dispatched the run
+// pasted them in by hand or the agent re-derived what a previous round had
+// already settled.
+//
+// Titles and ids only. A spec can be thousands of words and most runs need
+// none of them; naming the document costs a line and lets the agent decide.
+// Omitted entirely when the issue has no documents, so an issue that never
+// produced one renders exactly as before.
+func writeIssueDocuments(b *strings.Builder, ctx TaskContextForEnv) {
+	if len(ctx.IssueDocs) == 0 {
+		return
+	}
+	b.WriteString("## Issue Documents\n\n")
+	b.WriteString("Written for this issue. Read one with `multica wiki get <id> --output json` — do it when the task actually needs it, not by default:\n\n")
+
+	shown := ctx.IssueDocs
+	if len(shown) > issueDocsBriefLimit {
+		shown = shown[:issueDocsBriefLimit]
+	}
+	for _, doc := range shown {
+		title := strings.TrimSpace(doc.Title)
+		if title == "" {
+			title = "(untitled)"
+		}
+		if kind := strings.TrimSpace(doc.Kind); kind != "" {
+			fmt.Fprintf(b, "- **%s** — `%s` — `%s`\n", title, kind, doc.ID)
+			continue
+		}
+		fmt.Fprintf(b, "- **%s** — `%s`\n", title, doc.ID)
+	}
+	// Say what was left out. A truncated list that does not admit it reads as
+	// the whole set, and the agent stops looking exactly where the older
+	// rounds are.
+	if dropped := len(ctx.IssueDocs) - len(shown); dropped > 0 {
+		fmt.Fprintf(b, "\n%d more not listed here — `multica issue get <id> --output json` for the full set.\n", dropped)
+	}
+	b.WriteString("\n")
+}
+
 // writeIssueMetadata emits the Issue Metadata discipline section
 // (compressed). The dispatcher gates by kind.hasIssueContext(); this
 // helper does not re-check.
@@ -744,6 +793,7 @@ func writeOutput(b *strings.Builder, kind taskKind, ctx TaskContextForEnv) {
 //	Comment Formatting    |    ✓    |   ✓    |     —     |      —       |  —
 //	Repositories          |    △    |   △    |     △     |      —       |  △
 //	Project Context       |    △    |   △    |     △     |      △       |  △
+//	Issue Documents       |    △    |   △    |     —     |      —       |  —
 //	Issue Metadata        |    ✓    |   ✓    |     —     |      —       |  —
 //	Instruction Precedence|    —    |   ✓    |     —     |      —       |  —
 //	Sub-issue Creation    |    ✓    |   ✓    |     —     |      —       |  —
@@ -788,6 +838,7 @@ func buildMetaSkillContentSlim(provider string, ctx TaskContextForEnv) string {
 	writeProjectContext(&b, ctx)
 
 	if kind.hasIssueContext() {
+		writeIssueDocuments(&b, ctx)
 		writeIssueMetadata(&b)
 	}
 

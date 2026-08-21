@@ -1863,6 +1863,27 @@ func (h *Handler) buildClaimedTaskResponse(r *http.Request, task *db.AgentTaskQu
 				}
 			}
 
+			// Documents written for this issue — spec, plans, closed review
+			// rounds. Without them an agent picking the issue up sees the
+			// description and the comments but not the artefacts the last
+			// round produced, and someone has to paste them in by hand.
+			// Titles only: bodies are fetched on demand, so a long spec costs
+			// nothing until it is actually wanted.
+			if docs, err := h.Queries.ListCardsForIssue(r.Context(), db.ListCardsForIssueParams{
+				WorkspaceID: issue.WorkspaceID,
+				IssueID:     issue.ID,
+			}); err == nil && len(docs) > 0 {
+				out := make([]IssueDocData, 0, len(docs))
+				for _, doc := range docs {
+					out = append(out, IssueDocData{
+						ID:    uuidToString(doc.ID),
+						Title: doc.Title,
+						Kind:  doc.Kind,
+					})
+				}
+				resp.IssueDocs = out
+			}
+
 			var projectRepos []RepoData
 			if issue.ProjectID.Valid {
 				resp.ProjectID = uuidToString(issue.ProjectID)

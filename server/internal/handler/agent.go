@@ -289,6 +289,17 @@ type ProjectResourceData struct {
 	Label        string          `json:"label,omitempty"`
 }
 
+// IssueDocData names one document written for this issue — a spec, a plan, a
+// closed review round. Title and kind only: the brief lists them so the agent
+// knows they exist and can fetch the ones it needs, which is cheaper than
+// shipping every body into a context window that may never read them.
+// Mirror field: internal/daemon/types.go, same JSON names.
+type IssueDocData struct {
+	ID    string `json:"id"`
+	Title string `json:"title"`
+	Kind  string `json:"kind,omitempty"`
+}
+
 // ConnectedAppData keeps the daemon-claim wire field local to handler types
 // while sharing the canonical JSON shape with the runtime app metadata package.
 type ConnectedAppData = runtimeapps.ConnectedApp
@@ -326,6 +337,7 @@ type AgentTaskResponse struct {
 	ProjectTitle       string                `json:"project_title,omitempty"`       // for surfacing in agent context
 	ProjectDescription string                `json:"project_description,omitempty"` // durable project-level context injected into the brief
 	ProjectResources   []ProjectResourceData `json:"project_resources,omitempty"`   // resources attached to the project
+	IssueDocs          []IssueDocData        `json:"issue_docs,omitempty"`          // documents written for this issue (spec, plans, closed rounds); titles only
 	CreatedAt          string                `json:"created_at"`
 	PriorSessionID     string                `json:"prior_session_id,omitempty"` // session ID from a previous task on same issue
 	PriorWorkDir       string                `json:"prior_work_dir,omitempty"`   // work_dir from a previous task on same issue
