@@ -194,14 +194,11 @@ func runWorkspaceSkills(cmd *cobra.Command, args []string, statusOnly bool) erro
 	if statusOnly {
 		return reportSkillStatus(dir, ws.Slug, current, stale, missing, conflicts)
 	}
-	if len(conflicts) > 0 && !force {
-		sort.Strings(conflicts)
-		return fmt.Errorf(
-			"these names already exist in %s and were not written by this command: %s. "+
-				"Rename yours, mirror into a different directory, or pass --force to replace them",
-			dir, strings.Join(conflicts, ", "))
-	}
 
+	// Mirror everything that is ours, then report what was not. Refusing the
+	// whole run over one conflicting name would let a single deliberate local
+	// router — a thin file that exists precisely to defer to the workspace —
+	// block every other skill from arriving.
 	var written []string
 	for _, p := range toWrite {
 		if err := writePulledSkill(p.target, ws.Slug, p.skill, p.body, p.print); err != nil {
@@ -210,12 +207,21 @@ func runWorkspaceSkills(cmd *cobra.Command, args []string, statusOnly bool) erro
 		written = append(written, p.name)
 	}
 	sort.Strings(written)
-	if len(written) == 0 {
+	switch {
+	case len(written) > 0:
+		fmt.Fprintf(os.Stderr, "Mirrored %d skill(s) from %s into %s: %s\n",
+			len(written), ws.Slug, dir, strings.Join(written, ", "))
+	case len(conflicts) == 0:
 		fmt.Fprintf(os.Stderr, "%s is already current with workspace %s (%d skills).\n", dir, ws.Slug, len(current))
-		return nil
 	}
-	fmt.Fprintf(os.Stderr, "Mirrored %d skill(s) from %s into %s: %s\n",
-		len(written), ws.Slug, dir, strings.Join(written, ", "))
+
+	if len(conflicts) > 0 && !force {
+		sort.Strings(conflicts)
+		return fmt.Errorf(
+			"left alone (not written by this command): %s. "+
+				"Keep yours, mirror into a different directory, or pass --force to replace them",
+			strings.Join(conflicts, ", "))
+	}
 	return nil
 }
 
