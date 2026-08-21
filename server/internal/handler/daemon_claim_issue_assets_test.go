@@ -132,3 +132,38 @@ func TestClaimedIssueTaskCarriesItsDocumentsWithoutTheirBodies(t *testing.T) {
 		t.Error("document bodies leaked into the claim payload")
 	}
 }
+
+func TestClaimedIssueTaskCarriesTheWorkspaceContext(t *testing.T) {
+	if testHandler == nil || testPool == nil {
+		t.Skip("database not available")
+	}
+	ctx := context.Background()
+
+	// Set one rather than reading whatever happens to be there: an empty
+	// column would turn this into a skip, and a skipped test reads exactly
+	// like a passing one in the output.
+	const wsRules = "# 团队通用指令\n\n- 声称「已合入」必须带完整 40 位 commit SHA。"
+	var previous *string
+	if err := testPool.QueryRow(ctx,
+		`SELECT context FROM workspace WHERE id = $1`, testWorkspaceID).Scan(&previous); err != nil {
+		t.Fatalf("read workspace context: %v", err)
+	}
+	if _, err := testPool.Exec(ctx,
+		`UPDATE workspace SET context = $1 WHERE id = $2`, wsRules, testWorkspaceID); err != nil {
+		t.Fatalf("set workspace context: %v", err)
+	}
+	t.Cleanup(func() {
+		testPool.Exec(context.Background(),
+			`UPDATE workspace SET context = $1 WHERE id = $2`, previous, testWorkspaceID)
+	})
+
+	task := claimOneIssueTask(t, ctx, "Claim workspace context")
+
+	// The three asset kinds ride the same claim. If this one stopped
+	// travelling, every agent in the workspace would lose its shared rules
+	// while the issue-scoped sections kept working — the hardest version of
+	// this failure to notice, because the brief still looks populated.
+	if task.WorkspaceContext != wsRules {
+		t.Errorf("workspace context did not survive the claim:\nstored:  %q\narrived: %q", wsRules, task.WorkspaceContext)
+	}
+}
