@@ -203,7 +203,7 @@ func init() {
 		cmd.Flags().String("repo", "", "Repository this checkout belongs to")
 		cmd.Flags().String("branch", "", "Branch checked out here")
 		cmd.Flags().String("base", "", "Branch this one is based on")
-		cmd.Flags().String("role", "", "Pipeline position: base, feature, integration or launch")
+		cmd.Flags().String("role", "", "Pipeline position: base, feature, integration, release or hotfix")
 		cmd.Flags().String("parent", "", "Name of the tree this one merges into")
 		cmd.Flags().String("output", "json", "Output format: table or json")
 	}

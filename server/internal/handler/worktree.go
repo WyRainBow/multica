@@ -48,7 +48,7 @@ const (
 )
 
 var (
-	worktreeRoles      = map[string]bool{"base": true, "feature": true, "integration": true, "launch": true}
+	worktreeRoles      = map[string]bool{"base": true, "feature": true, "integration": true, "release": true, "hotfix": true}
 	worktreeStatuses   = map[string]bool{"active": true, "blocked": true, "merged": true, "archived": true}
 	worktreeEntryKinds = map[string]bool{
 		"progress": true, "branch": true, "merge": true,
@@ -325,7 +325,7 @@ func (h *Handler) CreateWorktree(w http.ResponseWriter, r *http.Request) {
 		role = "feature"
 	}
 	if !worktreeRoles[role] {
-		writeError(w, http.StatusBadRequest, "role must be one of base, feature, integration, launch")
+		writeError(w, http.StatusBadRequest, "role must be one of base, feature, integration, release, hotfix")
 		return
 	}
 	status := strings.TrimSpace(req.Status)
@@ -422,7 +422,7 @@ func (h *Handler) UpdateWorktree(w http.ResponseWriter, r *http.Request) {
 	if req.Role != nil {
 		role := strings.TrimSpace(*req.Role)
 		if !worktreeRoles[role] {
-			writeError(w, http.StatusBadRequest, "role must be one of base, feature, integration, launch")
+			writeError(w, http.StatusBadRequest, "role must be one of base, feature, integration, release, hotfix")
 			return
 		}
 		params.Role = pgtype.Text{String: role, Valid: true}
