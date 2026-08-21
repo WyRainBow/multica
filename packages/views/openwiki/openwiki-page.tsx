@@ -146,6 +146,7 @@ function WorktreeLedger() {
             <tr className="border-b text-left text-caption text-muted-foreground">
               <th className="py-1.5 pr-3 font-medium">{t(($) => $.col_issue)}</th>
               <th className="py-1.5 pr-3 font-medium">{t(($) => $.col_status)}</th>
+              <th className="py-1.5 pr-3 font-medium">{t(($) => $.col_role)}</th>
               <th className="py-1.5 pr-3 font-medium">{t(($) => $.col_base)}</th>
               <th className="py-1.5 pr-3 font-medium">{t(($) => $.col_delivery)}</th>
               <th className="py-1.5 font-medium">{t(($) => $.col_mr)}</th>
@@ -161,10 +162,12 @@ function WorktreeLedger() {
                     onClick={() => nav.push(paths.issueDetail(r.identifier))}
                   >
                     <span className="font-mono text-caption">{r.identifier}</span>{" "}
-                    <span className="text-muted-foreground">{r.title}</span>
+                    <span className="inline-block max-w-[24ch] truncate align-middle text-muted-foreground">
+                      {r.title}
+                    </span>
                   </button>
                 </td>
-                <td className="py-1.5 pr-3 text-muted-foreground">{r.status}</td>
+                <td className="whitespace-nowrap py-1.5 pr-3 text-muted-foreground">{r.status}</td>
                 <td className="py-1.5 pr-3">
                   <span className="rounded bg-muted px-1.5 py-0.5 text-caption">
                     {roleUnknown(r.role)
@@ -172,8 +175,8 @@ function WorktreeLedger() {
                       : t(($) => $[`role_${r.role}` as "role_base"])}
                   </span>
                 </td>
-                <td className="py-1.5 pr-3 font-mono text-caption">{r.baseRef || "—"}</td>
-                <td className="py-1.5 pr-3 font-mono text-caption">
+                <td className="whitespace-nowrap py-1.5 pr-3 font-mono text-caption">{r.baseRef || "—"}</td>
+                <td className="whitespace-nowrap py-1.5 pr-3 font-mono text-caption">
                   {r.deliveryRef || "—"}
                   {r.deprecatedKeys && (
                     <span className="ml-1 text-muted-foreground">
