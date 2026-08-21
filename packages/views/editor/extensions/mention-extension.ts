@@ -47,7 +47,10 @@ export const BaseMentionExtension = Mention.extend({
   },
   renderHTML({ node, HTMLAttributes }) {
     const type = node.attrs.type ?? "member";
-    const prefix = type === "issue" || type === "project" ? "" : "@";
+    // @ marks a person. An issue, a project and a wiki page are things being
+    // referred to, not people being addressed.
+    const prefix =
+      type === "issue" || type === "project" || type === "doc" ? "" : "@";
     return [
       "span",
       mergeAttributes(
@@ -107,7 +110,8 @@ export const BaseMentionExtension = Mention.extend({
   },
   renderMarkdown: (node: any) => {
     const { id, label, type = "member" } = node.attrs || {};
-    const prefix = type === "issue" || type === "project" ? "" : "@";
+    const prefix =
+      type === "issue" || type === "project" || type === "doc" ? "" : "@";
     // Escape [ ] \ ( ) in the label so the markdown link syntax is not broken
     // and the label survives the linear tokenizer (which now treats "\" as an
     // escape lead, not an ordinary char). Must stay in sync with the unescape

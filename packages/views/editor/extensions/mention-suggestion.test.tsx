@@ -38,6 +38,8 @@ vi.mock("@multica/core/platform", () => ({
 // Mock the API so we control search responses + observe calls.
 const searchIssuesMock = vi.fn();
 const searchProjectsMock = vi.fn();
+// Context search asks three sources; a wiki page is one of them.
+const listCardsMock = vi.fn();
 vi.mock("@multica/core/api", () => ({
   api: {
     get searchIssues() {
@@ -45,6 +47,9 @@ vi.mock("@multica/core/api", () => ({
     },
     get searchProjects() {
       return searchProjectsMock;
+    },
+    get listCards() {
+      return listCardsMock;
     },
   },
 }));
@@ -151,6 +156,8 @@ describe("createMentionSuggestion", () => {
   beforeEach(() => {
     searchIssuesMock.mockReset();
     searchProjectsMock.mockReset();
+    listCardsMock.mockReset();
+    listCardsMock.mockResolvedValue({ cards: [], total: 0 });
     Element.prototype.scrollIntoView = vi.fn();
   });
 
