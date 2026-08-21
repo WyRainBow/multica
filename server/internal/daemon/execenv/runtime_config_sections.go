@@ -414,6 +414,36 @@ func writeIssuePhases(b *strings.Builder, ctx TaskContextForEnv) {
 	b.WriteString("\n")
 }
 
+// nestInlinedHeadings pushes a borrowed document's headings below the heading
+// that introduces it.
+//
+// The conclusions section carries its own `## …` heading. Pasted verbatim under
+// a `###` it reads as a sibling of `## Issue Documents` instead of part of it,
+// so the brief's outline says the wrong thing about what belongs to what — and
+// a reader skimming headings lands in the middle of a borrowed document
+// believing it is a new top-level section.
+//
+// Only line-leading hashes are touched, so a `#` inside a code fence or a
+// table cell is left alone.
+func nestInlinedHeadings(content string) string {
+	lines := strings.Split(content, "\n")
+	for i, line := range lines {
+		if strings.HasPrefix(line, "#") {
+			lines[i] = "##" + line
+		}
+	}
+	return strings.Join(lines, "\n")
+}
+
+// docTitleOrPlaceholder keeps a titleless document findable by id rather than
+// dropping its row, which would silently shrink the index.
+func docTitleOrPlaceholder(doc IssueDocForEnv) string {
+	if title := strings.TrimSpace(doc.Title); title != "" {
+		return title
+	}
+	return "(untitled)"
+}
+
 // issueDocsBriefLimit caps how many documents the brief names. An issue that
 // has run many review rounds accumulates one document per round, and the brief
 // is paid for on every turn of every run; past this many the list stops being
@@ -437,27 +467,60 @@ func writeIssueDocuments(b *strings.Builder, ctx TaskContextForEnv) {
 		return
 	}
 	b.WriteString("## Issue Documents\n\n")
-	b.WriteString("Written for this issue. Read one with `multica wiki get <id> --output json` — do it when the task actually needs it, not by default:\n\n")
 
-	shown := ctx.IssueDocs
+	// The spec states where the issue stands; the rounds and decisions beside
+	// it record how it got there. Rendered flat they read as peers, and an
+	// agent with a question about the present has no reason to prefer the one
+	// document that answers it.
+	var current, history []IssueDocForEnv
+	for _, doc := range ctx.IssueDocs {
+		if doc.Current {
+			current = append(current, doc)
+			continue
+		}
+		history = append(history, doc)
+	}
+
+	for _, doc := range current {
+		fmt.Fprintf(b, "### Current state of record — %s\n\n", docTitleOrPlaceholder(doc))
+		fmt.Fprintf(b, "`%s` — full text with `multica wiki get %s --output json`.\n\n", doc.Kind, doc.ID)
+		if conclusions := strings.TrimSpace(doc.Conclusions); conclusions != "" {
+			// Inlined because this is the densest answer on the issue and the
+			// smallest: one row per closed round. Left one fetch away, agents
+			// rebuilt the same answer by re-reading the comment history.
+			b.WriteString(nestInlinedHeadings(conclusions))
+			b.WriteString("\n\n")
+		} else {
+			b.WriteString("No rounds have been closed on it yet, so it records no conclusions.\n\n")
+		}
+	}
+
+	if len(history) == 0 {
+		b.WriteString("\n")
+		return
+	}
+	if len(current) > 0 {
+		b.WriteString("### History\n\n")
+		b.WriteString("Closed rounds and decisions — how the issue reached the state above. Read one with `multica wiki get <id> --output json`, when the task actually needs it:\n\n")
+	} else {
+		b.WriteString("Written for this issue. Read one with `multica wiki get <id> --output json` — do it when the task actually needs it, not by default:\n\n")
+	}
+
+	shown := history
 	if len(shown) > issueDocsBriefLimit {
 		shown = shown[:issueDocsBriefLimit]
 	}
 	for _, doc := range shown {
-		title := strings.TrimSpace(doc.Title)
-		if title == "" {
-			title = "(untitled)"
-		}
 		if kind := strings.TrimSpace(doc.Kind); kind != "" {
-			fmt.Fprintf(b, "- **%s** — `%s` — `%s`\n", title, kind, doc.ID)
+			fmt.Fprintf(b, "- **%s** — `%s` — `%s`\n", docTitleOrPlaceholder(doc), kind, doc.ID)
 			continue
 		}
-		fmt.Fprintf(b, "- **%s** — `%s`\n", title, doc.ID)
+		fmt.Fprintf(b, "- **%s** — `%s`\n", docTitleOrPlaceholder(doc), doc.ID)
 	}
 	// Say what was left out. A truncated list that does not admit it reads as
 	// the whole set, and the agent stops looking exactly where the older
 	// rounds are.
-	if dropped := len(ctx.IssueDocs) - len(shown); dropped > 0 {
+	if dropped := len(history) - len(shown); dropped > 0 {
 		fmt.Fprintf(b, "\n%d more not listed here — `multica issue get <id> --output json` for the full set.\n", dropped)
 	}
 	b.WriteString("\n")

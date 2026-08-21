@@ -118,3 +118,82 @@ func TestDocumentsAreScopedToIssueTasks(t *testing.T) {
 		t.Error("a chat run must not render Issue Documents")
 	}
 }
+
+// The spec states where the issue stands; the rounds and decisions beside it
+// record how it got there. Rendered flat they read as peers, and an agent with
+// a question about the present has no reason to prefer the one document that
+// answers it.
+
+func TestTheCurrentDocumentIsSeparatedFromHistory(t *testing.T) {
+	t.Parallel()
+	out := buildMetaSkillContent("claude", issueCtxWithDocs(
+		IssueDocForEnv{ID: "spec-id", Title: "COC-305 spec", Kind: "COC-305/spec", Current: true,
+			Conclusions: "## 轮次结论\n\n| R1 | approve |"},
+		IssueDocForEnv{ID: "round-id", Title: "R1 方案评审", Kind: "COC-305/rounds/R1-方案评审"},
+	))
+
+	for _, want := range []string{"Current state of record", "COC-305 spec", "### History", "R1 方案评审"} {
+		if !strings.Contains(out, want) {
+			t.Errorf("brief is missing %q", want)
+		}
+	}
+	if strings.Index(out, "Current state of record") > strings.Index(out, "### History") {
+		t.Error("the state of record must come before the history that produced it")
+	}
+	// The round must not also appear as current, or the brief claims two
+	// answers to "where does this stand".
+	currentBlock := out[strings.Index(out, "Current state of record"):strings.Index(out, "### History")]
+	if strings.Contains(currentBlock, "R1 方案评审") {
+		t.Error("a history document rendered inside the current block")
+	}
+}
+
+func TestTheConclusionsTravelInline(t *testing.T) {
+	t.Parallel()
+	// This is the densest answer on the issue and the smallest. Left one fetch
+	// away, agents rebuilt the same answer from the comment history instead.
+	out := buildMetaSkillContent("claude", issueCtxWithDocs(
+		IssueDocForEnv{ID: "spec-id", Title: "spec", Kind: "K/spec", Current: true,
+			Conclusions: "## 轮次结论\n\n| R1 | 方案评审 | approve | 只收敛平台没管的 |"},
+	))
+	if !strings.Contains(out, "只收敛平台没管的") {
+		t.Error("the conclusions did not travel inline")
+	}
+	// A borrowed document's own headings must nest below the heading that
+	// introduces them, or the brief's outline says the wrong thing about what
+	// belongs to what.
+	if strings.Contains(out, "\n## 轮次结论") {
+		t.Error("an inlined heading stayed at top level and broke the outline")
+	}
+	if !strings.Contains(out, "#### 轮次结论") {
+		t.Error("the inlined heading was not nested under its introduction")
+	}
+}
+
+func TestASpecWithNoClosedRoundsSaysSoRatherThanLookingEmpty(t *testing.T) {
+	t.Parallel()
+	// Silence here reads as "this issue has no conclusions anywhere", which
+	// sends the agent back to the comment history — the exact fallback this
+	// section exists to make unnecessary.
+	out := buildMetaSkillContent("claude", issueCtxWithDocs(
+		IssueDocForEnv{ID: "spec-id", Title: "spec", Kind: "K/spec", Current: true},
+	))
+	if !strings.Contains(out, "No rounds have been closed on it yet") {
+		t.Errorf("an unclosed spec must say so:\n%s", out)
+	}
+}
+
+func TestHistoryOnlyStillRendersWithoutACurrentBlock(t *testing.T) {
+	t.Parallel()
+	// An issue can carry rounds before anyone writes a spec. Dropping the list
+	// because there is no current document would hide them entirely.
+	out := buildMetaSkillContent("claude", issueCtxWithDocs(
+		IssueDocForEnv{ID: "round-id", Title: "R1 方案评审", Kind: "K/rounds/R1-方案评审"},
+	))
+	if !strings.Contains(out, "R1 方案评审") {
+		t.Error("history vanished when no current document existed")
+	}
+	if strings.Contains(out, "Current state of record") {
+		t.Error("a current block was rendered with no current document")
+	}
+}

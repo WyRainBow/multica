@@ -53,9 +53,11 @@ type ProjectResourceData struct {
 // IssueDocData names one document written for this issue. Mirror of
 // handler.IssueDocData; see there for why only the title travels.
 type IssueDocData struct {
-	ID    string `json:"id"`
-	Title string `json:"title"`
-	Kind  string `json:"kind,omitempty"`
+	ID          string `json:"id"`
+	Title       string `json:"title"`
+	Kind        string `json:"kind,omitempty"`
+	Current     bool   `json:"current,omitempty"`     // the issue's state of record; everything else is history
+	Conclusions string `json:"conclusions,omitempty"` // the spec's derived conclusions table, carried inline
 }
 
 // IssuePhaseData names one station on the issue's route. Mirror of

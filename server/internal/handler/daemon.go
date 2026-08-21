@@ -1875,11 +1875,21 @@ func (h *Handler) buildClaimedTaskResponse(r *http.Request, task *db.AgentTaskQu
 			}); err == nil && len(docs) > 0 {
 				out := make([]IssueDocData, 0, len(docs))
 				for _, doc := range docs {
-					out = append(out, IssueDocData{
+					entry := IssueDocData{
 						ID:    uuidToString(doc.ID),
 						Title: doc.Title,
 						Kind:  doc.Kind,
-					})
+					}
+					// The spec is the one document that says where the issue
+					// stands now; the rounds and decisions beside it say how it
+					// got there. Its conclusions ride along because they are the
+					// densest answer on the issue and an agent that has to fetch
+					// them will rebuild the same answer from comments instead.
+					if isCurrentIssueDoc(doc.Kind) {
+						entry.Current = true
+						entry.Conclusions = extractSpecConclusions(doc.Content)
+					}
+					out = append(out, entry)
 				}
 				resp.IssueDocs = out
 			}

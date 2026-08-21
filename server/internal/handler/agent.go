@@ -298,6 +298,17 @@ type IssueDocData struct {
 	ID    string `json:"id"`
 	Title string `json:"title"`
 	Kind  string `json:"kind,omitempty"`
+	// Current marks the one document that states where the issue stands now.
+	// Everything else on an issue is history: a round that closed, a decision
+	// that was taken. Without the distinction the brief lists them flat and an
+	// agent has no way to tell the state of record from the record of how it
+	// got there.
+	Current bool `json:"current,omitempty"`
+	// Conclusions is the spec's round-conclusion table, carried inline for the
+	// current document only. It is the smallest, densest answer to "what has
+	// been decided" on the whole issue, and leaving it one fetch away meant
+	// agents rebuilt the same answer from the comment history instead.
+	Conclusions string `json:"conclusions,omitempty"`
 }
 
 // IssuePhaseData names one station on the issue's route and how far it got.

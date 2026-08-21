@@ -7249,7 +7249,10 @@ func convertIssueDocsForEnv(docs []IssueDocData) []execenv.IssueDocForEnv {
 	}
 	result := make([]execenv.IssueDocForEnv, len(docs))
 	for i, d := range docs {
-		result[i] = execenv.IssueDocForEnv{ID: d.ID, Title: d.Title, Kind: d.Kind}
+		result[i] = execenv.IssueDocForEnv{
+			ID: d.ID, Title: d.Title, Kind: d.Kind,
+			Current: d.Current, Conclusions: d.Conclusions,
+		}
 	}
 	return result
 }
