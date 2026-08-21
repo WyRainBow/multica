@@ -131,6 +131,21 @@ describe("parseWorkspaceEntityLink", () => {
     ).toEqual({ kind: "issue", id: ISSUE_ID, slug: "acme" });
   });
 
+  it("parses a wiki page URL, which is the only way to reference one", () => {
+    // A page has a UUID and a title and no shorthand to type, so the pasted
+    // link is the reference — same as a project.
+    const DOC_ID = "b14cbd2f-a34b-4fa0-b1e2-193aa5660227";
+    expect(
+      parseWorkspaceEntityLink(`${APP_ORIGIN}/acme/docs/${DOC_ID}`, APP_ORIGIN),
+    ).toEqual({ kind: "doc", id: DOC_ID, slug: "acme" });
+  });
+
+  it("refuses a wiki path that does not address one page", () => {
+    // The list, not a page. Unfurling it into a chip would name a document
+    // that does not exist.
+    expect(parseWorkspaceEntityLink("/acme/docs")).toBeNull();
+  });
+
   it("parses a site-relative path without needing an app origin", () => {
     expect(parseWorkspaceEntityLink(`/acme/projects/${PROJECT_ID}`)).toEqual({
       kind: "project",

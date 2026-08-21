@@ -60,6 +60,7 @@ import { useAppOrigin } from "../navigation";
 import { IssueMentionCard } from "../issues/components/issue-mention-card";
 import { useResolveIssueIdentifier } from "../issues/hooks";
 import { ProjectMentionCard } from "../projects/components/project-mention-card";
+import { DocMentionChip } from "../docs/components/doc-mention-chip";
 import { useLinkHover, LinkHoverCard } from "../editor/link-hover-card";
 import {
   openLink,
@@ -229,7 +230,7 @@ function RichLink({ href, children }: { href?: string; children?: ReactNode }) {
 
   if (isMentionHref(href)) {
     const match = href.match(
-      /^mention:\/\/(member|agent|issue|project|all)\/(.+)$/,
+      /^mention:\/\/(member|agent|issue|project|doc|all)\/(.+)$/,
     );
     if (match?.[1] === "issue" && match[2]) {
       // A bare identifier (from the autolink preprocessor) is carried as the id
@@ -254,6 +255,14 @@ function RichLink({ href, children }: { href?: string; children?: ReactNode }) {
         <ProjectMentionLink
           projectId={match[2]}
           label={childrenToLabel(children)}
+        />
+      );
+    }
+    if (match?.[1] === "doc" && match[2]) {
+      return (
+        <DocMentionChip
+          docId={match[2]}
+          fallbackLabel={childrenToLabel(children)}
         />
       );
     }
@@ -292,6 +301,9 @@ function RichLink({ href, children }: { href?: string; children?: ReactNode }) {
   }
   if (entity?.kind === "project") {
     return <ProjectMentionLink projectId={entity.id} />;
+  }
+  if (entity?.kind === "doc") {
+    return <DocMentionChip docId={entity.id} />;
   }
 
   return plainLink;
