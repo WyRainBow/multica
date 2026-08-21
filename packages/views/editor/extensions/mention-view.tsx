@@ -21,6 +21,10 @@ import { useIssueLinkStore } from "@multica/core/issues/stores";
 import { useNavigation } from "../../navigation";
 import { IssueChip } from "../../issues/components/issue-chip";
 import { ProjectChip } from "../../projects/components/project-chip";
+import { useQuery } from "@tanstack/react-query";
+import { FileText } from "lucide-react";
+import { useWorkspaceId } from "@multica/core/hooks";
+import { cardDetailOptions, cardListOptions } from "@multica/core/docs/queries";
 
 export function MentionView({ node }: NodeViewProps) {
   const { type, id, label } = node.attrs;
@@ -37,6 +41,14 @@ export function MentionView({ node }: NodeViewProps) {
     return (
       <NodeViewWrapper as="span" className="inline">
         <ProjectMention projectId={id} fallbackLabel={label} />
+      </NodeViewWrapper>
+    );
+  }
+
+  if (type === "doc") {
+    return (
+      <NodeViewWrapper as="span" className="inline">
+        <DocMention docId={id} fallbackLabel={label} />
       </NodeViewWrapper>
     );
   }
@@ -134,5 +146,39 @@ function IssueMention({
         className="cursor-pointer hover:bg-accent transition-colors"
       />
     </a>
+  );
+}
+
+/**
+ * A wiki page inside the editor: its title, not a link.
+ *
+ * The readonly renderer makes the same reference navigable; here it must not
+ * be, because clicking inside a document you are writing should place the
+ * cursor, not leave the page.
+ *
+ * Resolved from the list first — a document being edited may cite several
+ * pages, and one request each would be one request per citation.
+ */
+function DocMention({
+  docId,
+  fallbackLabel,
+}: {
+  docId: string;
+  fallbackLabel?: string;
+}) {
+  const wsId = useWorkspaceId();
+  const { data: listResponse } = useQuery(cardListOptions(wsId));
+  const listed = listResponse?.cards?.find((card) => card.id === docId);
+  const { data: detail } = useQuery({
+    ...cardDetailOptions(wsId, docId),
+    enabled: Boolean(wsId) && !listed,
+  });
+  const doc = listed ?? detail;
+
+  return (
+    <span className="doc-mention inline-flex items-baseline gap-1 rounded bg-muted px-1 align-baseline">
+      <FileText className="size-3 self-center text-muted-foreground" />
+      {doc?.title ?? fallbackLabel ?? docId}
+    </span>
   );
 }

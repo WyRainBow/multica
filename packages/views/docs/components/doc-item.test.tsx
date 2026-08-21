@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { Card, Issue } from "@multica/core/types";
@@ -96,6 +96,47 @@ describe("DocItem length", () => {
 // a finished issue found nothing there and the row claimed the issue was
 // unavailable. It was not — it was past the page. Three states now, and only
 // one of them says "gone".
+describe("DocItem's id", () => {
+  // A page has no MUL-123 to type, so its id is the whole handle. Showing it
+  // is what lets one document cite another without opening the page first.
+  it("shows a short id that carries the full one", () => {
+    renderCard(makeCard({ id: "b14cbd2f-a34b-4fa0-b1e2-193aa5660227" }));
+    const button = screen.getByText("b14cbd2f");
+    expect(button).toBeInTheDocument();
+    expect(button).toHaveAttribute(
+      "title",
+      "b14cbd2f-a34b-4fa0-b1e2-193aa5660227",
+    );
+  });
+
+  it("does not open the document when the id is clicked", () => {
+    const onEdit = vi.fn();
+    const qc = new QueryClient({
+      defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
+    });
+    qc.setQueryData(["workspaces", "list"], [
+      { id: "ws-1", name: "Test", slug: "test-ws" },
+    ]);
+    render(
+      <QueryClientProvider client={qc}>
+        <WorkspaceSlugProvider slug="test-ws">
+          <I18nProvider locale="en" resources={{ en: { docs: enCards } }}>
+            <DocItem
+              card={makeCard({ id: "b14cbd2f-a34b-4fa0-b1e2-193aa5660227" })}
+              onEdit={onEdit}
+              onOpenIssue={vi.fn()}
+            />
+          </I18nProvider>
+        </WorkspaceSlugProvider>
+      </QueryClientProvider>,
+    );
+    fireEvent.click(screen.getByText("b14cbd2f"));
+    // Copying an id and opening the page are different intents; the row is
+    // clickable, so the id has to stop the click from reaching it.
+    expect(onEdit).not.toHaveBeenCalled();
+  });
+});
+
 describe("DocItem's linked issue", () => {
   function renderWith(props: { issue?: Issue; issueGone?: boolean }) {
     const qc = new QueryClient({
