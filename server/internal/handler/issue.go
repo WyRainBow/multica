@@ -3276,6 +3276,15 @@ func (h *Handler) UpdateIssue(w http.ResponseWriter, r *http.Request) {
 			writeError(w, http.StatusConflict, msg)
 			return
 		}
+		// Every review station this card opened has to have produced a round
+		// document. Comments covered the discussion and the receipt covered
+		// the code; this covers the verdicts.
+		if msg, blocked := h.checkRoundClosureForDone(
+			r.Context(), prevIssue, issueToResponse(prevIssue, prefix).Identifier,
+		); blocked {
+			writeError(w, http.StatusConflict, msg)
+			return
+		}
 	}
 
 	var issue db.Issue
