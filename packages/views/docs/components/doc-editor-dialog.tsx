@@ -35,12 +35,16 @@ import { allDocPaths } from "../doc-tree";
 export function DocEditorDialog({
   card,
   issueId,
+  defaultKind,
   onClose,
 }: {
   /** Null for a new card. */
   card: Card | null;
   /** Pre-links a new card to a requirement (used from the issue page). */
   issueId?: string;
+  /** Prefills the kind for a new page, so one created on a filtered tab is
+   *  filed where that tab can show it. Ignored when editing. */
+  defaultKind?: string;
   onClose: () => void;
 }) {
   const { t } = useT("docs");
@@ -50,7 +54,7 @@ export function DocEditorDialog({
 
   const [title, setTitle] = useState(card?.title ?? "");
   const [content, setContent] = useState(card?.content ?? "");
-  const [kind, setKind] = useState(card?.kind ?? "");
+  const [kind, setKind] = useState(card?.kind ?? defaultKind ?? "");
 
   // Suggestions come from the list the page already has in cache, so opening
   // the dialog costs no request. Reusing an existing name is the whole point:
