@@ -13,14 +13,9 @@
   "deprecated_keys": "旧キー",
   "tab_agentwiki": "Agent wiki",
   "agentwiki": {
-    "section_skills": "skills（再利用可能な能力）",
     "section_cases": "ケース（蒸留された教訓）",
-    "section_docs": "wiki ドキュメント総数",
     "latest_cases": "最近蒸留されたケース",
     "no_cases": "ケースはまだありません。",
-    "from_issue": "issue から",
-    "rules": "ルール（協働規律）",
-    "rules_manual": "運用手順書：COC-149",
-    "rules_repo": "リポジトリルール：AGENTS.md / CLAUDE.md"
+    "from_issue": "issue から"
   }
 }

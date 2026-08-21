@@ -13,14 +13,9 @@
   "deprecated_keys": "구형 키",
   "tab_agentwiki": "Agent wiki",
   "agentwiki": {
-    "section_skills": "skills(재사용 가능한 능력)",
     "section_cases": "case(증류된 교훈)",
-    "section_docs": "wiki 문서 총수",
     "latest_cases": "최근 증류된 case",
     "no_cases": "아직 case가 없습니다.",
-    "from_issue": "issue에서",
-    "rules": "규칙(협업 규율)",
-    "rules_manual": "운영 매뉴얼: COC-149",
-    "rules_repo": "저장소 규칙: AGENTS.md / CLAUDE.md"
+    "from_issue": "issue에서"
   }
 }
