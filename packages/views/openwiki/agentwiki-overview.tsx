@@ -38,7 +38,7 @@ export function AgentWikiOverview() {
       </div>
 
       {cases.length === 0 ? (
-        <p className="mt-2 text-sm text-muted-foreground">
+        <p className="mt-2 text-body text-muted-foreground">
           {t(($) => $.agentwiki.no_cases)}
         </p>
       ) : (
@@ -47,7 +47,7 @@ export function AgentWikiOverview() {
             <li key={c.id}>
               <button
                 type="button"
-                className="text-left text-sm hover:underline"
+                className="text-left text-body hover:underline"
                 onClick={() => nav.push(paths.docDetail(c.id))}
               >
                 <span className="font-medium">{c.title}</span>

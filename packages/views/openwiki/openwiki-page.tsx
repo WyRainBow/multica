@@ -37,7 +37,7 @@ export function OpenwikiPage() {
             type="button"
             onClick={() => setTab(key)}
             className={cn(
-              "flex items-center gap-1.5 rounded-t px-3 py-1.5 text-sm transition-colors",
+              "flex items-center gap-1.5 rounded-t px-3 py-1.5 text-body transition-colors",
               tab === key
                 ? "bg-muted font-medium text-foreground"
                 : "text-muted-foreground hover:text-foreground",

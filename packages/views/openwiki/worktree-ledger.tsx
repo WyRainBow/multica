@@ -99,9 +99,9 @@ export function WorktreeLedger() {
       {adding && <NewWorktreeForm onDone={() => setAdding(false)} />}
 
       {isLoading ? (
-        <p className="text-sm text-muted-foreground">{t(($) => $.worktree_loading)}</p>
+        <p className="text-body text-muted-foreground">{t(($) => $.worktree_loading)}</p>
       ) : trees.length === 0 ? (
-        <p className="text-sm text-muted-foreground">{t(($) => $.worktree_empty)}</p>
+        <p className="text-body text-muted-foreground">{t(($) => $.worktree_empty)}</p>
       ) : (
         <div className="space-y-2">
           {visible.map((tree: Worktree) => (
@@ -434,7 +434,7 @@ function UnattachedDeclarations({ issues }: { issues: Issue[] }) {
 
   return (
     <section className="mt-6">
-      <h3 className="flex items-center gap-1.5 text-sm font-medium">
+      <h3 className="flex items-center gap-1.5 text-body font-medium">
         <GitBranch className="size-3.5 text-muted-foreground" />
         {t(($) => $.declarations_title)}
         <span className="text-caption text-muted-foreground tabular-nums">
@@ -444,7 +444,7 @@ function UnattachedDeclarations({ issues }: { issues: Issue[] }) {
       <p className="mt-1 text-caption text-muted-foreground">
         {t(($) => $.declarations_hint)}
       </p>
-      <table className="mt-2 w-full text-sm">
+      <table className="mt-2 w-full text-body">
         <thead>
           <tr className="border-b text-left text-caption text-muted-foreground">
             <th className="py-1.5 pr-3 font-medium">{t(($) => $.col_issue)}</th>
