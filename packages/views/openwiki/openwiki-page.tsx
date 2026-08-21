@@ -2,12 +2,13 @@
 
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { GitBranch, BookOpen, Sparkles } from "lucide-react";
+import { BookMarked, BookOpen, GitBranch, Sparkles } from "lucide-react";
 import { useWorkspaceId } from "@multica/core/hooks";
 import { useWorkspacePaths } from "@multica/core/paths";
 import { issueListOptions } from "@multica/core/issues/queries";
 import type { Issue } from "@multica/core/types";
 import { DocsPage } from "@multica/views/docs";
+import { AgentWikiOverview } from "./agentwiki-overview";
 import { SkillsPage } from "@multica/views/skills";
 import { cn } from "@multica/ui/lib/utils";
 import { useT } from "../i18n";
@@ -20,7 +21,7 @@ import { useNavigation } from "../navigation";
  * every claimed delivery lives on). A changelog view, not a tool: every
  * tab reads; writing happens where the data already lives.
  */
-type OpenwikiTab = "docs" | "skills" | "worktree";
+type OpenwikiTab = "docs" | "skills" | "worktree" | "agentwiki";
 
 export function OpenwikiPage() {
   const [tab, setTab] = useState<OpenwikiTab>("docs");
@@ -30,6 +31,7 @@ export function OpenwikiPage() {
     { key: "docs", label: t(($) => $.tab_docs), icon: BookOpen },
     { key: "skills", label: t(($) => $.tab_skills), icon: Sparkles },
     { key: "worktree", label: t(($) => $.tab_worktree), icon: GitBranch },
+    { key: "agentwiki", label: t(($) => $.tab_agentwiki), icon: BookMarked },
   ];
 
   return (
@@ -55,6 +57,7 @@ export function OpenwikiPage() {
       {tab === "docs" && <DocsPage />}
       {tab === "skills" && <SkillsPage />}
       {tab === "worktree" && <WorktreeLedger />}
+      {tab === "agentwiki" && <AgentWikiOverview />}
     </div>
   );
 }

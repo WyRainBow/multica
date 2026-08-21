@@ -10,5 +10,17 @@
   "col_base": "基线分支",
   "col_delivery": "交付分支",
   "col_mr": "MR",
-  "deprecated_keys": "旧键"
+  "deprecated_keys": "旧键",
+  "tab_agentwiki": "Agent wiki",
+  "agentwiki": {
+    "section_skills": "skills（可复用能力）",
+    "section_cases": "case 沉淀（经验蒸馏）",
+    "section_docs": "文档 wiki 总量",
+    "latest_cases": "最近蒸馏的 case",
+    "no_cases": "还没有 case。解决够分量的问题后按 interview-retro 的 Case 沉淀条款蒸馏进来。",
+    "from_issue": "来自任务",
+    "rules": "规则（协作纪律）",
+    "rules_manual": "运行手册：COC-149（协作九节，正文即规则）",
+    "rules_repo": "仓内规则：AGENTS.md / CLAUDE.md（随仓走，agent 开工自动读）"
+  }
 }
