@@ -2,10 +2,11 @@
 
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { GitBranch, Plus } from "lucide-react";
+import { Plus } from "lucide-react";
 import { useWorkspaceId } from "@multica/core/hooks";
 import { useWorkspacePaths } from "@multica/core/paths";
 import { issueListOptions } from "@multica/core/issues/queries";
+import { projectListOptions } from "@multica/core/projects/queries";
 import { worktreeListOptions } from "@multica/core/worktrees/queries";
 import {
   useCreateWorktree,
@@ -26,6 +27,7 @@ import { useNavigation } from "../navigation";
 import { WorktreeEntryList } from "./worktree-entry-list";
 import { SessionPointer } from "../worktrees/session-pointer";
 import { attentionItems, type AttentionItem } from "../worktrees/attention";
+import { groupWorktreesByProject } from "../worktrees/project-grouping";
 
 /**
  * The worktree ledger: where the code is, as opposed to how far a decision has
@@ -40,9 +42,6 @@ import { attentionItems, type AttentionItem } from "../worktrees/attention";
  *   session   who is driving and what is next. One slot, edited in place.
  *   entries   what happened, round by round. Append-only.
  *
- * Below the trees sit the delivery declarations still living on cards. They are
- * a different account — one card's own branch — and stay visible until they are
- * attached to a tree (`multica issue metadata set git.worktree <name>`).
  */
 
 /** Pipeline order: what everything sits on, the work, then the batch carriers. */
@@ -67,8 +66,16 @@ export function WorktreeLedger() {
   const [showClosed, setShowClosed] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
-  const { data: trees = [], isLoading } = useQuery(worktreeListOptions(wsId));
-  const { data: issues = [] } = useQuery(issueListOptions(wsId));
+  const { data: trees = [], isLoading: treesLoading } = useQuery(
+    worktreeListOptions(wsId),
+  );
+  const { data: issues = [], isLoading: issuesLoading } = useQuery(
+    issueListOptions(wsId),
+  );
+  const { data: projects = [], isLoading: projectsLoading } = useQuery(
+    projectListOptions(wsId),
+  );
+  const isLoading = treesLoading || issuesLoading || projectsLoading;
 
   const issuesByTree = new Map<string, Issue[]>();
   for (const issue of issues) {
@@ -90,9 +97,15 @@ export function WorktreeLedger() {
   const visible = showClosed ? [...open, ...closed] : open;
   const selected = trees.find((tree: Worktree) => tree.id === selectedId);
 
-  // Grouped by repository. A checkout belongs to one codebase and several are
-  // in flight at once, so a heading spanning three of them tells you nothing
-  // you can act on.
+  // Project ownership comes from issue bindings and propagates through the
+  // parent chain. The repository is deliberately kept as a secondary heading.
+  const projectGroups = groupWorktreesByProject(trees, issuesByTree, projects)
+    .map((group) => ({
+      ...group,
+      trees: group.trees.filter((tree) => visible.includes(tree)),
+    }))
+    .filter((group) => group.trees.length > 0);
+
   const repoNames: string[] = [];
   for (const tree of visible) {
     if (!repoNames.includes(tree.repo)) repoNames.push(tree.repo);
@@ -115,55 +128,58 @@ export function WorktreeLedger() {
         </Button>
       </div>
 
-      {adding && (
+      {adding && !isLoading && (
         <NewWorktreeForm
           knownRepos={repoNames.filter((r) => r !== "")}
           onDone={() => setAdding(false)}
         />
       )}
 
-      <AttentionPanel items={attention} onSelect={setSelectedId} />
-
       {isLoading ? (
         <p className="text-body text-muted-foreground">{t(($) => $.worktree_loading)}</p>
-      ) : trees.length === 0 ? (
-        <p className="text-body text-muted-foreground">{t(($) => $.worktree_empty)}</p>
       ) : (
-        <div
-          className={cn(
-            "gap-4",
-            // Without a selection the list takes the full width: branch names
-            // are the one column that must not be truncated, and
-            // feature/wy/COC-295/openwiki-tab and …-tab-v2 truncate alike.
-            selected ? "grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_22rem]" : "block",
-          )}
-        >
-          <div className="min-w-0 space-y-5">
-            {repoNames.map((repo) => (
-              <RepoSection
-                key={repo || "—"}
-                repo={repo}
-                trees={visible.filter((tree: Worktree) => tree.repo === repo)}
-                allTrees={trees}
-                issuesByTree={issuesByTree}
-                selectedId={selectedId}
-                onSelect={setSelectedId}
-              />
-            ))}
-          </div>
+        <>
+          <AttentionPanel items={attention} onSelect={setSelectedId} />
 
-          {selected && (
-            <TreeDetail
-              tree={selected}
-              parent={trees.find((p: Worktree) => p.id === selected.parent_id)}
-              issues={issuesByTree.get(selected.name) ?? []}
-              onClose={() => setSelectedId(null)}
-            />
+          {trees.length === 0 ? (
+            <p className="text-body text-muted-foreground">{t(($) => $.worktree_empty)}</p>
+          ) : (
+            <div
+              className={cn(
+                "gap-4",
+                // Without a selection the list takes the full width: branch names
+                // are the one column that must not be truncated, and
+                // feature/wy/COC-295/openwiki-tab and …-tab-v2 truncate alike.
+                selected ? "grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_22rem]" : "block",
+              )}
+            >
+              <div className="min-w-0 space-y-6">
+                {projectGroups.map((group) => (
+                  <ProjectSection
+                    key={group.key}
+                    group={group}
+                    allTrees={trees}
+                    issuesByTree={issuesByTree}
+                    selectedId={selectedId}
+                    onSelect={setSelectedId}
+                  />
+                ))}
+              </div>
+
+              {selected && (
+                <TreeDetail
+                  tree={selected}
+                  parent={trees.find((p: Worktree) => p.id === selected.parent_id)}
+                  issues={issuesByTree.get(selected.name) ?? []}
+                  onClose={() => setSelectedId(null)}
+                />
+              )}
+            </div>
           )}
-        </div>
+        </>
       )}
 
-      {closed.length > 0 && (
+      {!isLoading && closed.length > 0 && (
         <button
           type="button"
           className="mt-3 text-caption text-muted-foreground hover:text-foreground"
@@ -174,8 +190,6 @@ export function WorktreeLedger() {
             : t(($) => $.worktree_show_closed, { count: closed.length })}
         </button>
       )}
-
-      <UnattachedDeclarations issues={issues} />
     </div>
   );
 }
@@ -185,8 +199,8 @@ export function WorktreeLedger() {
  *
  * Every item here is a join or a comparison — a tree measured before the
  * working copy moved, a branch that landed while its cards stayed open — so no
- * column in the table below can show it. At three trees this is one line; at
- * thirty it is the only part of the page anyone reads.
+ * row in the ledger can show it. At three trees this is one line; at thirty it
+ * is the only part of the page anyone reads.
  */
 function AttentionPanel({
   items,
@@ -207,7 +221,7 @@ function AttentionPanel({
       <ul>
         {items.map((item) => (
           <li
-            key={`${item.tree.id}-${item.kind}`}
+            key={item.tree.id}
             className="flex flex-wrap items-baseline gap-x-2 border-b px-3 py-1.5 text-caption last:border-b-0"
           >
             <button
@@ -219,12 +233,14 @@ function AttentionPanel({
             </button>
             <span
               className={cn(
-                item.kind === "blocked" || item.kind === "uncommitted"
+                item.kinds.includes("blocked") || item.kinds.includes("uncommitted")
                   ? "text-destructive"
                   : "text-foreground",
               )}
             >
-              {t(($) => $[`attention_${item.kind}` as "attention_blocked"])}
+              {item.kinds.map((kind) =>
+                t(($) => $[`attention_${kind}` as "attention_blocked"]),
+              ).join(" · ")}
             </span>
             {item.issues.length > 0 && (
               <span className="font-mono text-muted-foreground">
@@ -238,7 +254,63 @@ function AttentionPanel({
   );
 }
 
-/** One codebase's checkouts, in merge order. */
+function ProjectSection({
+  group,
+  allTrees,
+  issuesByTree,
+  selectedId,
+  onSelect,
+}: {
+  group: ReturnType<typeof groupWorktreesByProject>[number];
+  allTrees: Worktree[];
+  issuesByTree: Map<string, Issue[]>;
+  selectedId: string | null;
+  onSelect: (id: string) => void;
+}) {
+  const { t } = useT("openwiki");
+  const unknownProjectId = group.projectIds[0] ?? "";
+  const shortUnknownProjectId = unknownProjectId.length > 10
+    ? `${unknownProjectId.slice(0, 8)}…`
+    : unknownProjectId;
+  const label = group.project?.title
+    ?? (group.key === "cross-project"
+      ? t(($) => $.project_cross_project)
+      : group.key.startsWith("project:")
+        ? t(($) => $.project_unknown, { id: shortUnknownProjectId })
+        : t(($) => $.project_unassigned));
+  const repos: string[] = [];
+  for (const tree of group.trees) {
+    if (!repos.includes(tree.repo)) repos.push(tree.repo);
+  }
+  repos.sort((a, b) => (a === "" ? 1 : b === "" ? -1 : a.localeCompare(b)));
+
+  return (
+    <section>
+      <h2 className="mb-2 flex items-baseline gap-2 border-b pb-1">
+        <span className="text-title-sm font-medium">{label}</span>
+        <span className="text-caption text-muted-foreground">
+          {t(($) => $.project_count, { count: group.trees.length })}
+        </span>
+      </h2>
+      <div className="space-y-4">
+        {repos.map((repo) => (
+          <RepoSection
+            key={repo || "—"}
+            repo={repo}
+            trees={group.trees.filter((tree) => tree.repo === repo)}
+            allTrees={allTrees}
+            issuesByTree={issuesByTree}
+            selectedId={selectedId}
+            onSelect={onSelect}
+            showHeading={repos.length > 1}
+          />
+        ))}
+      </div>
+    </section>
+  );
+}
+
+/** One repository's checkouts, in merge order, inside a project. */
 function RepoSection({
   repo,
   trees,
@@ -246,6 +318,7 @@ function RepoSection({
   issuesByTree,
   selectedId,
   onSelect,
+  showHeading,
 }: {
   repo: string;
   trees: Worktree[];
@@ -253,6 +326,7 @@ function RepoSection({
   issuesByTree: Map<string, Issue[]>;
   selectedId: string | null;
   onSelect: (id: string) => void;
+  showHeading: boolean;
 }) {
   const { t } = useT("openwiki");
 
@@ -278,14 +352,16 @@ function RepoSection({
 
   return (
     <section>
-      <h2 className="mb-1.5 flex items-baseline gap-2 border-b pb-1">
-        <span className="text-title-sm font-medium">
-          {repo || t(($) => $.repo_unset)}
-        </span>
-        <span className="text-caption text-muted-foreground">
-          {t(($) => $.repo_count, { count: trees.length })}
-        </span>
-      </h2>
+      {showHeading && (
+        <h3 className="mb-1.5 flex items-baseline gap-2 border-b pb-1">
+          <span className="text-body font-medium">
+            {repo || t(($) => $.repo_unset)}
+          </span>
+          <span className="text-caption text-muted-foreground">
+            {t(($) => $.repo_count, { count: trees.length })}
+          </span>
+        </h3>
+      )}
       <div>
         {ordered.map(({ tree, depth }) => (
           <TreeRow
@@ -798,136 +874,5 @@ function NewWorktreeForm({
         {t(($) => $.worktree_add_hint)}
       </p>
     </div>
-  );
-}
-
-// --- delivery declarations still living on cards ---
-
-interface DeclarationRow {
-  issueId: string;
-  identifier: string;
-  title: string;
-  status: string;
-  baseRef: string;
-  deliveryRef: string;
-  mrUrl: string;
-  role: string;
-}
-
-function declarationRow(issue: Issue): DeclarationRow | null {
-  const meta = (issue.metadata ?? {}) as Record<string, unknown>;
-  const str = (k: string) => (typeof meta[k] === "string" ? (meta[k] as string) : "");
-  // A card already bound to a tree is accounted for above; listing it twice
-  // would suggest two different branches.
-  if (str(WORKTREE_KEY) !== "") return null;
-  const baseRef = str("git.base_ref") || str("baseline_ref");
-  const deliveryRef = str("git.delivery_ref") || str("delivery_branch");
-  const mrUrl = str("vcs.primary_mr_url") || str("mr_url");
-  if (!baseRef && !deliveryRef && !mrUrl) return null;
-  return {
-    issueId: issue.id,
-    identifier: issue.identifier,
-    title: issue.title,
-    status: issue.status,
-    baseRef,
-    deliveryRef,
-    mrUrl,
-    role: str("git.branch_role") || "feature",
-  };
-}
-
-function UnattachedDeclarations({ issues }: { issues: Issue[] }) {
-  const { t } = useT("openwiki");
-  const nav = useNavigation();
-  const paths = useWorkspacePaths();
-  const [showSettled, setShowSettled] = useState(false);
-
-  const all = issues
-    .map(declarationRow)
-    .filter((r): r is DeclarationRow => r !== null)
-    .sort((a, b) => a.identifier.localeCompare(b.identifier));
-
-  // This list exists to be worked through — each row is a card whose branch
-  // nobody filed under a tree. A card that is already done or cancelled is not
-  // work, and there are years of them: leaving them in buries the few rows that
-  // still need a decision.
-  const settled = all.filter(
-    (r) => r.status === "done" || r.status === "cancelled",
-  );
-  const rows = showSettled ? all : all.filter((r) => !settled.includes(r));
-
-  if (all.length === 0) return null;
-
-  return (
-    <section className="mt-6">
-      <h3 className="flex items-center gap-1.5 text-body font-medium">
-        <GitBranch className="size-3.5 text-muted-foreground" />
-        {t(($) => $.declarations_title)}
-        <span className="text-caption text-muted-foreground tabular-nums">
-          {rows.length}
-        </span>
-        {settled.length > 0 && (
-          <button
-            type="button"
-            className="text-caption font-normal text-muted-foreground hover:text-foreground"
-            onClick={() => setShowSettled((v) => !v)}
-          >
-            {showSettled
-              ? t(($) => $.declarations_hide_settled)
-              : t(($) => $.declarations_show_settled, { count: settled.length })}
-          </button>
-        )}
-      </h3>
-      <p className="mt-1 text-caption text-muted-foreground">
-        {t(($) => $.declarations_hint)}
-      </p>
-      <table className="mt-2 w-full text-body">
-        <thead>
-          <tr className="border-b text-left text-caption text-muted-foreground">
-            <th className="py-1.5 pr-3 font-medium">{t(($) => $.col_issue)}</th>
-            <th className="py-1.5 pr-3 font-medium">{t(($) => $.col_status)}</th>
-            <th className="py-1.5 pr-3 font-medium">{t(($) => $.col_base)}</th>
-            <th className="py-1.5 pr-3 font-medium">{t(($) => $.col_delivery)}</th>
-            <th className="py-1.5 font-medium">{t(($) => $.col_mr)}</th>
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((r) => (
-            <tr key={r.issueId} className="border-b last:border-0">
-              <td className="py-1.5 pr-3">
-                <button
-                  type="button"
-                  className="text-left hover:underline"
-                  onClick={() => nav.push(paths.issueDetail(r.identifier))}
-                >
-                  <span className="font-mono text-caption">{r.identifier}</span>{" "}
-                  <span className="inline-block max-w-[24ch] truncate align-middle text-muted-foreground">
-                    {r.title}
-                  </span>
-                </button>
-              </td>
-              <td className="whitespace-nowrap py-1.5 pr-3 text-muted-foreground">
-                {r.status}
-              </td>
-              <td className="whitespace-nowrap py-1.5 pr-3 font-mono text-caption">
-                {r.baseRef || "—"}
-              </td>
-              <td className="whitespace-nowrap py-1.5 pr-3 font-mono text-caption">
-                {r.deliveryRef || "—"}
-              </td>
-              <td className="py-1.5">
-                {r.mrUrl ? (
-                  <a href={r.mrUrl} target="_blank" rel="noreferrer" className="hover:underline">
-                    MR
-                  </a>
-                ) : (
-                  "—"
-                )}
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </section>
   );
 }
