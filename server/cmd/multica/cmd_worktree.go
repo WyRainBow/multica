@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/url"
 	"os"
@@ -224,6 +225,7 @@ func init() {
 	worktreeSessionCmd.Flags().String("resume", "", "Exact command that resumes that session")
 	worktreeSessionCmd.Flags().String("owner", "", "Person accountable for the tree")
 	worktreeSessionCmd.Flags().String("next", "", "One line: what happens next")
+	worktreeSessionCmd.Flags().Bool("auto", false, "Record the agent session this command is running inside")
 	worktreeSessionCmd.Flags().String("output", "json", "Output format: table or json")
 
 	worktreeSyncCmd.Flags().String("dir", "", "Checkout to measure (default: the tree's path, else the current directory)")
@@ -282,6 +284,45 @@ func worktreeFactsAge(verifiedAt *string) string {
 		return "never"
 	}
 	return shortTimestamp(*verifiedAt)
+}
+
+// Agents that tell a child process which session it is running inside. Both
+// set the variable for the commands they spawn rather than for themselves, so
+// a command run from the session reads its own id exactly.
+var sessionEnv = []struct {
+	agent  string
+	env    string
+	resume func(id string) string
+}{
+	{"claude", "CLAUDE_CODE_SESSION_ID", func(id string) string { return "claude --resume " + id }},
+	{"codex", "CODEX_SESSION_ID", func(id string) string { return "codex resume " + id }},
+}
+
+// currentSession reads the agent session this command is running inside, so the
+// resume pointer is recorded rather than typed. A pointer nobody can act on is
+// the failure mode here — the row this replaces sat on `claude --resume
+// <session>`, a placeholder, for as long as it existed.
+//
+// Only an exact answer counts. Picking the newest transcript on disk instead
+// would name the wrong session whenever two are open, which is precisely when
+// the pointer is worth having.
+func currentSession(treePath string) (agent, resume string, err error) {
+	for _, candidate := range sessionEnv {
+		id := strings.TrimSpace(os.Getenv(candidate.env))
+		if id == "" {
+			continue
+		}
+		resume = candidate.resume(id)
+		// A session is resumed from the directory it was started in, so carry
+		// the checkout along when the ledger knows where it is.
+		if treePath != "" {
+			resume = "cd " + treePath + " && " + resume
+		}
+		return candidate.agent, resume, nil
+	}
+	return "", "", errors.New(
+		"--auto found no session to record: none of CLAUDE_CODE_SESSION_ID, CODEX_SESSION_ID is set. " +
+			"Run it from inside an agent session, or pass --agent and --resume yourself")
 }
 
 // What `git merge-base --is-ancestor` found. Its exit status carries three
@@ -633,8 +674,26 @@ func runWorktreeSession(cmd *cobra.Command, args []string) error {
 			body[field] = strings.TrimSpace(value)
 		}
 	}
+	if auto, _ := cmd.Flags().GetBool("auto"); auto {
+		tree, err := fetchWorktree(ctx, client, args[0])
+		if err != nil {
+			return fmt.Errorf("get worktree: %w", err)
+		}
+		agent, resume, err := currentSession(tree.Path)
+		if err != nil {
+			return err
+		}
+		// An explicit flag still wins: --auto fills the pointer in, it does not
+		// take the keyboard away.
+		if _, given := body["agent"]; !given {
+			body["agent"] = agent
+		}
+		if _, given := body["resume"]; !given {
+			body["resume"] = resume
+		}
+	}
 	if len(body) == 0 {
-		return fmt.Errorf("nothing to set; pass at least one of --agent, --resume, --owner, --next")
+		return fmt.Errorf("nothing to set; pass --auto, or at least one of --agent, --resume, --owner, --next")
 	}
 
 	var tree worktreeRow

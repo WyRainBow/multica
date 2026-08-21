@@ -215,3 +215,50 @@ func TestSyncLeavesTheClaimAloneWhenItCannotCheck(t *testing.T) {
 		}
 	}
 }
+
+// TestAutoSessionReadsTheAgentItRunsIn covers both agents and, more to the
+// point, the case where there is nothing to read: a pointer invented from the
+// newest transcript on disk would name the wrong session exactly when two are
+// open, so no answer has to beat a plausible one.
+func TestAutoSessionReadsTheAgentItRunsIn(t *testing.T) {
+	for _, c := range []struct{ env, agent, want string }{
+		{"CLAUDE_CODE_SESSION_ID", "claude", "claude --resume s-1"},
+		{"CODEX_SESSION_ID", "codex", "codex resume s-1"},
+	} {
+		t.Run(c.agent, func(t *testing.T) {
+			for _, e := range sessionEnv {
+				t.Setenv(e.env, "")
+			}
+			t.Setenv(c.env, "s-1")
+
+			agent, resume, err := currentSession("")
+			if err != nil {
+				t.Fatalf("currentSession: %v", err)
+			}
+			if agent != c.agent {
+				t.Errorf("agent = %q, want %q", agent, c.agent)
+			}
+			if resume != c.want {
+				t.Errorf("resume = %q, want %q", resume, c.want)
+			}
+
+			// With a checkout on the row the pointer takes you there first.
+			_, resume, err = currentSession("/tmp/tree")
+			if err != nil {
+				t.Fatalf("currentSession with path: %v", err)
+			}
+			if want := "cd /tmp/tree && " + c.want; resume != want {
+				t.Errorf("resume = %q, want %q", resume, want)
+			}
+		})
+	}
+
+	t.Run("no session", func(t *testing.T) {
+		for _, e := range sessionEnv {
+			t.Setenv(e.env, "")
+		}
+		if _, _, err := currentSession(""); err == nil {
+			t.Error("currentSession outside an agent session returned no error; a guessed pointer is worse than none")
+		}
+	})
+}
