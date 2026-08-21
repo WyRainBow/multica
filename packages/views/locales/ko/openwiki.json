@@ -1,0 +1,14 @@
+{
+  "tab_docs": "wiki 문서",
+  "tab_skills": "skills",
+  "tab_worktree": "워크트리",
+  "worktree_hint": "브랜치 장부: git.* 키를 선언한 issue가 모두 여기에 표시됩니다.",
+  "worktree_loading": "불러오는 중…",
+  "worktree_empty": "아직 브랜치를 선언한 issue가 없습니다. git.base_ref / git.delivery_ref를 설정하면 표시됩니다.",
+  "col_issue": "Issue",
+  "col_status": "상태",
+  "col_base": "베이스",
+  "col_delivery": "배포 브랜치",
+  "col_mr": "MR",
+  "deprecated_keys": "구형 키"
+}

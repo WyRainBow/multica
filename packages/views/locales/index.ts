@@ -17,6 +17,7 @@ import enProjects from "./en/projects.json";
 import enAutopilots from "./en/autopilots.json";
 import enSkills from "./en/skills.json";
 import enDocs from "./en/docs.json";
+import enOpenwiki from "./en/openwiki.json";
 import enChat from "./en/chat.json";
 import enModals from "./en/modals.json";
 import enRuntimes from "./en/runtimes.json";
@@ -43,6 +44,7 @@ import zhHansProjects from "./zh-Hans/projects.json";
 import zhHansAutopilots from "./zh-Hans/autopilots.json";
 import zhHansSkills from "./zh-Hans/skills.json";
 import zhHansDocs from "./zh-Hans/docs.json";
+import zhHansOpenwiki from "./zh-Hans/openwiki.json";
 import zhHansChat from "./zh-Hans/chat.json";
 import zhHansModals from "./zh-Hans/modals.json";
 import zhHansRuntimes from "./zh-Hans/runtimes.json";
@@ -69,6 +71,7 @@ import koProjects from "./ko/projects.json";
 import koAutopilots from "./ko/autopilots.json";
 import koSkills from "./ko/skills.json";
 import koDocs from "./ko/docs.json";
+import koOpenwiki from "./ko/openwiki.json";
 import koChat from "./ko/chat.json";
 import koModals from "./ko/modals.json";
 import koRuntimes from "./ko/runtimes.json";
@@ -95,6 +98,7 @@ import jaProjects from "./ja/projects.json";
 import jaAutopilots from "./ja/autopilots.json";
 import jaSkills from "./ja/skills.json";
 import jaDocs from "./ja/docs.json";
+import jaOpenwiki from "./ja/openwiki.json";
 import jaChat from "./ja/chat.json";
 import jaModals from "./ja/modals.json";
 import jaRuntimes from "./ja/runtimes.json";
@@ -127,6 +131,7 @@ export const RESOURCES: Record<SupportedLocale, LocaleResources> = {
     autopilots: enAutopilots,
     skills: enSkills,
     docs: enDocs,
+    openwiki: enOpenwiki,
     chat: enChat,
     modals: enModals,
     runtimes: enRuntimes,
@@ -155,6 +160,7 @@ export const RESOURCES: Record<SupportedLocale, LocaleResources> = {
     autopilots: zhHansAutopilots,
     skills: zhHansSkills,
     docs: zhHansDocs,
+    openwiki: zhHansOpenwiki,
     chat: zhHansChat,
     modals: zhHansModals,
     runtimes: zhHansRuntimes,
@@ -183,6 +189,7 @@ export const RESOURCES: Record<SupportedLocale, LocaleResources> = {
     autopilots: koAutopilots,
     skills: koSkills,
     docs: koDocs,
+    openwiki: koOpenwiki,
     chat: koChat,
     modals: koModals,
     runtimes: koRuntimes,
@@ -211,6 +218,7 @@ export const RESOURCES: Record<SupportedLocale, LocaleResources> = {
     autopilots: jaAutopilots,
     skills: jaSkills,
     docs: jaDocs,
+    openwiki: jaOpenwiki,
     chat: jaChat,
     modals: jaModals,
     runtimes: jaRuntimes,

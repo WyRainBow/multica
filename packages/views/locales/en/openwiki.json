@@ -1,0 +1,14 @@
+{
+  "tab_docs": "wiki docs",
+  "tab_skills": "skills",
+  "tab_worktree": "worktree",
+  "worktree_hint": "The branch ledger: every issue that declares git.* delivery keys. Same sources as the per-run snapshots and the activity log.",
+  "worktree_loading": "Loading…",
+  "worktree_empty": "No issue declares a delivery branch yet. Set git.base_ref / git.delivery_ref on a card to add it.",
+  "col_issue": "Issue",
+  "col_status": "Status",
+  "col_base": "Base ref",
+  "col_delivery": "Delivery ref",
+  "col_mr": "MR",
+  "deprecated_keys": "legacy keys"
+}
