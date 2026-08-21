@@ -28,7 +28,8 @@
     "issue_missing": "The linked issue is gone",
     "length_other": "{{count}} chars",
     "rename": "Rename",
-    "rename_failed": "Rename failed"
+    "rename_failed": "Rename failed",
+    "rename_input": "Rename title"
   },
   "issue_section": {
     "title": "Documents",

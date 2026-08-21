@@ -118,7 +118,7 @@ export function DocItem({
               if (e.key === "Escape") setRenaming(false);
             }}
             className="h-7 flex-1 text-title-sm font-semibold"
-            aria-label={t(($) => $.doc.rename)}
+            aria-label={t(($) => $.doc.rename_input)}
           />
         ) : (
           <button
