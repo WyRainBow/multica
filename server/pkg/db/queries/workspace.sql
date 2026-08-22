@@ -156,6 +156,12 @@ cleared_installations AS (
 cleared_issue_properties AS (
     DELETE FROM issue_property WHERE workspace_id = $1
 ),
+-- Delivery receipts are the evidence a card was actually shipped. They carry
+-- their own workspace_id, so they are reachable directly — being missed here
+-- left them behind as orphan rows pointing at issues that no longer exist.
+cleared_issue_delivery_receipts AS (
+    DELETE FROM issue_delivery_receipt WHERE workspace_id = $1
+),
 cleared_quick_actions AS (
     DELETE FROM quick_action WHERE workspace_id = $1
 ),

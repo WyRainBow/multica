@@ -292,9 +292,12 @@ func TestDeliveryMetadataChangeWritesActivity(t *testing.T) {
 	}
 
 	var actions []string
-	var oldValues []any
+	// details->>'old' is NULL on a first set — there was no old value, which is
+	// a different fact from an empty one. Scanning into a plain string turned
+	// that distinction into a hard failure.
+	var oldValues []*string
 	rows, err := testPool.Query(context.Background(), `
-		SELECT action, details->>'old' FROM activity
+		SELECT action, details->>'old' FROM activity_log
 		WHERE issue_id = $1 AND action IN ('metadata_key_changed','metadata_key_deleted')
 		ORDER BY created_at`, issueID)
 	if err != nil {
@@ -302,7 +305,8 @@ func TestDeliveryMetadataChangeWritesActivity(t *testing.T) {
 	}
 	defer rows.Close()
 	for rows.Next() {
-		var action, old string
+		var action string
+		var old *string
 		if err := rows.Scan(&action, &old); err != nil {
 			t.Fatal(err)
 		}
@@ -312,8 +316,11 @@ func TestDeliveryMetadataChangeWritesActivity(t *testing.T) {
 	if len(actions) != 2 {
 		t.Fatalf("expected 2 metadata activities (latest_conclusion must stay silent), got %v", actions)
 	}
-	if oldValues[0] != "" || oldValues[1] != "feat/first" {
-		t.Fatalf("old values wrong: first set should have no old, re-set should show feat/first — got %v", oldValues)
+	if oldValues[0] != nil {
+		t.Fatalf("the first set must record no old value, got %q", *oldValues[0])
+	}
+	if oldValues[1] == nil || *oldValues[1] != "feat/first" {
+		t.Fatalf("the re-set must show feat/first as the old value, got %v", oldValues[1])
 	}
 
 	del := httptest.NewRecorder()
@@ -325,7 +332,7 @@ func TestDeliveryMetadataChangeWritesActivity(t *testing.T) {
 	}
 	var deleted int
 	if err := testPool.QueryRow(context.Background(),
-		`SELECT count(*) FROM activity WHERE issue_id = $1 AND action = 'metadata_key_deleted'`, issueID).Scan(&deleted); err != nil {
+		`SELECT count(*) FROM activity_log WHERE issue_id = $1 AND action = 'metadata_key_deleted'`, issueID).Scan(&deleted); err != nil {
 		t.Fatal(err)
 	}
 	if deleted != 1 {
