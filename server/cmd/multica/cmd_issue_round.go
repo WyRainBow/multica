@@ -232,6 +232,11 @@ func runIssueRoundClose(cmd *cobra.Command, args []string) error {
 	if verdict == "request_changes" {
 		fmt.Fprintf(os.Stderr, "request_changes: open the next round before work resumes.\n")
 	}
+	// A route that ran to its end is worth a nudge; one sent back for changes
+	// is not, because it has not finished being learned yet.
+	if verdict != "request_changes" && shouldPromptRetro("", phase) {
+		writeRetroPrompt(os.Stderr, key, phase+" 已收口")
+	}
 	if output, _ := cmd.Flags().GetString("output"); output == "table" {
 		return nil
 	}
