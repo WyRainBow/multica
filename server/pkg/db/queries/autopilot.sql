@@ -70,8 +70,13 @@ UPDATE autopilot SET
     assignee_type = COALESCE(sqlc.narg('assignee_type'), assignee_type),
     assignee_id = COALESCE(sqlc.narg('assignee_id')::uuid, assignee_id),
     status = COALESCE(sqlc.narg('status'), status),
+    -- A status change carries its own reason, or clears the old one by
+    -- passing none. Resuming therefore still wipes the reason it was paused
+    -- for, while pausing can now say why in the same statement — the reason
+    -- and the status must not be able to disagree, which two writes would
+    -- allow.
     pause_reason = CASE
-      WHEN sqlc.narg('status')::text IS NOT NULL THEN NULL
+      WHEN sqlc.narg('status')::text IS NOT NULL THEN sqlc.narg('pause_reason')::text
       ELSE pause_reason
     END,
     execution_mode = COALESCE(sqlc.narg('execution_mode'), execution_mode),

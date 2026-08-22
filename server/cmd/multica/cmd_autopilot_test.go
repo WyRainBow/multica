@@ -473,3 +473,24 @@ func TestUUIDRegexp(t *testing.T) {
 		}
 	}
 }
+
+func TestPausedRowSaysWhy(t *testing.T) {
+	t.Parallel()
+	// A paused row with no reason is a question a week later, not an answer.
+	if got := autopilotStatusCell("paused", "prompt 要改"); got != "paused (prompt 要改)" {
+		t.Errorf("got %q", got)
+	}
+	// Active rows stay clean; a stale reason on an active row would be a lie.
+	if got := autopilotStatusCell("active", "prompt 要改"); got != "active" {
+		t.Errorf("an active row must not show a pause reason: %q", got)
+	}
+	if got := autopilotStatusCell("paused", ""); got != "paused" {
+		t.Errorf("got %q", got)
+	}
+	long := strings.Repeat("长", 60)
+	got := autopilotStatusCell("paused", long)
+	// "paused (" + 40 + "…" + ")" — the cap is on the reason, not the cell.
+	if !strings.Contains(got, "…") || len([]rune(got)) > 51 {
+		t.Errorf("a long reason must be clipped for the table: %d runes", len([]rune(got)))
+	}
+}

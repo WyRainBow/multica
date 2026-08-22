@@ -1773,13 +1773,18 @@ UPDATE autopilot SET
     assignee_type = COALESCE($4, assignee_type),
     assignee_id = COALESCE($5::uuid, assignee_id),
     status = COALESCE($6, status),
+    -- A status change carries its own reason, or clears the old one by
+    -- passing none. Resuming therefore still wipes the reason it was paused
+    -- for, while pausing can now say why in the same statement — the reason
+    -- and the status must not be able to disagree, which two writes would
+    -- allow.
     pause_reason = CASE
-      WHEN $6::text IS NOT NULL THEN NULL
+      WHEN $6::text IS NOT NULL THEN $7::text
       ELSE pause_reason
     END,
-    execution_mode = COALESCE($7, execution_mode),
-    issue_title_template = $8,
-    project_id = $9,
+    execution_mode = COALESCE($8, execution_mode),
+    issue_title_template = $9,
+    project_id = $10,
     updated_at = now()
 WHERE id = $1
 RETURNING id, workspace_id, title, description, assignee_id, status, execution_mode, issue_title_template, created_by_type, created_by_id, last_run_at, created_at, updated_at, assignee_type, project_id, pause_reason
@@ -1792,6 +1797,7 @@ type UpdateAutopilotParams struct {
 	AssigneeType       pgtype.Text `json:"assignee_type"`
 	AssigneeID         pgtype.UUID `json:"assignee_id"`
 	Status             pgtype.Text `json:"status"`
+	PauseReason        pgtype.Text `json:"pause_reason"`
 	ExecutionMode      pgtype.Text `json:"execution_mode"`
 	IssueTitleTemplate pgtype.Text `json:"issue_title_template"`
 	ProjectID          pgtype.UUID `json:"project_id"`
@@ -1805,6 +1811,7 @@ func (q *Queries) UpdateAutopilot(ctx context.Context, arg UpdateAutopilotParams
 		arg.AssigneeType,
 		arg.AssigneeID,
 		arg.Status,
+		arg.PauseReason,
 		arg.ExecutionMode,
 		arg.IssueTitleTemplate,
 		arg.ProjectID,
