@@ -35,10 +35,18 @@ import (
 // dispatch dozens of runs and fill the drafts folder with noise, which is a
 // faster way to make the drafts folder worthless than never writing to it.
 
-// retroPendingWindow is how far back a daily patrol looks. One day matches the
-// cadence: a card that closed yesterday is the one still fresh enough that
-// reconstructing it is cheap.
-const retroPendingWindow = 24 * time.Hour
+// retroPendingWindow is how far back a daily patrol looks.
+//
+// A day would match the cadence, and it is the wrong choice: the patrol misses
+// everything from any day it did not run, permanently, and nothing reports the
+// gap. A week makes it self-healing.
+//
+// Widening is safe because the flood is held back by the evidence filter, not
+// by the window. Measured on this workspace: 132 cards have reached a terminal
+// state and 58 of them in the last week, but across a THIRTY day window
+// exactly one has a run behind it and no retro. The window was never what kept
+// this small.
+const retroPendingWindow = 7 * 24 * time.Hour
 
 // retroPendingLimit caps one patrol's worth. A cap is what keeps a first run,
 // or a run after the patrol was down for a week, from turning into a fleet of
@@ -188,6 +196,17 @@ func hasRetroArtefact(docs []docRow) bool {
 // retroEvidence names what a retro would actually read, or "" when there is
 // nothing. The string is returned rather than a bool so the caller can print
 // why a card qualified — a list of keys with no reason is a list nobody trusts.
+//
+// The ledger half of this gate is SOFT, and the first live run proved it: the
+// one card it selected had six ledger entries, five of which read "第二行",
+// "调试行", "第五行：真机复验不覆盖" — test data written while verifying that
+// `worktree log --issue` binds correctly, nothing to do with the work. Counting
+// entries cannot tell those apart, and no cheap signal can.
+//
+// Left soft on purpose. A false positive costs one agent run and one draft
+// somebody deletes; the cap bounds it. Building a cleverer gate on one
+// observation is the speculative filtering this card decided to defer until
+// there is data to aim at.
 func retroEvidence(docs []docRow, ledgerEntries int) string {
 	var rounds, others int
 	for _, doc := range docs {
