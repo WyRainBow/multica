@@ -304,6 +304,9 @@ type IssueDocData struct {
 	// agent has no way to tell the state of record from the record of how it
 	// got there.
 	Current bool `json:"current,omitempty"`
+	// Label names which live document this is — requirements, design, spec —
+	// so three current blocks do not render three identical headings.
+	Label string `json:"label,omitempty"`
 	// Conclusions is the spec's round-conclusion table, carried inline for the
 	// current document only. It is the smallest, densest answer to "what has
 	// been decided" on the whole issue, and leaving it one fetch away meant

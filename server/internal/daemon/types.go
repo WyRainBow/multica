@@ -57,6 +57,7 @@ type IssueDocData struct {
 	Title       string `json:"title"`
 	Kind        string `json:"kind,omitempty"`
 	Current     bool   `json:"current,omitempty"`     // the issue's state of record; everything else is history
+	Label       string `json:"label,omitempty"`       // which live document this is
 	Conclusions string `json:"conclusions,omitempty"` // the spec's derived conclusions table, carried inline
 }
 

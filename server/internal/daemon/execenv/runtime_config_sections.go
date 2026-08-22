@@ -598,7 +598,11 @@ func writeIssueDocuments(b *strings.Builder, ctx TaskContextForEnv) {
 	}
 
 	for _, doc := range current {
-		fmt.Fprintf(b, "### Current state of record — %s\n\n", docTitleOrPlaceholder(doc))
+		label := strings.TrimSpace(doc.Label)
+		if label == "" {
+			label = "Current state of record"
+		}
+		fmt.Fprintf(b, "### %s — %s\n\n", label, docTitleOrPlaceholder(doc))
 		fmt.Fprintf(b, "`%s` — full text with `multica wiki get %s --output json`.\n\n", doc.Kind, doc.ID)
 		if conclusions := strings.TrimSpace(doc.Conclusions); conclusions != "" {
 			// Inlined because this is the densest answer on the issue and the

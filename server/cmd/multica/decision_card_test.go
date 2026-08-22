@@ -117,3 +117,39 @@ func TestParseDecisionNumberRejectsWhatIsNotOne(t *testing.T) {
 		t.Errorf("D12 = %d, %v", n, ok)
 	}
 }
+
+func TestAffectsLinksADecisionToWhatItChanged(t *testing.T) {
+	t.Parallel()
+	// A decision is not a fourth document type — it is the event that moves one
+	// of the three. The link belongs on the decision, where it is written once,
+	// rather than in the document, where it would be maintained by hand.
+	card := RenderDecisionCard(DecisionMeta{
+		ID: "D8", Question: "需求怎么改", Summary: "拆成两条",
+		Affects: []string{"requirements", "spec"},
+	}, "")
+	if !strings.Contains(card, "affects: requirements") || !strings.Contains(card, "affects: spec") {
+		t.Errorf("both affected documents must be in the header:\n%s", card)
+	}
+	if !strings.Contains(card, "**改动了**") {
+		t.Error("a person reading the card should see it too, not only the parser")
+	}
+}
+
+func TestOnlyLiveDocumentsGetSnapshotted(t *testing.T) {
+	t.Parallel()
+	// Rounds and decisions are already write-once; snapshotting them would
+	// duplicate immutable records for nothing.
+	for _, kind := range []string{"K/requirements", "K/design", "K/spec"} {
+		if _, ok := liveDocSuffix(kind); !ok {
+			t.Errorf("%q should be snapshotted", kind)
+		}
+	}
+	for _, kind := range []string{
+		"K/rounds/R1-方案评审", "K/decisions/D1",
+		"K/snapshots/spec/R1-方案评审", "K/notes",
+	} {
+		if _, ok := liveDocSuffix(kind); ok {
+			t.Errorf("%q must not be snapshotted", kind)
+		}
+	}
+}

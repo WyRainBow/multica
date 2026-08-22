@@ -7307,7 +7307,7 @@ func convertIssueDocsForEnv(docs []IssueDocData) []execenv.IssueDocForEnv {
 	for i, d := range docs {
 		result[i] = execenv.IssueDocForEnv{
 			ID: d.ID, Title: d.Title, Kind: d.Kind,
-			Current: d.Current, Conclusions: d.Conclusions,
+			Current: d.Current, Label: d.Label, Conclusions: d.Conclusions,
 		}
 	}
 	return result

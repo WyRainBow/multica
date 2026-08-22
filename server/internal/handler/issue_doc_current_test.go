@@ -82,3 +82,33 @@ func TestAnOversizedConclusionsSectionSaysItWasCut(t *testing.T) {
 		t.Errorf("truncation did not bound the payload: %d runes", len([]rune(got)))
 	}
 }
+
+func TestThreeLiveDocumentsEachAnswerADifferentQuestion(t *testing.T) {
+	t.Parallel()
+	// Several current documents do not break the "one current answer" rule.
+	// They break it only if two of them answer the same question, which is why
+	// the set is fixed rather than open.
+	for kind, wantLabel := range map[string]string{
+		"COC-311/requirements": "需求底稿",
+		"COC-311/design":       "技术方案",
+		"COC-311/spec":         "Spec",
+	} {
+		label, ok := liveDocLabel(kind)
+		if !ok {
+			t.Errorf("%q should be a live document", kind)
+		}
+		if label != wantLabel {
+			t.Errorf("%q labelled %q, want %q", kind, label, wantLabel)
+		}
+	}
+	// The set is closed: a folder nobody defined is not silently promoted.
+	for _, kind := range []string{
+		"COC-311/notes", "COC-311/decisions/D1",
+		"COC-311/snapshots/spec/R1-方案评审",
+		"COC-311/rounds/R1-spec-review",
+	} {
+		if isCurrentIssueDoc(kind) {
+			t.Errorf("%q must not be treated as a live document", kind)
+		}
+	}
+}

@@ -1885,8 +1885,11 @@ func (h *Handler) buildClaimedTaskResponse(r *http.Request, task *db.AgentTaskQu
 					// got there. Its conclusions ride along because they are the
 					// densest answer on the issue and an agent that has to fetch
 					// them will rebuild the same answer from comments instead.
-					if isCurrentIssueDoc(doc.Kind) {
+					if label, live := liveDocLabel(doc.Kind); live {
 						entry.Current = true
+						entry.Label = label
+						// Only the spec carries a derived conclusions section;
+						// the others are prose their authors own.
 						entry.Conclusions = extractSpecConclusions(doc.Content)
 					}
 					out = append(out, entry)

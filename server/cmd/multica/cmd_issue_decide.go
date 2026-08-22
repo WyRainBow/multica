@@ -79,6 +79,9 @@ func init() {
 		"An open question this decision settles, as D<n>#<i> — the card that raised it and its position in that card's list (repeatable).")
 	issueDecideCmd.Flags().StringArray("supersedes", nil,
 		"A decision this one replaces, as D<n> (repeatable). The superseded card is left untouched; it reads as superseded because this one says so.")
+	issueDecideCmd.Flags().StringArray("affects", nil,
+		"A live document this decision changed, e.g. requirements / design / spec (repeatable). "+
+			"The decision itself stays here; the document keeps only the result.")
 	issueDecideCmd.Flags().String("sha", "", "Baseline the decision was taken against")
 	issueDecideCmd.Flags().Int("number", 0,
 		"Decision number on this issue. Defaults to one past the highest already recorded. "+
@@ -156,6 +159,7 @@ func runIssueDecide(cmd *cobra.Command, args []string) error {
 	open, _ := cmd.Flags().GetStringArray("open")
 	closes, _ := cmd.Flags().GetStringArray("closes")
 	supersedes, _ := cmd.Flags().GetStringArray("supersedes")
+	affects, _ := cmd.Flags().GetStringArray("affects")
 
 	meta := DecisionMeta{
 		ID:         fmt.Sprintf("D%d", number),
@@ -168,6 +172,7 @@ func runIssueDecide(cmd *cobra.Command, args []string) error {
 		Open:       trimAll(open),
 		Closes:     trimAll(closes),
 		Supersedes: trimAll(supersedes),
+		Affects:    trimAll(affects),
 	}
 
 	// Writing the card is the whole point; a failure here is fatal. Everything

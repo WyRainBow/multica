@@ -39,8 +39,10 @@ type IssueDocForEnv struct {
 	ID    string `json:"id"`
 	Title string `json:"title"`
 	Kind  string `json:"kind,omitempty"` // the document's slot, e.g. "COC-305/spec"
-	// Current marks the one document stating where the issue stands now.
+	// Current marks a document stating where the issue stands now.
 	Current bool `json:"current,omitempty"`
+	// Label names which live document this is — requirements, design, spec.
+	Label string `json:"label,omitempty"`
 	// Conclusions is that document's round-conclusion table, inlined so the
 	// densest answer on the issue costs no fetch.
 	Conclusions string `json:"conclusions,omitempty"`

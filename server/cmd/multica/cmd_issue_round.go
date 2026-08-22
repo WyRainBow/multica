@@ -194,13 +194,27 @@ func runIssueRoundClose(cmd *cobra.Command, args []string) error {
 		fmt.Fprintf(os.Stderr, "Note: R%d is recorded, but the conclusion comment failed (%v).\n", number, err)
 	}
 
-	// 4. Pointers, so a reader lands on the latest without scanning.
+	// 4. Snapshot every live document. They are edited freely between rounds,
+	//    so without this a closed round records a verdict on a version nobody
+	//    can retrieve — the wiki keeps no history of its own. Closing is the
+	//    only moment that means "this is what we agreed on", which is why the
+	//    version granularity is one per close rather than one per edit.
+	//
+	//    Best-effort: the round is already recorded, and failing the command
+	//    here would read as "nothing happened" when the archive exists.
+	if taken, err := snapshotLiveDocs(ctx, client, issue.ID, key, docs, number, phase); err != nil {
+		fmt.Fprintf(os.Stderr, "Note: R%d is recorded, but a document snapshot failed (%v).\n", number, err)
+	} else if taken > 0 {
+		fmt.Fprintf(os.Stderr, "Snapshotted %d live document(s).\n", taken)
+	}
+
+	// 5. Pointers, so a reader lands on the latest without scanning.
 	setIssueMetadata(ctx, client, issue.ID, latestRoundDocKey, roundDoc.ID)
 	if commentID != "" {
 		setIssueMetadata(ctx, client, issue.ID, latestConclusion, commentID)
 	}
 
-	// 5. Move the station itself. Archiving a round used to leave every phase
+	// 6. Move the station itself. Archiving a round used to leave every phase
 	//    untouched, so a card could close two rounds and still show five
 	//    stations nobody had entered — and the done gate, which only checks
 	//    stations that were entered or completed, stayed inert for exactly the
@@ -467,4 +481,73 @@ func setIssueMetadata(ctx context.Context, client *cli.APIClient, issueID, key, 
 	if err := client.PutJSON(ctx, path, map[string]any{"value": value}, &out); err != nil {
 		fmt.Fprintf(os.Stderr, "Note: %s was not updated (%v).\n", key, err)
 	}
+}
+
+// liveDocSuffixes are the documents a close snapshots. Mirrors the server's
+// liveDocKinds; duplicated rather than shared because the two live in
+// different binaries and a shared constant would tie a server release to a
+// CLI one.
+var liveDocSuffixes = []string{"/requirements", "/design", "/spec"}
+
+// snapshotLiveDocs freezes each live document as it stood when the round
+// closed.
+//
+// The wiki keeps no version history of its own — there is no card version
+// table — so a document edited between rounds leaves no trace of what an
+// earlier verdict was actually given on. The snapshot is that trace.
+//
+// Write-once, like the round it belongs to: the snapshot's kind carries the
+// round number, so re-closing cannot overwrite an earlier one and a gap stays
+// visible.
+func snapshotLiveDocs(
+	ctx context.Context,
+	client *cli.APIClient,
+	issueID, key string,
+	docs []docRow,
+	round int,
+	phase string,
+) (int, error) {
+	taken := 0
+	var firstErr error
+	for _, doc := range docs {
+		suffix, ok := liveDocSuffix(doc.Kind)
+		if !ok {
+			continue
+		}
+		if strings.TrimSpace(doc.Content) == "" {
+			// An empty document has nothing to preserve, and a snapshot of
+			// nothing would suggest the round was given nothing.
+			continue
+		}
+		kind := fmt.Sprintf("%s/snapshots/%s/R%d-%s", key, strings.TrimPrefix(suffix, "/"), round, phase)
+		body := fmt.Sprintf(
+			"<!-- 收口 R%d %s 时的冻结副本。正身是 `%s`，那份会继续被修改；本份不会。 -->\n\n%s",
+			round, phase, doc.Kind, doc.Content)
+		if _, err := createDoc(ctx, client, docRequest{
+			Title:   fmt.Sprintf("%s %s @ R%d %s", key, doc.Title, round, phase),
+			Kind:    kind,
+			Content: body,
+			IssueID: issueID,
+		}); err != nil {
+			// One unwritable snapshot must not cost the others: each live
+			// document is a separate record and losing all of them because of
+			// one is a worse outcome than a partial set that says so.
+			if firstErr == nil {
+				firstErr = err
+			}
+			continue
+		}
+		taken++
+	}
+	return taken, firstErr
+}
+
+func liveDocSuffix(kind string) (string, bool) {
+	trimmed := strings.TrimSuffix(strings.TrimSpace(kind), "/")
+	for _, suffix := range liveDocSuffixes {
+		if strings.HasSuffix(trimmed, suffix) {
+			return suffix, true
+		}
+	}
+	return "", false
 }

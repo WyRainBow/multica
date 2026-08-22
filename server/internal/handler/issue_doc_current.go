@@ -11,17 +11,40 @@ import "strings"
 // decided here rather than in the brief writer because the same rule governs
 // which document's body travels.
 
-// specKindSuffix is where `multica issue round close` files the live spec:
-// <ISSUE-KEY>/spec. Kept as a suffix match rather than a full path because the
-// key varies per issue and per workspace prefix.
-const specKindSuffix = "/spec"
+// liveDocKinds are the documents that say where an issue stands now, each
+// answering a different question: what is being asked for, how it will be
+// built, and what has been frozen. Several current documents do not break the
+// "one current answer" rule — they break it only if two of them answer the
+// same question, which is why the set is fixed rather than open.
+//
+// Suffix-anchored so a folder that merely contains the word — say
+// "<KEY>/rounds/R1-spec-review" — is not mistaken for the document itself.
+var liveDocKinds = []struct {
+	suffix string
+	label  string
+}{
+	{"/requirements", "需求底稿"},
+	{"/design", "技术方案"},
+	{"/spec", "Spec"},
+}
 
-// isCurrentIssueDoc reports whether a document kind names the issue's state of
-// record. Suffix-anchored so a folder that merely contains the word — say
-// "<KEY>/rounds/R1-spec-review" — is not mistaken for the spec itself.
+// isCurrentIssueDoc reports whether a kind names one of the issue's live
+// documents.
 func isCurrentIssueDoc(kind string) bool {
+	_, ok := liveDocLabel(kind)
+	return ok
+}
+
+// liveDocLabel names which live document a kind is, so the brief can say what
+// the reader is looking at rather than printing three identical headings.
+func liveDocLabel(kind string) (string, bool) {
 	trimmed := strings.TrimSuffix(strings.TrimSpace(kind), "/")
-	return strings.HasSuffix(trimmed, specKindSuffix)
+	for _, live := range liveDocKinds {
+		if strings.HasSuffix(trimmed, live.suffix) {
+			return live.label, true
+		}
+	}
+	return "", false
 }
 
 // Markers written by `multica issue round close` around the derived section of

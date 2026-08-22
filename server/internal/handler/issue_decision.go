@@ -41,12 +41,15 @@ type IssueDecision struct {
 	// SupersededBy names the card that replaced it, so a reader lands on the
 	// decision that holds now instead of hunting for it.
 	SupersededBy string `json:"superseded_by,omitempty"`
+	// Affects names the live documents this decision changed, so a reader of
+	// one of those documents can find why it says what it says.
+	Affects []string `json:"affects,omitempty"`
 }
 
 // IssueOpenQuestion is a question some decision left open that none has closed.
 type IssueOpenQuestion struct {
-	Ref      string `json:"ref"`                // D<n>#<i> — the card that raised it and its position
-	Question string `json:"question"`           // the question itself
+	Ref      string `json:"ref"`                 // D<n>#<i> — the card that raised it and its position
+	Question string `json:"question"`            // the question itself
 	RaisedBy string `json:"raised_by,omitempty"` // the card that raised it
 }
 
@@ -62,6 +65,7 @@ type decisionCard struct {
 	open       []string
 	closes     []string
 	supersedes []string
+	affects    []string
 }
 
 // DeriveIssueDecisions turns the issue's decision cards into "what holds now"
@@ -107,7 +111,7 @@ func DeriveIssueDecisions(cards []struct{ ID, Kind, Content string }) ([]IssueDe
 			ID: c.id, DocID: c.docID,
 			Question: c.question, Summary: c.summary,
 			DecidedBy: c.decidedBy, RecordedBy: c.recordedBy,
-			Superseded: by != "", SupersededBy: by,
+			Superseded: by != "", SupersededBy: by, Affects: c.affects,
 		})
 		// A superseded card's open questions go with it. The decision that
 		// replaced it owns the shape of the problem now, and carrying forward
@@ -177,6 +181,8 @@ func parseDecisionCard(docID, kind, content string) (decisionCard, bool) {
 			c.closes = append(c.closes, value)
 		case "supersedes":
 			c.supersedes = append(c.supersedes, value)
+		case "affects":
+			c.affects = append(c.affects, value)
 		}
 	}
 	if c.id == "" {

@@ -37,6 +37,11 @@ type DecisionMeta struct {
 	Open       []string // questions deliberately left open
 	Closes     []string // open questions this settles, as D<n>#<i>
 	Supersedes []string // decisions this replaces, as D<n>
+	// Affects names the live documents this decision changed. A decision is
+	// not a fourth document type — it is the event that moves one of the
+	// three, so the link belongs on the decision rather than in the document
+	// it changed, where it would have to be maintained by hand.
+	Affects []string
 }
 
 var decisionKindRe = regexp.MustCompile(`^D(\d+)$`)
@@ -98,6 +103,9 @@ func RenderDecisionCard(meta DecisionMeta, body string) string {
 	for _, v := range meta.Supersedes {
 		writeDecisionField(&b, "supersedes", v)
 	}
+	for _, v := range meta.Affects {
+		writeDecisionField(&b, "affects", v)
+	}
 	b.WriteString(decisionBlockClose + "\n\n")
 
 	fmt.Fprintf(&b, "# %s · %s\n\n", meta.ID, meta.Summary)
@@ -118,6 +126,10 @@ func RenderDecisionCard(meta DecisionMeta, body string) string {
 	}
 	if len(meta.Closes) > 0 {
 		fmt.Fprintf(&b, "- **关闭未决**：%s\n", strings.Join(meta.Closes, "、"))
+	}
+	if len(meta.Affects) > 0 {
+		fmt.Fprintf(&b, "- **改动了**：%s（决策的正身在本卡，那些文档里只留结果）\n",
+			strings.Join(meta.Affects, "、"))
 	}
 	b.WriteString("\n")
 

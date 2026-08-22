@@ -141,3 +141,17 @@ func TestASupersedeNamingNothingIsNotSilentlyDropped(t *testing.T) {
 		t.Error("D2 superseded nothing that exists; it must still hold")
 	}
 }
+
+func TestAffectsSurvivesDerivation(t *testing.T) {
+	t.Parallel()
+	decisions, _ := DeriveIssueDecisions([]struct{ ID, Kind, Content string }{
+		card("doc1", "K/decisions/D1", "id: D1", "summary: 一",
+			"affects: requirements", "affects: spec"),
+	})
+	if len(decisions) != 1 || len(decisions[0].Affects) != 2 {
+		t.Fatalf("affects did not survive: %+v", decisions)
+	}
+	if decisions[0].Affects[0] != "requirements" || decisions[0].Affects[1] != "spec" {
+		t.Errorf("affects came back wrong: %+v", decisions[0].Affects)
+	}
+}
