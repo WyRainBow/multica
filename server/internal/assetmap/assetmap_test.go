@@ -81,3 +81,53 @@ func TestEverySurfaceCarriesTheSourceOfTruthNotice(t *testing.T) {
 		t.Errorf("the notice must point at the source: %q", SourceOfTruthNotice)
 	}
 }
+
+func TestAnOversizedGroupWarnsBeforeItBecomesNoise(t *testing.T) {
+	t.Parallel()
+	// A list does not fail on a particular day. It gets gradually longer until
+	// somebody notices it has become noise, and by then it has been noise for
+	// a while — so the warning has to come from the list itself.
+	docs := make([]Doc, ComfortableIndexSize+1)
+	for i := range docs {
+		docs[i] = Doc{ID: "d", Title: "t"}
+	}
+	var b strings.Builder
+	RenderGroups(&b, "", []Group{{Label: "经验案例", Docs: docs}})
+	out := b.String()
+	if !strings.Contains(out, "超出 names-only 的舒适区") {
+		t.Errorf("an oversized group must warn:\n%s", out)
+	}
+	if !strings.Contains(out, "挑选层") {
+		t.Error("the warning must name what to do about it")
+	}
+}
+
+func TestTheWarningCountsWhatWasDroppedToo(t *testing.T) {
+	t.Parallel()
+	// The cap hides entries; if only the shown ones counted, a folder of 200
+	// truncated to 25 would report itself comfortable forever.
+	var b strings.Builder
+	RenderGroups(&b, "", []Group{{
+		Label: "指南",
+		Docs:  []Doc{{ID: "a", Title: "one"}},
+		Dropped: ComfortableIndexSize,
+	}})
+	if !strings.Contains(b.String(), "超出 names-only 的舒适区") {
+		t.Error("the threshold must count the full set, not the visible part")
+	}
+}
+
+func TestAComfortableGroupSaysNothing(t *testing.T) {
+	t.Parallel()
+	// Twenty items need no selection layer, and a warning printed on every run
+	// is one people stop reading before the day it matters.
+	docs := make([]Doc, ComfortableIndexSize)
+	for i := range docs {
+		docs[i] = Doc{ID: "d", Title: "t"}
+	}
+	var b strings.Builder
+	RenderGroups(&b, "", []Group{{Label: "指南", Docs: docs}})
+	if strings.Contains(b.String(), "舒适区") {
+		t.Error("a group at the threshold must not warn; only past it")
+	}
+}

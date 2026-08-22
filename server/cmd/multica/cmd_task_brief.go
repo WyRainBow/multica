@@ -24,8 +24,9 @@ import (
 // to the moment somebody needs it.
 
 var taskCmd = &cobra.Command{
-	Use:   "task",
-	Short: "Work with individual agent runs",
+	Use:     "task",
+	Short:   "Work with individual agent runs",
+	GroupID: groupCore,
 }
 
 var taskBriefCmd = &cobra.Command{

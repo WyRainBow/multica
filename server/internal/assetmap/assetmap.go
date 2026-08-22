@@ -46,6 +46,20 @@ type Group struct {
 // run.
 const ReadCommand = "multica wiki get <id> --output json"
 
+// ComfortableIndexSize is where a names-only list stops working.
+//
+// Below it a reader scans the titles and picks; above it they are doing
+// relevance matching by hand, which is the judgment this index deliberately
+// refuses to make for them — and the point where a selection layer starts
+// earning its cost. The number comes from the same comparison that said a
+// twenty-item list needs no selection at all: intent-matching was built for
+// catalogues in the hundreds.
+//
+// The warning matters more than the threshold. A list does not fail on a
+// particular day; it gets gradually longer until somebody notices it has
+// become noise, and by then it has been noise for a while.
+const ComfortableIndexSize = 30
+
 // RenderGroups writes the map. Intro is the surface's own framing; the body
 // below it is identical everywhere, which is the point.
 func RenderGroups(b *strings.Builder, intro string, groups []Group) {
@@ -73,6 +87,11 @@ func RenderGroups(b *strings.Builder, intro string, groups []Group) {
 		}
 		if group.Dropped > 0 {
 			fmt.Fprintf(b, "- …%d more, list them with `multica wiki list --kind <folder>`\n", group.Dropped)
+		}
+		if total := len(group.Docs) + group.Dropped; total > ComfortableIndexSize {
+			fmt.Fprintf(b, "\n> **本组 %d 条，已超出 names-only 的舒适区（%d）。** "+
+				"再往上，读的人得自己在标题里做相关性匹配——那正是这份索引刻意不替他做的事。"+
+				"考虑归并重复主题，或引入按需挑选层。\n", total, ComfortableIndexSize)
 		}
 		b.WriteString("\n")
 	}
