@@ -72,11 +72,49 @@ func runWorktreeReady(cmd *cobra.Command, args []string) error {
 	ctx, cancel := cli.APIContext(context.Background())
 	defer cancel()
 
+	items, err := computeReadyItems(ctx, client)
+	if err != nil {
+		return err
+	}
+
+	if output, _ := cmd.Flags().GetString("output"); output != "table" {
+		return cli.PrintJSON(os.Stdout, map[string]any{"ready": items})
+	}
+	if len(items) == 0 {
+		// Not an error: an empty list is the good state.
+		fmt.Fprintln(os.Stderr, "Nothing is waiting.")
+		return nil
+	}
+	rows := make([][]string, 0, len(items))
+	for _, item := range items {
+		labels := make([]string, 0, len(item.Reasons))
+		for _, reason := range item.Reasons {
+			labels = append(labels, readyLabels[reason])
+		}
+		rows = append(rows, []string{
+			item.Tree,
+			dashIfEmpty(item.Branch),
+			strings.Join(labels, " / "),
+			dashIfEmpty(strings.Join(item.Issues, " ")),
+		})
+	}
+	cli.PrintTable(os.Stdout, []string{"NAME", "BRANCH", "NEEDS", "CARDS"}, rows)
+	return nil
+}
+
+// computeReadyItems is the whole judgment of this command, separated from
+// printing it.
+//
+// The daily patrol reports the same states, and two implementations of "which
+// trees need a decision" would drift the first time one of them learned a new
+// reason — leaving a terminal answer and a delivered answer that disagree
+// about the same ledger.
+func computeReadyItems(ctx context.Context, client *cli.APIClient) ([]readyItem, error) {
 	var trees struct {
 		Worktrees []worktreeRow `json:"worktrees"`
 	}
 	if err := client.GetJSON(ctx, "/api/worktrees?all=true", &trees); err != nil {
-		return fmt.Errorf("list worktrees: %w", err)
+		return nil, fmt.Errorf("list worktrees: %w", err)
 	}
 
 	items := make([]readyItem, 0, len(trees.Worktrees))
@@ -119,30 +157,7 @@ func runWorktreeReady(cmd *cobra.Command, args []string) error {
 	sort.SliceStable(items, func(i, j int) bool {
 		return indexOfReason(items[i].Reasons[0]) < indexOfReason(items[j].Reasons[0])
 	})
-
-	if output, _ := cmd.Flags().GetString("output"); output != "table" {
-		return cli.PrintJSON(os.Stdout, map[string]any{"ready": items})
-	}
-	if len(items) == 0 {
-		// Not an error: an empty list is the good state.
-		fmt.Fprintln(os.Stderr, "Nothing is waiting.")
-		return nil
-	}
-	rows := make([][]string, 0, len(items))
-	for _, item := range items {
-		labels := make([]string, 0, len(item.Reasons))
-		for _, reason := range item.Reasons {
-			labels = append(labels, readyLabels[reason])
-		}
-		rows = append(rows, []string{
-			item.Tree,
-			dashIfEmpty(item.Branch),
-			strings.Join(labels, " / "),
-			dashIfEmpty(strings.Join(item.Issues, " ")),
-		})
-	}
-	cli.PrintTable(os.Stdout, []string{"NAME", "BRANCH", "NEEDS", "CARDS"}, rows)
-	return nil
+	return items, nil
 }
 
 func indexOfReason(reason string) int {

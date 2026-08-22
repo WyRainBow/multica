@@ -154,6 +154,11 @@ func runWorkspaceInstructionsPull(cmd *cobra.Command, args []string) error {
 	updated := applyInstructionsBlock(existing, renderInstructionsBlock(ws.Slug, instructions))
 
 	if updated == existing {
+		// Recorded even though nothing was written. Otherwise the commonest
+		// case — pull once, stay current, never pull again — is exactly the
+		// one the patrol never learns about, and the file it should be
+		// watching hardest is the file it never sees.
+		notePullTarget(pullTargetKindInstructions, expanded, ws.Slug)
 		fmt.Fprintf(os.Stderr, "%s is already current; nothing written.\n", target)
 		return nil
 	}
@@ -171,9 +176,35 @@ func runWorkspaceInstructionsPull(cmd *cobra.Command, args []string) error {
 	if err := writeFileAtomic(expanded, []byte(updated)); err != nil {
 		return fmt.Errorf("write %s: %w", target, err)
 	}
+	notePullTarget(pullTargetKindInstructions, expanded, ws.Slug)
 	fmt.Fprintf(os.Stderr, "Pulled %s instructions (%d chars, %s) into %s.\n",
 		ws.Slug, len([]rune(instructions)), instructionsFingerprint(instructions), target)
 	return nil
+}
+
+// instructionsFreshness reports how a local copy compares to the workspace,
+// as a sentence or the empty string when the copy is current.
+//
+// Split out of the status command so the daily patrol asks the same question
+// the same way. The command turns a non-empty answer into a non-zero exit for
+// the shell hook it was designed for; the patrol turns it into a line.
+func instructionsFreshness(path, wsSlug, live string) string {
+	existing, err := readFileAllowingMissing(path)
+	if err != nil {
+		return "读不到（" + err.Error() + "）"
+	}
+	localSlug, localPrint := blockProvenance(existing)
+	switch {
+	case extractInstructionsBlock(existing) == "":
+		return "里面没有拉下来的 instructions 块"
+	case localPrint == "":
+		return "块是记录来源之前拉的，无法判断新旧"
+	case localSlug != "" && wsSlug != "" && localSlug != wsSlug:
+		return fmt.Sprintf("装的是 %s 的规则，不是 %s 的", localSlug, wsSlug)
+	case localPrint != live:
+		return fmt.Sprintf("过期：本地 %s，workspace 已经是 %s", localPrint, live)
+	}
+	return ""
 }
 
 var workspaceInstructionsStatusCmd = &cobra.Command{
@@ -225,22 +256,8 @@ func runWorkspaceInstructionsStatus(cmd *cobra.Command, args []string) error {
 	}
 	live := instructionsFingerprint(ws.Context)
 
-	existing, err := readFileAllowingMissing(expanded)
-	if err != nil {
-		return err
-	}
-	localSlug, localPrint := blockProvenance(existing)
-
-	switch {
-	case extractInstructionsBlock(existing) == "":
-		return fmt.Errorf("%s carries no pulled instructions; run `workspace instructions pull --file %s`", target, target)
-	case localPrint == "":
-		return fmt.Errorf("%s has a block from before provenance was recorded; pull again to make it checkable", target)
-	case localSlug != "" && ws.Slug != "" && localSlug != ws.Slug:
-		return fmt.Errorf("%s holds instructions from workspace %q, not %q", target, localSlug, ws.Slug)
-	case localPrint != live:
-		return fmt.Errorf("%s is stale: has %s, workspace %s has %s. Run `workspace instructions pull --file %s`",
-			target, localPrint, ws.Slug, live, target)
+	if problem := instructionsFreshness(expanded, ws.Slug, live); problem != "" {
+		return fmt.Errorf("%s %s。跑 `workspace instructions pull --file %s`", target, problem, target)
 	}
 	fmt.Fprintf(os.Stderr, "%s is current with workspace %s (%s).\n", target, ws.Slug, live)
 	return nil
