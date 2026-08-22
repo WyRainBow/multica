@@ -413,10 +413,18 @@ func userMessage(err error, lang Language) string {
 		// raw response at the user.
 		if prefix, ok := serverMessagePrefixes[kind]; ok {
 			if serverMsg := extractServerMessage(httpErr.Body); serverMsg != "" {
+				line := prefix[0] + serverMsg
 				if lang == LangZH {
-					return prefix[1] + serverMsg
+					line = prefix[1] + serverMsg
 				}
-				return prefix[0] + serverMsg
+				// Some conflicts ship the whole reason for the refusal in the
+				// body and the one-line message names none of it. Telling
+				// somebody "handle the comments first" without saying WHICH
+				// ones costs every caller the same database query to find out.
+				if detail := renderConflictDetail(httpErr.Body); detail != "" {
+					return line + "\n\n" + detail
+				}
+				return line
 			}
 		}
 		return messageFor(kind, lang)
@@ -545,4 +553,79 @@ func ExitCodeFor(err error) int {
 	}
 
 	return ExitGeneric
+}
+
+// renderConflictDetail expands a conflict body that carries a machine-readable
+// reason. Returns "" for any body it does not recognize, so an unknown
+// conflict still degrades to the one-line message rather than a raw dump.
+//
+// Today only the done gate's comment review does this. The gate compares
+// last_activity_at character for character, and the value it expects is in the
+// payload — printing it is the difference between "handle the comments" and a
+// line the caller can paste.
+func renderConflictDetail(body string) string {
+	var payload struct {
+		Code   string `json:"code"`
+		Issues []struct {
+			Identifier string `json:"identifier"`
+			Threads    []struct {
+				ThreadRootID   string `json:"thread_root_id"`
+				Content        string `json:"content"`
+				ReplyCount     int    `json:"reply_count"`
+				LastActivityAt string `json:"last_activity_at"`
+				Pinned         bool   `json:"pinned"`
+			} `json:"threads"`
+		} `json:"issues"`
+	}
+	if json.Unmarshal([]byte(strings.TrimSpace(body)), &payload) != nil {
+		return ""
+	}
+	if payload.Code != "comment_review_required" {
+		return ""
+	}
+	var b strings.Builder
+	total := 0
+	for _, issue := range payload.Issues {
+		total += len(issue.Threads)
+	}
+	if total == 0 {
+		return ""
+	}
+	fmt.Fprintf(&b, "%d 条线程还欠处置：\n", total)
+	for _, issue := range payload.Issues {
+		for _, t := range issue.Threads {
+			label := issue.Identifier
+			if label == "" {
+				label = "?"
+			}
+			pin := ""
+			if t.Pinned {
+				pin = " [pinned]"
+			}
+			replies := ""
+			if t.ReplyCount > 0 {
+				replies = fmt.Sprintf(" · %d 条回复", t.ReplyCount)
+			}
+			fmt.Fprintf(&b, "\n  %s %s%s%s\n", label, t.ThreadRootID, pin, replies)
+			fmt.Fprintf(&b, "    last_activity_at: %s\n", t.LastActivityAt)
+			if summary := clipConflictLine(t.Content, 60); summary != "" {
+				fmt.Fprintf(&b, "    %s\n", summary)
+			}
+		}
+	}
+	// The timestamp above is the exact string the gate compares against, so
+	// say so — a caller who reformats it from the database gets it wrong on
+	// the trailing zeros.
+	b.WriteString("\n每条给一个 disposition：{\"thread_root_id\", \"last_activity_at\", \"action\": \"resolve\"|\"keep_unresolved\"}，")
+	b.WriteString("last_activity_at 原样照抄上面那行，加上非空 summary，一起放进 --comment-review-file。")
+	b.WriteString("\nresolve 只对还没解决的线程要 resolution_comment_id；已经 resolve 过的线程不必再列。")
+	return b.String()
+}
+
+func clipConflictLine(s string, limit int) string {
+	s = strings.TrimSpace(strings.ReplaceAll(strings.ReplaceAll(s, "\n", " "), "\r", " "))
+	if runes := []rune(s); len(runes) > limit {
+		return string(runes[:limit]) + "…"
+	}
+	return s
 }
