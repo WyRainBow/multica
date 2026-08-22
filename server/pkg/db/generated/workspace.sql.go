@@ -113,6 +113,9 @@ cleared_installations AS (
 cleared_issue_properties AS (
     DELETE FROM issue_property WHERE workspace_id = $1
 ),
+cleared_issue_delivery_receipts AS (
+    DELETE FROM issue_delivery_receipt WHERE workspace_id = $1
+),
 cleared_quick_actions AS (
     DELETE FROM quick_action WHERE workspace_id = $1
 ),
@@ -159,6 +162,9 @@ DELETE FROM workspace WHERE workspace.id = $1
 // tables the DELETE below sweeps — they are not cleaned up implicitly. Remove
 // their workspace-owned rows here so they commit or roll back atomically with
 // the workspace row.
+// Delivery receipts are the evidence a card was actually shipped. They carry
+// their own workspace_id, so they are reachable directly — being missed here
+// left them behind as orphan rows pointing at issues that no longer exist.
 // VCS tables (migration 213) carry no FK to workspace, so they are not cascaded
 // away by the DELETE below. Sweep the workspace's connections, mirrored PRs,
 // their issue links, and CI statuses here. issue_vcs_pull_request has no
