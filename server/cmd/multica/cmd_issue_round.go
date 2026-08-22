@@ -160,7 +160,11 @@ func runIssueRoundClose(cmd *cobra.Command, args []string) error {
 	if verdict == "approve" && verifiedSHA == "" && evidence == "" {
 		fmt.Fprintf(os.Stderr, "Note: approving with no --verified-sha and no --evidence; the spec will record this round as unverified.\n")
 	}
-	roundBody := renderRoundBody(RoundDoc{
+	// One value, used for both the document and the spec. It was two, and the
+	// spec's copy was assembled by hand — so a field added to the document was
+	// silently missing from the table until some later round re-read it from
+	// disk. That is not a bug to fix twice; it is a duplicate to delete.
+	closing := RoundDoc{
 		Number:      number,
 		Phase:       phase,
 		Verdict:     verdict,
@@ -169,7 +173,8 @@ func runIssueRoundClose(cmd *cobra.Command, args []string) error {
 		Evidence:    evidence,
 		Rework:      strings.TrimSpace(mustString(cmd, "rework")),
 		Detour:      strings.TrimSpace(mustString(cmd, "detour")),
-	}, mustString(cmd, "sha"), body)
+	}
+	roundBody := renderRoundBody(closing, mustString(cmd, "sha"), body)
 	roundDoc, err := createDoc(ctx, client, docRequest{
 		Title:   fmt.Sprintf("%s R%d %s：%s", key, number, phase, summary),
 		Kind:    roundKind,
@@ -183,11 +188,8 @@ func runIssueRoundClose(cmd *cobra.Command, args []string) error {
 
 	// 2. The spec, rebuilt from every round document including the one just
 	//    written. Derived, so there is nothing to remember to update.
-	rounds = append(rounds, RoundDoc{
-		Number: number, Phase: phase, Verdict: verdict,
-		Summary: summary, VerifiedSHA: verifiedSHA, Evidence: evidence,
-		DocID: roundDoc.ID,
-	})
+	closing.DocID = roundDoc.ID
+	rounds = append(rounds, closing)
 	// Closing is the moment the conclusions become true, so it is also the
 	// moment everything argued so far is accounted for. Recording it lets a
 	// later reader tell "these conclusions are current" from "these

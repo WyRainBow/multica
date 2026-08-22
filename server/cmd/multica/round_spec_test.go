@@ -318,3 +318,35 @@ func TestTheStruggleFieldsSurviveTheRoundTrip(t *testing.T) {
 		t.Error("a parsed round did not reach the spec's struggle section")
 	}
 }
+
+func TestTheRoundBeingClosedReachesTheSpecWithEveryField(t *testing.T) {
+	t.Parallel()
+	// The spec used to get a hand-assembled copy of the round being closed
+	// while the document got the real one. A field added to the document was
+	// then missing from the table until some LATER close happened to re-read
+	// it from disk — which is how the first two struggle entries written on
+	// this card appeared one round late.
+	//
+	// Constructing the value once is the fix. This asserts the property that
+	// makes it a fix: whatever renderRoundBody was given is what the spec
+	// renders, with no field dropped in between.
+	closing := RoundDoc{
+		Number: 1, Phase: "代码评审", Verdict: "approve", Summary: "收口",
+		VerifiedSHA: "57dd42b30b72de6638b27f2409d81f85eb2e505e",
+		Evidence:    "全绿",
+		Rework:      "评论端点返回裸数组，我按信封解",
+		Detour:      "已是最新的分支提前 return，没登记",
+		DocID:       "doc-1",
+	}
+	body := renderRoundBody(closing, "", "")
+	section := RenderRoundSection([]RoundDoc{closing}, "")
+
+	for _, want := range []string{"评论端点返回裸数组", "已是最新的分支提前 return"} {
+		if !strings.Contains(body, want) {
+			t.Errorf("the round document lost %q:\n%s", want, body)
+		}
+		if !strings.Contains(section, want) {
+			t.Errorf("the spec lost %q on the close that wrote it:\n%s", want, section)
+		}
+	}
+}
