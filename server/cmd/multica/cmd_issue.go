@@ -514,7 +514,11 @@ var validIssuePriorities = []string{
 // always sorted ascending (the board's manual drag order), so --direction is
 // only meaningful for the other columns.
 var validIssueSortColumns = []string{
-	"position", "title", "created_at", "start_date", "due_date", "priority",
+	// updated_at is what "moved lately" means: a new comment bumps its issue
+	// in the same statement that inserts it (see CreateComment), so this one
+	// column covers comments, status changes and edits alike. The server has
+	// always accepted it; only this list kept it out.
+	"position", "title", "created_at", "updated_at", "start_date", "due_date", "priority",
 }
 
 // directionalIssueSortColumns are the sort keys for which --direction is
@@ -605,7 +609,9 @@ func init() {
 	issueListCmd.Flags().StringSlice("metadata", nil, "Filter by metadata key=value (repeatable; combined with AND). Value is JSON-parsed: 'true'/'false' → bool, numbers → number, otherwise string. Wrap as '\"42\"' to force a string when the value would otherwise sniff as a number.")
 	issueListCmd.Flags().Int("limit", 50, "Maximum number of issues to return")
 	issueListCmd.Flags().Int("offset", 0, "Number of issues to skip (for pagination)")
-	issueListCmd.Flags().String("sort", "", "Sort column: position (default, manual board order), title, created_at, start_date, due_date, priority")
+	issueListCmd.Flags().String("sort", "", "Sort column: position (default, manual board order), title, created_at, updated_at, start_date, due_date, priority")
+	issueListCmd.Flags().Duration("updated-since", 0,
+		"Only issues with activity inside this window, e.g. 24h. A comment counts as activity. Pair with --sort updated_at --direction desc so the page holds the newest")
 	issueListCmd.Flags().String("direction", "", "Sort direction (asc or desc); requires --sort to be a non-position column (position is always ascending)")
 
 	// issue get
@@ -880,6 +886,7 @@ func runIssueList(cmd *cobra.Command, _ []string) error {
 	}
 
 	issuesRaw, _ := result["issues"].([]any)
+	issuesRaw = filterIssuesUpdatedSince(cmd, issuesRaw)
 
 	output, _ := cmd.Flags().GetString("output")
 	if output == "json" {
@@ -3044,6 +3051,7 @@ func runIssueSearch(cmd *cobra.Command, args []string) error {
 	}
 
 	issuesRaw, _ := result["issues"].([]any)
+	issuesRaw = filterIssuesUpdatedSince(cmd, issuesRaw)
 
 	output, _ := cmd.Flags().GetString("output")
 	if output == "json" {
@@ -3546,4 +3554,35 @@ func compactComments(comments []map[string]any) {
 			}
 		}
 	}
+}
+
+// filterIssuesUpdatedSince keeps the rows that moved inside the window.
+//
+// The filter is client-side because the server has no such parameter, and it
+// is honest about what that means: it narrows the PAGE the server returned,
+// not the whole workspace. Paired with `--sort updated_at --direction desc`
+// the newest rows are the ones on that page, which is exactly the question
+// "what moved today" asks — and it stays one bounded request rather than a
+// walk over every issue in the workspace.
+func filterIssuesUpdatedSince(cmd *cobra.Command, rows []any) []any {
+	window, _ := cmd.Flags().GetDuration("updated-since")
+	if window <= 0 {
+		return rows
+	}
+	cutoff := time.Now().Add(-window)
+	kept := make([]any, 0, len(rows))
+	for _, raw := range rows {
+		row, ok := raw.(map[string]any)
+		if !ok {
+			continue
+		}
+		updated, _ := row["updated_at"].(string)
+		at, err := time.Parse(time.RFC3339, updated)
+		// A row whose timestamp will not parse is kept rather than dropped:
+		// silently losing an issue is worse than showing one extra.
+		if err != nil || !at.Before(cutoff) {
+			kept = append(kept, raw)
+		}
+	}
+	return kept
 }

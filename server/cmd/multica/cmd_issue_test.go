@@ -3719,3 +3719,51 @@ func TestRunIssueCommentListCompactWiring(t *testing.T) {
 		}
 	}
 }
+
+func TestUpdatedSinceKeepsWhatMovedAndNothingElse(t *testing.T) {
+	t.Parallel()
+	// The window is what turns a full-workspace patrol into a daily one. A
+	// filter that dropped a row it could not read would make the patrol quietly
+	// blind, so an unparseable timestamp is kept instead.
+	cmd := &cobra.Command{}
+	cmd.Flags().Duration("updated-since", 24*time.Hour, "")
+	fresh := time.Now().Add(-2 * time.Hour).Format(time.RFC3339)
+	stale := time.Now().Add(-72 * time.Hour).Format(time.RFC3339)
+	rows := []any{
+		map[string]any{"identifier": "COC-1", "updated_at": fresh},
+		map[string]any{"identifier": "COC-2", "updated_at": stale},
+		map[string]any{"identifier": "COC-3", "updated_at": "not a time"},
+	}
+	got := filterIssuesUpdatedSince(cmd, rows)
+	if len(got) != 2 {
+		t.Fatalf("kept %d rows, want the fresh one and the unreadable one", len(got))
+	}
+	if got[0].(map[string]any)["identifier"] != "COC-1" ||
+		got[1].(map[string]any)["identifier"] != "COC-3" {
+		t.Errorf("wrong rows survived: %v", got)
+	}
+
+	// No window means no filtering: the flag is opt-in.
+	none := &cobra.Command{}
+	none.Flags().Duration("updated-since", 0, "")
+	if len(filterIssuesUpdatedSince(none, rows)) != 3 {
+		t.Error("without --updated-since every row must pass through")
+	}
+}
+
+func TestUpdatedAtIsASortableColumn(t *testing.T) {
+	t.Parallel()
+	// The server accepts it; the CLI's own list was the only thing rejecting
+	// "what moved lately", which is the one question a daily patrol asks.
+	for _, want := range []string{"updated_at", "position", "created_at"} {
+		found := false
+		for _, c := range validIssueSortColumns {
+			if c == want {
+				found = true
+			}
+		}
+		if !found {
+			t.Errorf("%q must be sortable", want)
+		}
+	}
+}
