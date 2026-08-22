@@ -57,12 +57,12 @@ func TestRootCommandGroupsAreDeclared(t *testing.T) {
 // issue, and someone scanning the list has to be able to find them.
 func TestCardCommandIsListed(t *testing.T) {
 	for _, cmd := range rootCmd.Commands() {
-		if cmd.Name() == "doc" {
+		if cmd.Name() == "wiki" {
 			if cmd.GroupID != groupCore {
-				t.Fatalf("card is in group %q, want %q", cmd.GroupID, groupCore)
+				t.Fatalf("wiki is in group %q, want %q", cmd.GroupID, groupCore)
 			}
 			return
 		}
 	}
-	t.Fatal("card is not registered on the root command")
+	t.Fatal("wiki is not registered on the root command")
 }

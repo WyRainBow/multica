@@ -289,6 +289,41 @@ type ProjectResourceData struct {
 	Label        string          `json:"label,omitempty"`
 }
 
+// IssueDocData names one document written for this issue — a spec, a plan, a
+// closed review round. Title and kind only: the brief lists them so the agent
+// knows they exist and can fetch the ones it needs, which is cheaper than
+// shipping every body into a context window that may never read them.
+// Mirror field: internal/daemon/types.go, same JSON names.
+type IssueDocData struct {
+	ID    string `json:"id"`
+	Title string `json:"title"`
+	Kind  string `json:"kind,omitempty"`
+	// Current marks the one document that states where the issue stands now.
+	// Everything else on an issue is history: a round that closed, a decision
+	// that was taken. Without the distinction the brief lists them flat and an
+	// agent has no way to tell the state of record from the record of how it
+	// got there.
+	Current bool `json:"current,omitempty"`
+	// Label names which live document this is — requirements, design, spec —
+	// so three current blocks do not render three identical headings.
+	Label string `json:"label,omitempty"`
+	// Conclusions is the spec's round-conclusion table, carried inline for the
+	// current document only. It is the smallest, densest answer to "what has
+	// been decided" on the whole issue, and leaving it one fetch away meant
+	// agents rebuilt the same answer from the comment history instead.
+	Conclusions string `json:"conclusions,omitempty"`
+}
+
+// IssuePhaseData names one station on the issue's route and how far it got.
+// The agent is asked to file its comments at the right station; it cannot do
+// that without knowing which stations exist and which one the work is at.
+// Mirror field: internal/daemon/types.go, same JSON names.
+type IssuePhaseData struct {
+	Name      string `json:"name"`
+	Entered   bool   `json:"entered,omitempty"`
+	Completed bool   `json:"completed,omitempty"`
+}
+
 // ConnectedAppData keeps the daemon-claim wire field local to handler types
 // while sharing the canonical JSON shape with the runtime app metadata package.
 type ConnectedAppData = runtimeapps.ConnectedApp
@@ -322,10 +357,15 @@ type AgentTaskResponse struct {
 	Agent              *TaskAgentData        `json:"agent,omitempty"`
 	ConnectedApps      []ConnectedAppData    `json:"connected_apps,omitempty"` // daemon-claim only: per-run app capabilities mounted through runtime MCP overlays
 	Repos              []RepoData            `json:"repos,omitempty"`
-	ProjectID          string                `json:"project_id,omitempty"`          // issue's project, when present
-	ProjectTitle       string                `json:"project_title,omitempty"`       // for surfacing in agent context
-	ProjectDescription string                `json:"project_description,omitempty"` // durable project-level context injected into the brief
-	ProjectResources   []ProjectResourceData `json:"project_resources,omitempty"`   // resources attached to the project
+	ProjectID          string                `json:"project_id,omitempty"`           // issue's project, when present
+	ProjectTitle       string                `json:"project_title,omitempty"`        // for surfacing in agent context
+	ProjectDescription string                `json:"project_description,omitempty"`  // durable project-level context injected into the brief
+	ProjectResources   []ProjectResourceData `json:"project_resources,omitempty"`    // resources attached to the project
+	IssueDocs          []IssueDocData        `json:"issue_docs,omitempty"`           // documents written for this issue (spec, plans, closed rounds); titles only
+	IssuePhases        []IssuePhaseData      `json:"issue_phases,omitempty"`         // the issue's route, in track order, with how far it got
+	IssueDecisions     []IssueDecision       `json:"issue_decisions,omitempty"`      // decisions taken on this issue; superseded state is derived, never stored
+	IssueOpenQuestions []IssueOpenQuestion   `json:"issue_open_questions,omitempty"` // questions a decision left open that none has closed
+	WorkspaceAssets    []WorkspaceAssetGroup `json:"workspace_assets,omitempty"`     // the workspace's own cases and manuals; titles only
 	CreatedAt          string                `json:"created_at"`
 	PriorSessionID     string                `json:"prior_session_id,omitempty"` // session ID from a previous task on same issue
 	PriorWorkDir       string                `json:"prior_work_dir,omitempty"`   // work_dir from a previous task on same issue

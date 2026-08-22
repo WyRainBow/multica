@@ -35,12 +35,16 @@ import { allDocPaths } from "../doc-tree";
 export function DocEditorDialog({
   card,
   issueId,
+  defaultKind,
   onClose,
 }: {
   /** Null for a new card. */
   card: Card | null;
   /** Pre-links a new card to a requirement (used from the issue page). */
   issueId?: string;
+  /** Prefills the kind for a new page, so one created on a filtered tab is
+   *  filed where that tab can show it. Ignored when editing. */
+  defaultKind?: string;
   onClose: () => void;
 }) {
   const { t } = useT("docs");
@@ -50,7 +54,7 @@ export function DocEditorDialog({
 
   const [title, setTitle] = useState(card?.title ?? "");
   const [content, setContent] = useState(card?.content ?? "");
-  const [kind, setKind] = useState(card?.kind ?? "");
+  const [kind, setKind] = useState(card?.kind ?? defaultKind ?? "");
 
   // Suggestions come from the list the page already has in cache, so opening
   // the dialog costs no request. Reusing an existing name is the whole point:
@@ -174,10 +178,11 @@ export function DocEditorDialog({
               defaultValue={card?.content ?? ""}
               placeholder={t(($) => $.editor.content_placeholder)}
               onUpdate={setContent}
-              // Nothing to mention in a personal note, and no slash menu:
-              // both would put an agent-shaped affordance on a human's
-              // scratchpad.
-              disableMentions
+              // Context mode, so @ reaches issues, projects and other wiki
+              // pages. Mentions were off here from when a document was a
+              // personal note; a page that cites another page is the whole
+              // point of the wiki, and a page carries no id anyone can type.
+              mentionMode="context"
             />
           </div>
         </div>

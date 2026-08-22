@@ -20,8 +20,8 @@ export type AttentionKind =
   | "unclaimed";
 
 export interface AttentionItem {
-  kind: AttentionKind;
   tree: Worktree;
+  kinds: AttentionKind[];
   /** Cards this item is about, when it is about cards. */
   issues: Issue[];
 }
@@ -46,14 +46,16 @@ export function attentionItems(
   for (const tree of trees) {
     if (tree.status === "archived") continue;
     const issues = issuesByTree.get(tree.name) ?? [];
+    const kinds: AttentionKind[] = [];
+    let relevantIssues: Issue[] = [];
 
     if (tree.status === "blocked") {
-      items.push({ kind: "blocked", tree, issues: [] });
+      kinds.push("blocked");
     }
     // Uncommitted work is the only state here that can actually be lost, so it
     // outranks everything except a tree someone has already flagged as stuck.
     if (tree.dirty) {
-      items.push({ kind: "uncommitted", tree, issues: [] });
+      kinds.push("uncommitted");
     }
     // The branch landed and the cards did not close. This is the loop the
     // ledger exists to close, and neither side can see it alone: the tree does
@@ -61,19 +63,30 @@ export function attentionItems(
     if (tree.status === "merged") {
       const open = issues.filter(OPEN_CARD);
       if (open.length > 0) {
-        items.push({ kind: "merged_open_cards", tree, issues: open });
+        kinds.push("merged_open_cards");
+        const seen = new Set<string>();
+        relevantIssues = open.filter((issue) => {
+          const key = issue.id || issue.identifier;
+          if (seen.has(key)) return false;
+          seen.add(key);
+          return true;
+        });
       }
     }
     // Never measured means every fact on the row is somebody's claim.
     if (tree.verified_at === null) {
-      items.push({ kind: "never_measured", tree, issues: [] });
+      kinds.push("never_measured");
     }
     if (tree.session.agent === "" && tree.status === "active") {
-      items.push({ kind: "unclaimed", tree, issues: [] });
+      kinds.push("unclaimed");
+    }
+    if (kinds.length > 0) {
+      kinds.sort((a, b) => ORDER.indexOf(a) - ORDER.indexOf(b));
+      items.push({ tree, kinds, issues: relevantIssues });
     }
   }
 
   return items.sort(
-    (a, b) => ORDER.indexOf(a.kind) - ORDER.indexOf(b.kind),
+    (a, b) => ORDER.indexOf(a.kinds[0]!) - ORDER.indexOf(b.kinds[0]!),
   );
 }

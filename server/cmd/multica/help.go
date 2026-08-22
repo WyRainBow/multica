@@ -122,7 +122,7 @@ EXAMPLES
   $ multica issue list --output json
   $ multica issue create --title "..." --description-stdin < notes.md
   $ multica issue comment add COC-1 --phase 评审 --content "..."
-  $ multica doc add --title "..." --content-stdin < retro.md
+  $ multica wiki add --title "..." --content-stdin < retro.md
   $ multica daemon start
 
 ENVIRONMENT VARIABLES
@@ -135,7 +135,11 @@ LEARN MORE
   Use ` + "`multica <command> <subcommand> --help`" + ` for more information about a command.
 `
 
-var subHelpTemplate = `{{.Short}}
+// A command group with subcommands renders Short only, since most groups have
+// nothing more to say than their one-liner. A group whose Long text explains
+// how its subcommands fit together — the order to run them in, which no single
+// subcommand's own help can state — gets that shown instead.
+var subHelpTemplate = `{{with .Long}}{{.}}{{else}}{{.Short}}{{end}}
 
 USAGE
   {{.CommandPath}} <command> [flags]

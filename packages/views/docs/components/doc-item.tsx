@@ -3,6 +3,7 @@
 import { useRef, useState } from "react";
 import { Pencil, TextCursorInput, Trash2 } from "lucide-react";
 import { toast } from "sonner";
+import { copyText } from "@multica/ui/lib/clipboard";
 import type { Issue, Card } from "@multica/core/types";
 import {
   useDeleteCard,
@@ -87,6 +88,14 @@ export function DocItem({
 
   const [confirmDelete, setConfirmDelete] = useState(false);
   const remove = useDeleteCard();
+
+  // Reverts on its own: a permanent "copied" would leave every row that was
+  // ever clicked claiming it, which says nothing about the last click.
+  const [copied, setCopiedState] = useState(false);
+  const setCopied = (value: boolean) => {
+    setCopiedState(value);
+    if (value) window.setTimeout(() => setCopiedState(false), 1500);
+  };
 
   const commitRename = () => {
     const next = draftTitle.trim();
@@ -256,8 +265,22 @@ export function DocItem({
             <span className="shrink-0">{t(($) => $.doc.issue_missing)}</span>
           )
         )}
+        {/* Referencing a page needs its id, and a page carries no other
+            handle — no MUL-123 to type. Copying it here is how one document
+            comes to cite another. */}
+        <button
+          type="button"
+          onClick={(event) => {
+            event.stopPropagation();
+            void copyText(card.id).then((ok) => ok && setCopied(true));
+          }}
+          className="ml-auto shrink-0 font-mono tabular-nums text-faint-foreground transition-colors hover:text-foreground"
+          title={card.id}
+        >
+          {copied ? t(($) => $.doc.id_copied) : card.id.slice(0, 8)}
+        </button>
         {docLength(card.content) > 0 && (
-          <span className="ml-auto shrink-0 tabular-nums text-faint-foreground">
+          <span className="shrink-0 tabular-nums text-faint-foreground">
             {t(($) => $.doc.length, { count: docLength(card.content) })}
           </span>
         )}

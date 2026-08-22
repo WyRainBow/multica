@@ -5687,6 +5687,11 @@ func (d *Daemon) runTask(ctx context.Context, task Task, provider string, slot i
 		ProjectTitle:                     task.ProjectTitle,
 		ProjectDescription:               task.ProjectDescription,
 		ProjectResources:                 convertProjectResourcesForEnv(task.ProjectResources),
+		IssueDocs:                        convertIssueDocsForEnv(task.IssueDocs),
+		IssuePhases:                      convertIssuePhasesForEnv(task.IssuePhases),
+		IssueDecisions:                   convertIssueDecisionsForEnv(task.IssueDecisions),
+		IssueOpenQuestions:               convertIssueOpenQuestionsForEnv(task.IssueOpenQuestions),
+		WorkspaceAssets:                  convertWorkspaceAssetsForEnv(task.WorkspaceAssets),
 		ChatSessionID:                    task.ChatSessionID,
 		ChatChannelType:                  task.ChatChannelType,
 		AutopilotRunID:                   task.AutopilotRunID,
@@ -5936,6 +5941,16 @@ func (d *Daemon) runTask(ctx context.Context, task Task, provider string, slot i
 	runtimeBrief, err := execenv.InjectRuntimeConfig(env.WorkDir, provider, taskCtx)
 	if err != nil {
 		d.logger.Warn("execenv: inject runtime config failed (non-fatal)", "error", err)
+	}
+	// Persist what this run was actually given. The workdir copy is deleted
+	// with the workdir, and re-rendering later answers a different question:
+	// the brief is built from current data, so a spec or decision that moved
+	// since produces a brief this run never saw. Best-effort — the run is
+	// already going and a lost snapshot is not worth failing it over.
+	if strings.TrimSpace(runtimeBrief) != "" {
+		if serr := d.client.RecordBriefSnapshot(ctx, task.ID, runtimeBrief); serr != nil {
+			taskLog.Warn("record brief snapshot failed", "error", serr)
+		}
 	}
 	// Workdir is preserved for reuse by future tasks on the same (agent,
 	// issue) pair in cloud mode; the work_dir path is stored in DB on task
@@ -7226,6 +7241,74 @@ func convertReposForEnv(repos []RepoData) []execenv.RepoContextForEnv {
 	result := make([]execenv.RepoContextForEnv, len(repos))
 	for i, r := range repos {
 		result[i] = execenv.RepoContextForEnv{URL: r.URL, Description: r.Description, Ref: r.Ref}
+	}
+	return result
+}
+
+func convertWorkspaceAssetsForEnv(in []WorkspaceAssetGroup) []execenv.WorkspaceAssetGroupForEnv {
+	if len(in) == 0 {
+		return nil
+	}
+	out := make([]execenv.WorkspaceAssetGroupForEnv, len(in))
+	for i, g := range in {
+		docs := make([]execenv.WorkspaceAssetForEnv, len(g.Docs))
+		for j, d := range g.Docs {
+			docs[j] = execenv.WorkspaceAssetForEnv{ID: d.ID, Title: d.Title, Kind: d.Kind}
+		}
+		out[i] = execenv.WorkspaceAssetGroupForEnv{
+			Label: g.Label, When: g.When, Docs: docs, Dropped: g.Dropped,
+		}
+	}
+	return out
+}
+
+func convertIssueDecisionsForEnv(in []IssueDecisionData) []execenv.IssueDecisionForEnv {
+	if len(in) == 0 {
+		return nil
+	}
+	out := make([]execenv.IssueDecisionForEnv, len(in))
+	for i, d := range in {
+		out[i] = execenv.IssueDecisionForEnv{
+			ID: d.ID, DocID: d.DocID, Question: d.Question, Summary: d.Summary,
+			DecidedBy: d.DecidedBy, RecordedBy: d.RecordedBy,
+			Superseded: d.Superseded, SupersededBy: d.SupersededBy,
+		}
+	}
+	return out
+}
+
+func convertIssueOpenQuestionsForEnv(in []IssueOpenQuestionData) []execenv.IssueOpenQuestionForEnv {
+	if len(in) == 0 {
+		return nil
+	}
+	out := make([]execenv.IssueOpenQuestionForEnv, len(in))
+	for i, q := range in {
+		out[i] = execenv.IssueOpenQuestionForEnv{Ref: q.Ref, Question: q.Question, RaisedBy: q.RaisedBy}
+	}
+	return out
+}
+
+func convertIssuePhasesForEnv(phases []IssuePhaseData) []execenv.IssuePhaseForEnv {
+	if len(phases) == 0 {
+		return nil
+	}
+	result := make([]execenv.IssuePhaseForEnv, len(phases))
+	for i, p := range phases {
+		result[i] = execenv.IssuePhaseForEnv{Name: p.Name, Entered: p.Entered, Completed: p.Completed}
+	}
+	return result
+}
+
+func convertIssueDocsForEnv(docs []IssueDocData) []execenv.IssueDocForEnv {
+	if len(docs) == 0 {
+		return nil
+	}
+	result := make([]execenv.IssueDocForEnv, len(docs))
+	for i, d := range docs {
+		result[i] = execenv.IssueDocForEnv{
+			ID: d.ID, Title: d.Title, Kind: d.Kind,
+			Current: d.Current, Label: d.Label, Conclusions: d.Conclusions,
+		}
 	}
 	return result
 }

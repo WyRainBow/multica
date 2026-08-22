@@ -331,11 +331,11 @@ document: title plus Markdown, owned by the workspace, optionally linked to the
 issue it came from.
 
 ```bash
-multica doc add --title "COC-97 踩坑" --content-stdin < notes.md
-multica doc list                       # newest first; CHARS says how long each is
-multica doc list --search 踩坑          # title AND body, whole workspace
-multica doc list --issue COC-97        # only documents linked to that issue
-multica doc get <doc-id>
+multica wiki add --title "COC-97 踩坑" --content-stdin < notes.md
+multica wiki list                       # newest first; CHARS says how long each is
+multica wiki list --search 踩坑          # title AND body, whole workspace
+multica wiki list --issue COC-97        # only documents linked to that issue
+multica wiki get <doc-id>
 ```
 
 Pipe the body in for anything longer than a sentence — inline `--content`
@@ -345,13 +345,13 @@ mangles newlines.
 for a folder returns everything below it:
 
 ```bash
-multica doc add --kind "本地联调/P0 workflow" --title "..." --content-stdin < sop.md
-multica doc list --kind 本地联调          # includes 本地联调/P0 workflow
-multica doc kinds                       # every kind that exists, nested ones included
+multica wiki add --kind "本地联调/P0 workflow" --title "..." --content-stdin < sop.md
+multica wiki list --kind 本地联调          # includes 本地联调/P0 workflow
+multica wiki kinds                       # every kind that exists, nested ones included
 ```
 
 A folder exists exactly as long as a document names it, so there is nothing to
-create first — but read `doc kinds` before inventing a path, because a
+create first — but read `wiki kinds` before inventing a path, because a
 near-duplicate folder is worse than a wrong one: nobody looking in either finds
 both.
 

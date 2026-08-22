@@ -130,7 +130,7 @@ multica issue list --include-archived
 - **每份文档有自己的页面**，不是模态框 —— 最长的一份 11674 字，模态框等于承诺「你在编辑的东西很小」
 - 长文档带**目录大纲**，跟 issue 描述用的是同一套
 - 编辑**自动存**，没有保存按钮
-- **哪里都显示字数**：列表行、文档页底部、issue 上的关联列表，以及 `doc list` 的 CHARS 列。列表的正文预览是按固定高度切的，一份 300 字的便条和一份 11674 字的 SOP 在屏幕上一样高，字数是唯一说明「切口下面还有多少」的东西。四处都按**码点**数（`🎉` 算 1 个），所以四个数字能互相引用
+- **哪里都显示字数**：列表行、文档页底部、issue 上的关联列表，以及 `wiki list` 的 CHARS 列。列表的正文预览是按固定高度切的，一份 300 字的便条和一份 11674 字的 SOP 在屏幕上一样高，字数是唯一说明「切口下面还有多少」的东西。四处都按**码点**数（`🎉` 算 1 个），所以四个数字能互相引用
 
 ### 目录树
 
@@ -148,10 +148,10 @@ multica issue list --include-archived
 **两端都能挂、都能摘**：文档页有「关联 issue」，issue 页资源区下面有「关联文档」。你站在哪一端不该由软件决定——看着 issue 想起那份 SOP，和写完 SOP 知道它服务哪条需求，一样常见。搜索走服务端，能找到当前页没加载的东西。一份文档只属于一条 issue，所以挂一份已经挂在别处的会**移动**它，选择列表里会标出来。
 
 ```bash
-multica doc add --title "..." --kind "本地联调/P0 workflow" --content "..."
-multica doc kinds
-multica doc list --kind "本地联调"      # 连子目录一起
-multica doc list --search "关键词"
+multica wiki add --title "..." --kind "本地联调/P0 workflow" --content "..."
+multica wiki kinds
+multica wiki list --kind "本地联调"      # 连子目录一起
+multica wiki list --search "关键词"
 ```
 
 ---

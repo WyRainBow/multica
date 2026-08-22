@@ -33,6 +33,65 @@ type ProjectResourceForEnv struct {
 	Label        string          `json:"label,omitempty"` // optional user-supplied label
 }
 
+// IssueDocForEnv names one document written for this issue: a spec, a plan, a
+// closed review round. The brief lists it so the agent knows it exists.
+type IssueDocForEnv struct {
+	ID    string `json:"id"`
+	Title string `json:"title"`
+	Kind  string `json:"kind,omitempty"` // the document's slot, e.g. "COC-305/spec"
+	// Current marks a document stating where the issue stands now.
+	Current bool `json:"current,omitempty"`
+	// Label names which live document this is — requirements, design, spec.
+	Label string `json:"label,omitempty"`
+	// Conclusions is that document's round-conclusion table, inlined so the
+	// densest answer on the issue costs no fetch.
+	Conclusions string `json:"conclusions,omitempty"`
+}
+
+// IssueDecisionForEnv is one decision on the issue. Whether it still holds is
+// derived from whether a later decision replaced it, never stored.
+type IssueDecisionForEnv struct {
+	ID           string `json:"id"`
+	DocID        string `json:"doc_id"`
+	Question     string `json:"question,omitempty"`
+	Summary      string `json:"summary,omitempty"`
+	DecidedBy    string `json:"decided_by,omitempty"`
+	RecordedBy   string `json:"recorded_by,omitempty"`
+	Superseded   bool   `json:"superseded,omitempty"`
+	SupersededBy string `json:"superseded_by,omitempty"`
+}
+
+// IssueOpenQuestionForEnv is a question some decision left open that none has
+// closed.
+type IssueOpenQuestionForEnv struct {
+	Ref      string `json:"ref"`
+	Question string `json:"question"`
+	RaisedBy string `json:"raised_by,omitempty"`
+}
+
+// WorkspaceAssetForEnv names one document the workspace wrote.
+type WorkspaceAssetForEnv struct {
+	ID    string `json:"id"`
+	Title string `json:"title"`
+	Kind  string `json:"kind,omitempty"`
+}
+
+// WorkspaceAssetGroupForEnv is one folder's worth, with the line saying when
+// to reach for it.
+type WorkspaceAssetGroupForEnv struct {
+	Label   string                 `json:"label"`
+	When    string                 `json:"when,omitempty"`
+	Docs    []WorkspaceAssetForEnv `json:"docs"`
+	Dropped int                    `json:"dropped,omitempty"`
+}
+
+// IssuePhaseForEnv names one station on the issue's route, in track order.
+type IssuePhaseForEnv struct {
+	Name      string `json:"name"`
+	Entered   bool   `json:"entered,omitempty"`
+	Completed bool   `json:"completed,omitempty"`
+}
+
 // PrepareParams holds all inputs needed to set up an execution environment.
 type PrepareParams struct {
 	WorkspacesRoot string // base path for all envs (e.g., ~/multica_workspaces)
@@ -119,12 +178,17 @@ type TaskContextForEnv struct {
 	AgentInstructions             string // agent identity/persona instructions, injected into CLAUDE.md
 	AgentSkills                   []SkillContextForEnv
 	DisabledRuntimeSkills         []RuntimeSkillRefForEnv
-	Repos                         []RepoContextForEnv     // workspace repos available for checkout
-	ProjectID                     string                  // active project for this task, when present
-	ProjectTitle                  string                  // human-readable project title
-	ProjectDescription            string                  // durable project-level context, rendered into the brief's Project Context section
-	ProjectResources              []ProjectResourceForEnv // resources attached to the project
-	ChatSessionID                 string                  // non-empty for chat tasks
+	Repos                         []RepoContextForEnv         // workspace repos available for checkout
+	ProjectID                     string                      // active project for this task, when present
+	ProjectTitle                  string                      // human-readable project title
+	ProjectDescription            string                      // durable project-level context, rendered into the brief's Project Context section
+	ProjectResources              []ProjectResourceForEnv     // resources attached to the project
+	IssueDocs                     []IssueDocForEnv            // documents written for this issue; titles only, bodies fetched on demand
+	IssuePhases                   []IssuePhaseForEnv          // the issue's route in track order, with how far it got
+	IssueDecisions                []IssueDecisionForEnv       // decisions taken on this issue; superseded state derived
+	IssueOpenQuestions            []IssueOpenQuestionForEnv   // questions a decision left open that none has closed
+	WorkspaceAssets               []WorkspaceAssetGroupForEnv // the workspace's own cases and manuals; titles only
+	ChatSessionID                 string                      // non-empty for chat tasks
 	// ChatChannelType is the IM platform behind a chat session ("slack",
 	// "feishu", "wecom"); empty for a web/mobile chat. Any non-empty value
 	// means the reply leaves Multica for an external channel, so `multica

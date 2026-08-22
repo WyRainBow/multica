@@ -6,6 +6,7 @@ vi.mock("@multica/core/paths", () => ({
   useWorkspacePaths: () => ({
     workspaceWiki: () => "/acme/workspace/wiki",
     workspaceSkills: () => "/acme/workspace/skills",
+    workspaceInstructions: () => "/acme/workspace/instructions",
     workspaceWorktree: () => "/acme/workspace/worktree",
     workspaceAgentWiki: () => "/acme/workspace/agentwiki",
   }),
@@ -17,8 +18,14 @@ vi.mock("../navigation", () => ({
 
 // The views' own contents are tested where they live. This file is about the
 // shell around them, so each is a marker.
+// Both wikis are this one page under opposite filters, so the marker says
+// which filter it was mounted with.
 vi.mock("@multica/views/docs", () => ({
-  DocsPage: () => <div data-testid="wiki">wiki</div>,
+  DocsPage: ({ hideKinds }: { hideKinds?: (kind: string) => boolean }) => (
+    <div
+      data-testid={hideKinds?.("AgentWiki/cases/") ? "wiki" : "agentwiki"}
+    />
+  ),
 }));
 vi.mock("@multica/views/skills", () => ({
   SkillsPage: () => <div data-testid="skills">skills</div>,
@@ -26,13 +33,20 @@ vi.mock("@multica/views/skills", () => ({
 vi.mock("./worktree-ledger", () => ({
   WorktreeLedger: () => <div data-testid="worktree">worktree</div>,
 }));
-vi.mock("./agentwiki-overview", () => ({
-  AgentWikiOverview: () => <div data-testid="agentwiki">agentwiki</div>,
+vi.mock("./instructions-page", () => ({
+  InstructionsPage: () => <div data-testid="instructions">instructions</div>,
 }));
+
 
 import { OpenwikiPage, type OpenwikiTab } from "./openwiki-page";
 
-const TABS: OpenwikiTab[] = ["wiki", "skills", "worktree", "agentwiki"];
+const TABS: OpenwikiTab[] = [
+  "wiki",
+  "skills",
+  "instructions",
+  "worktree",
+  "agentwiki",
+];
 
 /**
  * The dashboard shell sets overflow-hidden, so a page that does not carry its
@@ -57,15 +71,15 @@ describe("OpenwikiPage", () => {
   });
 
   it("gives the plain views a scroll container, and the self-scrolling ones none", () => {
-    // Docs and skills scroll their own lists; a wrapper here would nest a
-    // second scrollbar inside the first.
-    for (const tab of ["wiki", "skills"] as OpenwikiTab[]) {
+    // Both wikis and skills scroll their own lists; a wrapper here would nest
+    // a second scrollbar inside the first.
+    for (const tab of ["wiki", "skills", "agentwiki", "instructions"] as OpenwikiTab[]) {
       const { unmount } = renderWithI18n(<OpenwikiPage tab={tab} />);
       expect(scrollContainerOf(screen.getByTestId(tab))).toBeNull();
       unmount();
     }
 
-    for (const tab of ["worktree", "agentwiki"] as OpenwikiTab[]) {
+    for (const tab of ["worktree"] as OpenwikiTab[]) {
       const { unmount } = renderWithI18n(<OpenwikiPage tab={tab} />);
       const container = scrollContainerOf(screen.getByTestId(tab));
       expect(

@@ -1863,6 +1863,69 @@ func (h *Handler) buildClaimedTaskResponse(r *http.Request, task *db.AgentTaskQu
 				}
 			}
 
+			// Documents written for this issue — spec, plans, closed review
+			// rounds. Without them an agent picking the issue up sees the
+			// description and the comments but not the artefacts the last
+			// round produced, and someone has to paste them in by hand.
+			// Titles only: bodies are fetched on demand, so a long spec costs
+			// nothing until it is actually wanted.
+			if docs, err := h.Queries.ListCardsForIssue(r.Context(), db.ListCardsForIssueParams{
+				WorkspaceID: issue.WorkspaceID,
+				IssueID:     issue.ID,
+			}); err == nil && len(docs) > 0 {
+				out := make([]IssueDocData, 0, len(docs))
+				for _, doc := range docs {
+					entry := IssueDocData{
+						ID:    uuidToString(doc.ID),
+						Title: doc.Title,
+						Kind:  doc.Kind,
+					}
+					// The spec is the one document that says where the issue
+					// stands now; the rounds and decisions beside it say how it
+					// got there. Its conclusions ride along because they are the
+					// densest answer on the issue and an agent that has to fetch
+					// them will rebuild the same answer from comments instead.
+					if label, live := liveDocLabel(doc.Kind); live {
+						entry.Current = true
+						entry.Label = label
+						// Only the spec carries a derived conclusions section;
+						// the others are prose their authors own.
+						entry.Conclusions = extractSpecConclusions(doc.Content)
+					}
+					out = append(out, entry)
+				}
+				resp.IssueDocs = out
+
+				// What holds now and what is still open, worked out from the
+				// cards already loaded above. Nothing here is stored, so it
+				// cannot disagree with what the cards say.
+				forDerivation := make([]struct{ ID, Kind, Content string }, 0, len(docs))
+				for _, doc := range docs {
+					forDerivation = append(forDerivation, struct{ ID, Kind, Content string }{
+						ID: uuidToString(doc.ID), Kind: doc.Kind, Content: doc.Content,
+					})
+				}
+				resp.IssueDecisions, resp.IssueOpenQuestions = DeriveIssueDecisions(forDerivation)
+			}
+
+			// The route this issue takes and how far along it is. The agent is
+			// asked to file its comments at the station the work is at, which
+			// it cannot do without being told the stations exist.
+			if phases, err := h.Queries.ListIssuePhases(r.Context(), db.ListIssuePhasesParams{
+				WorkspaceID: issue.WorkspaceID,
+				IssueID:     issue.ID,
+			}); err == nil && len(phases) > 0 {
+				route := make([]IssuePhaseData, 0, len(phases))
+				for _, phase := range phases {
+					route = append(route, IssuePhaseData{
+						Name:      phase.Name,
+						Entered:   phase.EnteredAt.Valid,
+						Completed: phase.CompletedAt.Valid,
+					})
+				}
+				resp.IssuePhases = route
+			}
+
 			var projectRepos []RepoData
 			if issue.ProjectID.Valid {
 				resp.ProjectID = uuidToString(issue.ProjectID)
@@ -2577,6 +2640,10 @@ func (h *Handler) buildClaimedTaskResponse(r *http.Request, task *db.AgentTaskQu
 		if ws.Context.Valid {
 			resp.WorkspaceContext = ws.Context.String
 		}
+		// The workspace's own writing rides the same claim. Not gated on task
+		// kind: cases and manuals belong to the workspace, not to an issue, and
+		// a chat is where "have we hit this before" gets asked most often.
+		resp.WorkspaceAssets = h.loadWorkspaceAssets(r.Context(), resp.WorkspaceID)
 	} else {
 		slog.Warn("task claim: failed to load workspace for context injection",
 			"task_id", uuidToString(task.ID),
@@ -2902,6 +2969,51 @@ func (h *Handler) ExtendTaskPrepareLease(w http.ResponseWriter, r *http.Request)
 	}
 
 	writeJSON(w, http.StatusOK, taskToResponse(*updated, taskWorkspaceID))
+}
+
+// TaskBriefSnapshotRequest carries the brief a run was actually handed.
+type TaskBriefSnapshotRequest struct {
+	Brief string `json:"brief"`
+}
+
+// RecordTaskBriefSnapshot stores the runtime brief this run was given.
+//
+// The brief is rendered fresh from current data on every run, so replaying it
+// later answers "what would this issue produce now" rather than "what did that
+// run see". Once a spec or a decision has moved those are different documents,
+// and the second question is the one asked when a run went wrong.
+//
+// A separate call rather than a field on start: the brief is only final after
+// the resume gating that runs between them, and moving the start transition
+// later would reorder a race-sensitive block (issue #3999 race A) for no gain.
+//
+// Best-effort by contract. The run is already underway by the time this lands,
+// so a failure here is worth logging and not worth failing a task over.
+func (h *Handler) RecordTaskBriefSnapshot(w http.ResponseWriter, r *http.Request) {
+	taskID := chi.URLParam(r, "taskId")
+	if _, ok := h.requireDaemonTaskAccess(w, r, taskID); !ok {
+		return
+	}
+	var req TaskBriefSnapshotRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid request body")
+		return
+	}
+	brief := strings.TrimSpace(req.Brief)
+	if brief == "" {
+		// An empty snapshot would record "this run was given nothing", which is
+		// a claim, not an absence. Absence is the honest state here.
+		writeJSON(w, http.StatusOK, map[string]string{"status": "skipped"})
+		return
+	}
+	if err := h.Queries.RecordAgentTaskBriefSnapshot(r.Context(), db.RecordAgentTaskBriefSnapshotParams{
+		ID: parseUUID(taskID), Brief: brief,
+	}); err != nil {
+		slog.Warn("record brief snapshot failed", "task_id", taskID, "error", err)
+		writeError(w, http.StatusInternalServerError, "failed to record brief snapshot")
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 }
 
 // StartTask marks a dispatched task as running.

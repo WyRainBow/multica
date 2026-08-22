@@ -752,6 +752,26 @@ SET status = 'running',
 WHERE id = $1 AND status IN ('dispatched', 'waiting_local_directory')
 RETURNING *;
 
+-- name: RecordAgentTaskBriefSnapshot :exec
+-- Stores the brief the agent was actually handed for this run.
+--
+-- The brief is rendered fresh from current data on every run, so replaying it
+-- later answers "what would this issue produce now", not "what did that run
+-- see". Once a spec or a decision moves, those are different documents — and
+-- the second question is the one asked when a run went wrong.
+--
+-- Written at start rather than completion: a task that dies hard never
+-- completes, and those are exactly the runs worth reconstructing. Lands in the
+-- otherwise-unused `context` JSONB so no table or column is added.
+UPDATE agent_task_queue
+SET context = jsonb_set(
+        COALESCE(NULLIF(context, 'null'::jsonb), '{}'::jsonb),
+        '{brief_snapshot}',
+        to_jsonb(sqlc.arg(brief)::text),
+        true
+    )
+WHERE id = sqlc.arg(id);
+
 -- name: MarkAgentTaskWaitingLocalDirectory :one
 -- Transitions a freshly-dispatched task into 'waiting_local_directory' while
 -- the daemon waits for another in-flight task to release the path lock on a

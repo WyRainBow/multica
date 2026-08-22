@@ -31,11 +31,18 @@ import { DocTreeNav } from "./doc-tree-nav";
  */
 export function DocsPage({
   hideKinds,
+  title,
+  newKindPrefix,
 }: {
-  /** Exclude docs whose kind matches (e.g. the Agent wiki's cases — two
-   *  different wikis: this page is the documents wiki, and the experience
-   *  shelf curates its own tab). Empty kind (unfiled docs) never matches. */
+  /** Exclude docs whose kind matches. The two wikis are the same page with
+   *  opposite filters: this one hides the AgentWiki/ prefix, the Agent wiki
+   *  hides everything else. Called with "" for an unfiled document. */
   hideKinds?: (kind: string) => boolean;
+  /** Overrides the heading. The Agent wiki is this page under another name. */
+  title?: string;
+  /** Prefills the kind when creating here, so a page made on the Agent wiki
+   *  tab is not filed somewhere that tab cannot show. */
+  newKindPrefix?: string;
 }) {
   const { t } = useT("docs");
   const wsId = useWorkspaceId();
@@ -124,7 +131,7 @@ export function DocsPage({
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       <div className="flex items-center gap-2 border-b px-4 py-3">
-        <h1 className="text-title-sm font-medium">{t(($) => $.page.title)}</h1>
+        <h1 className="text-title-sm font-medium">{title ?? t(($) => $.page.title)}</h1>
         <span className="text-caption text-muted-foreground">
           {t(($) => $.page.count, { count: cards.length })}
         </span>
@@ -205,6 +212,7 @@ export function DocsPage({
       {(creating || editing) && (
         <DocEditorDialog
           card={editing}
+          defaultKind={newKindPrefix}
           onClose={() => {
             setCreating(false);
             setEditing(null);

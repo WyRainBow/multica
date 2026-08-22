@@ -38,7 +38,7 @@ function issue(status: string): Issue {
 }
 
 const kinds = (items: ReturnType<typeof attentionItems>) =>
-  items.map((i) => i.kind);
+  items.flatMap((i) => i.kinds);
 
 describe("attentionItems", () => {
   it("says nothing about a tree that is measured, claimed and clean", () => {
@@ -53,7 +53,9 @@ describe("attentionItems", () => {
       ],
       new Map(),
     );
-    expect(kinds(items)[0]).toBe("uncommitted");
+    expect(items).toHaveLength(2);
+    expect(items[0]?.tree.id).toBe("b");
+    expect(items[1]?.kinds).toEqual(["never_measured", "unclaimed"]);
   });
 
   it("catches a branch that landed while its cards stayed open", () => {
@@ -61,7 +63,7 @@ describe("attentionItems", () => {
     const byTree = new Map([["feat-1", [issue("in_progress"), issue("done")]]]);
 
     const items = attentionItems([merged], byTree);
-    const item = items.find((i) => i.kind === "merged_open_cards");
+    const item = items.find((i) => i.kinds.includes("merged_open_cards"));
     expect(item, "a merged tree with an open card should be surfaced").toBeDefined();
     // Only the cards still open — listing the closed one would make the row
     // look like more work than it is.
@@ -94,5 +96,21 @@ describe("attentionItems", () => {
         ),
       ),
     ).not.toContain("unclaimed");
+  });
+
+  it("combines reasons into one row and de-duplicates cards", () => {
+    const merged = tree({
+      status: "merged",
+      dirty: true,
+      verified_at: null,
+      session: { ...tree().session, agent: "" },
+      merged_sha: "a".repeat(40),
+    });
+    const duplicate = issue("in_progress");
+    const byTree = new Map([[merged.name, [duplicate, duplicate]]]);
+    const items = attentionItems([merged], byTree);
+    expect(items).toHaveLength(1);
+    expect(items[0]?.kinds).toEqual(["uncommitted", "merged_open_cards", "never_measured"]);
+    expect(items[0]?.issues).toHaveLength(1);
   });
 });

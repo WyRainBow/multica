@@ -30,7 +30,7 @@ import type {
   Agent,
   Squad,
 } from "@multica/core/types";
-import { ListTodo } from "lucide-react";
+import { FileText, ListTodo } from "lucide-react";
 import { ActorAvatar } from "../../common/actor-avatar";
 import { StatusIcon } from "../../issues/components/status-icon";
 import { ProjectIcon } from "../../projects/components/project-icon";
@@ -69,7 +69,7 @@ import { blockedReasonLabel } from "../../issues/blocked-trigger-copy";
 export interface MentionItem {
   id: string;
   label: string;
-  type: "member" | "agent" | "squad" | "issue" | "project" | "all";
+  type: "member" | "agent" | "squad" | "issue" | "project" | "doc" | "all";
   /** Optional grouping hint for injected context items. */
   group?: "current" | "recent" | "search";
   /** Secondary text shown beside the label (e.g. issue title) */
@@ -110,6 +110,7 @@ function groupItems(items: MentionItem[], query: string): MentionGroup[] {
   const search: MentionItem[] = [];
   const users: MentionItem[] = [];
   const issues: MentionItem[] = [];
+  const docs: MentionItem[] = [];
   const cancelled: MentionItem[] = [];
 
   for (const item of items) {
@@ -121,6 +122,8 @@ function groupItems(items: MentionItem[], query: string): MentionGroup[] {
       recent.push(item);
     } else if (item.group === "search") {
       search.push(item);
+    } else if (item.type === "doc") {
+      docs.push(item);
     } else if (item.type === "issue" || item.type === "project") {
       issues.push(item);
     } else {
@@ -134,6 +137,7 @@ function groupItems(items: MentionItem[], query: string): MentionGroup[] {
   if (search.length > 0) groups.push({ label: "Search", items: search });
   if (users.length > 0) groups.push({ label: "Users", items: users });
   if (issues.length > 0) groups.push({ label: "Issues", items: issues });
+  if (docs.length > 0) groups.push({ label: "Wiki", items: docs });
   // Always last: no cancelled row of any type may precede a live one.
   if (cancelled.length > 0) groups.push({ label: "Cancelled", items: cancelled });
   return groups;
@@ -293,7 +297,14 @@ export const MentionList = forwardRef<MentionListRef, MentionListProps>(
         void (async () => {
           try {
             if (includeProjectSearch) {
-              const [issues, projects] = await Promise.all([
+              // Wiki pages ride the same switch as projects: both are context
+              // a writer reaches for by name, and a page carries only a UUID,
+              // so the picker is the only way to reference one without
+              // pasting a link.
+              // Settled, not all: three sources answer independently, and one
+              // of them failing must not blank the other two. Promise.all
+              // would have thrown the whole result set away.
+              const [issues, projects, docs] = await Promise.allSettled([
                 api.searchIssues({
                   q,
                   limit: SERVER_CONTEXT_SEARCH_LIMIT,
@@ -306,11 +317,20 @@ export const MentionList = forwardRef<MentionListRef, MentionListProps>(
                   include_closed: true,
                   signal: controller.signal,
                 }),
+                api.listCards({ search: q, limit: SERVER_CONTEXT_SEARCH_LIMIT }),
               ]);
               if (!cancelled && !controller.signal.aborted) {
+                const searchGroup = { group: "search" as const };
                 setServerItems([
-                  ...issues.issues.map((issue) => ({ ...issueToMention(issue), group: "search" as const })),
-                  ...projects.projects.map((project) => ({ ...projectToMention(project), group: "search" as const })),
+                  ...(issues.status === "fulfilled" ? issues.value.issues : []).map(
+                    (issue) => ({ ...issueToMention(issue), ...searchGroup }),
+                  ),
+                  ...(projects.status === "fulfilled" ? projects.value.projects : []).map(
+                    (project) => ({ ...projectToMention(project), ...searchGroup }),
+                  ),
+                  ...(docs.status === "fulfilled" ? docs.value.cards : []).map(
+                    (doc) => ({ ...docToMention(doc), ...searchGroup }),
+                  ),
                 ]);
               }
             } else {
@@ -556,6 +576,32 @@ function MentionRow({
     );
   }
 
+  if (item.type === "doc") {
+    return (
+      <button
+        type="button"
+        ref={buttonRef}
+        className={`flex w-full items-center gap-2.5 px-3 py-2 text-left text-caption transition-colors ${
+          selected ? "bg-accent" : "hover:bg-accent/50"
+        }`}
+        onClick={onSelect}
+      >
+        <span className="flex h-7 w-7 shrink-0 items-center justify-center">
+          <FileText className="h-3.5 w-3.5 text-muted-foreground" />
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="block truncate font-medium text-foreground">{item.label}</span>
+          {/* The folder, which is what tells two similarly-titled pages apart. */}
+          {item.description && (
+            <span className="block truncate text-muted-foreground">
+              {item.description}
+            </span>
+          )}
+        </span>
+      </button>
+    );
+  }
+
   if (item.type === "project") {
     const projectStatusCfg = item.projectStatus ? PROJECT_STATUS_CONFIG[item.projectStatus] : null;
     return (
@@ -657,6 +703,16 @@ function projectToMention(p: { id: string; title: string; description?: string |
     description: p.description ?? undefined,
     icon: p.icon ?? null,
     projectStatus: p.status,
+  };
+}
+
+function docToMention(doc: { id: string; title: string; kind?: string | null }): MentionItem {
+  return {
+    id: doc.id,
+    label: doc.title,
+    type: "doc" as const,
+    // The folder is what tells two similarly-titled pages apart.
+    description: doc.kind?.replace(/\/$/, "") || undefined,
   };
 }
 

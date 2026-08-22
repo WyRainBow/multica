@@ -1,10 +1,10 @@
 "use client";
 
-import { BookMarked, BookOpen, GitBranch, Sparkles } from "lucide-react";
+import { BookMarked, BookOpen, GitBranch, ScrollText, Sparkles } from "lucide-react";
 import { DocsPage } from "@multica/views/docs";
-import { AgentWikiOverview } from "./agentwiki-overview";
 import { SkillsPage } from "@multica/views/skills";
 import { WorktreeLedger } from "./worktree-ledger";
+import { InstructionsPage } from "./instructions-page";
 import { useWorkspacePaths } from "@multica/core/paths";
 import { cn } from "@multica/ui/lib/utils";
 import { useT } from "../i18n";
@@ -19,7 +19,16 @@ import { useNavigation } from "../navigation";
  * view could not be linked to or shared, a reload dropped you back on the first
  * one, and the back button left the page entirely.
  */
-export type OpenwikiTab = "wiki" | "skills" | "worktree" | "agentwiki";
+/** Everything filed under it belongs to the Agent wiki; everything else to
+ *  the Multica wiki. One prefix, read from both sides. */
+const AGENT_WIKI_PREFIX = "AgentWiki/";
+
+export type OpenwikiTab =
+  | "wiki"
+  | "skills"
+  | "instructions"
+  | "worktree"
+  | "agentwiki";
 
 export function OpenwikiPage({ tab = "wiki" }: { tab?: OpenwikiTab }) {
   const { t } = useT("openwiki");
@@ -43,6 +52,12 @@ export function OpenwikiPage({ tab = "wiki" }: { tab?: OpenwikiTab }) {
       label: t(($) => $.tab_skills),
       icon: Sparkles,
       href: paths.workspaceSkills(),
+    },
+    {
+      key: "instructions",
+      label: t(($) => $.tab_instructions),
+      icon: ScrollText,
+      href: paths.workspaceInstructions(),
     },
     {
       key: "worktree",
@@ -81,16 +96,30 @@ export function OpenwikiPage({ tab = "wiki" }: { tab?: OpenwikiTab }) {
           </button>
         ))}
       </div>
-      {/* Docs and skills scroll their own lists — wrapping them would nest a
-        second scrollbar inside the first. The other two are plain pages and
-        need the container. */}
+      {/* Both wikis and skills scroll their own lists — wrapping them would
+        nest a second scrollbar inside the first. The ledger is a plain page
+        and needs the container.
+
+        The two wikis are one page with opposite filters, so the Agent wiki
+        gets the same directory, search and empty states rather than a second,
+        thinner implementation of them. */}
       {tab === "wiki" && (
-        <DocsPage hideKinds={(kind) => kind.startsWith("AgentWiki/")} />
+        <DocsPage hideKinds={(kind) => kind.startsWith(AGENT_WIKI_PREFIX)} />
+      )}
+      {tab === "agentwiki" && (
+        <DocsPage
+          hideKinds={(kind) => !kind.startsWith(AGENT_WIKI_PREFIX)}
+          title={t(($) => $.tab_agentwiki)}
+          newKindPrefix={AGENT_WIKI_PREFIX}
+        />
       )}
       {tab === "skills" && <SkillsPage />}
-      {(tab === "worktree" || tab === "agentwiki") && (
+      {/* Its own scroll: the editor fills the pane and must not add a second
+        scrollbar inside the shell's. */}
+      {tab === "instructions" && <InstructionsPage />}
+      {tab === "worktree" && (
         <div className="min-h-0 flex-1 overflow-y-auto">
-          {tab === "worktree" ? <WorktreeLedger /> : <AgentWikiOverview />}
+          <WorktreeLedger />
         </div>
       )}
     </div>

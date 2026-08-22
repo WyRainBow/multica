@@ -29,7 +29,8 @@
     "length_other": "{{count}} chars",
     "rename": "Rename",
     "rename_failed": "Rename failed",
-    "rename_input": "Rename title"
+    "rename_input": "Rename title",
+    "id_copied": "copied"
   },
   "issue_section": {
     "title": "Documents",

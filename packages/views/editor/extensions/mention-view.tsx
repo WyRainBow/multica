@@ -21,6 +21,10 @@ import { useIssueLinkStore } from "@multica/core/issues/stores";
 import { useNavigation } from "../../navigation";
 import { IssueChip } from "../../issues/components/issue-chip";
 import { ProjectChip } from "../../projects/components/project-chip";
+import { useQuery } from "@tanstack/react-query";
+import { FileText } from "lucide-react";
+import { useWorkspaceId } from "@multica/core/hooks";
+import { cardDetailOptions, cardListOptions } from "@multica/core/docs/queries";
 
 export function MentionView({ node }: NodeViewProps) {
   const { type, id, label } = node.attrs;
@@ -37,6 +41,14 @@ export function MentionView({ node }: NodeViewProps) {
     return (
       <NodeViewWrapper as="span" className="inline">
         <ProjectMention projectId={id} fallbackLabel={label} />
+      </NodeViewWrapper>
+    );
+  }
+
+  if (type === "doc") {
+    return (
+      <NodeViewWrapper as="span" className="inline">
+        <DocMention docId={id} fallbackLabel={label} />
       </NodeViewWrapper>
     );
   }
@@ -133,6 +145,55 @@ function IssueMention({
         fallbackLabel={fallbackLabel}
         className="cursor-pointer hover:bg-accent transition-colors"
       />
+    </a>
+  );
+}
+
+/**
+ * A wiki page inside the editor: its title, and a real link.
+ *
+ * The document detail page IS an editor — a page is read there, not only
+ * written — so a reference that cannot be followed there cannot be followed at
+ * all. Same shape as the issue chip beside it: an anchor, so it is reachable by
+ * Tab, opens in a new tab on modifier-click, and exposes a URL to copy.
+ *
+ * Resolved from the list first, since a page citing several others would
+ * otherwise be one request per citation.
+ */
+function DocMention({
+  docId,
+  fallbackLabel,
+}: {
+  docId: string;
+  fallbackLabel?: string;
+}) {
+  const wsId = useWorkspaceId();
+  const p = useWorkspacePaths();
+  const { push } = useNavigation();
+  const { data: listResponse } = useQuery(cardListOptions(wsId));
+  const listed = listResponse?.cards?.find((card) => card.id === docId);
+  const { data: detail } = useQuery({
+    ...cardDetailOptions(wsId, docId),
+    enabled: Boolean(wsId) && !listed,
+  });
+  const doc = listed ?? detail;
+  const docPath = p.docDetail(docId);
+
+  return (
+    <a
+      href={docPath}
+      onClick={(event) => {
+        event.stopPropagation();
+        // Let the browser handle a modifier-click into a new tab.
+        if (event.metaKey || event.ctrlKey || event.shiftKey) return;
+        event.preventDefault();
+        push(docPath);
+      }}
+      className="doc-mention inline-flex items-baseline gap-1 rounded bg-muted px-1 align-baseline transition-colors hover:bg-accent"
+      title={doc?.title ?? docId}
+    >
+      <FileText className="size-3 self-center text-muted-foreground" />
+      {doc?.title ?? fallbackLabel ?? docId}
     </a>
   );
 }

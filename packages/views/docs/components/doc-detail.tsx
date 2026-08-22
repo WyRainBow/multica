@@ -252,6 +252,10 @@ export function DocDetail({ docId }: { docId: string }) {
               key={doc.id}
               value={doc.content}
               placeholder={t(($) => $.editor.content_placeholder)}
+              // This page is where a wiki page is read as well as written, so
+              // @ has to reach issues, projects and other pages here — not
+              // only in the create dialog.
+              mentionMode="context"
               onUpdate={(md) => {
                 setLength(docLength(md));
                 save({ content: md });

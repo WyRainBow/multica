@@ -29,7 +29,8 @@
     "length_other": "{{count}} 字",
     "rename": "重命名",
     "rename_failed": "重命名失败",
-    "rename_input": "重命名标题"
+    "rename_input": "重命名标题",
+    "id_copied": "已复制"
   },
   "issue_section": {
     "title": "相关文档",

@@ -29,7 +29,8 @@
     "length_other": "{{count}} 文字",
     "rename": "名前を変更",
     "rename_failed": "名前の変更に失敗しました",
-    "rename_input": "タイトルを変更"
+    "rename_input": "タイトルを変更",
+    "id_copied": "コピー済み"
   },
   "issue_section": {
     "title": "関連ドキュメント",

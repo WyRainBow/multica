@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/multica-ai/multica/server/internal/assetmap"
 	"github.com/multica-ai/multica/server/internal/runtimeapps"
 )
 
@@ -364,6 +365,284 @@ func writeProjectContext(b *strings.Builder, ctx TaskContextForEnv) {
 	}
 }
 
+// writeIssuePhases names the stations this issue passes through and where the
+// work currently stands.
+//
+// The brief asks the agent to file its comments at the station they belong to.
+// It never said which stations existed, so that instruction had no way to be
+// obeyed: an agent could not name a station it had not been shown, and every
+// comment landed unfiled regardless of what stretch of work it described.
+//
+// Position order, not creation order — the stations are a route, and reading
+// them out of order says nothing. A station is CURRENT once it has been
+// entered and not yet completed; more than one can be open at a time, and
+// listing both is more honest than picking one.
+//
+// Omitted entirely for an issue with no route. Issues predating phases have
+// none, and that is not a defect to paper over.
+func writeIssuePhases(b *strings.Builder, ctx TaskContextForEnv) {
+	if len(ctx.IssuePhases) == 0 {
+		return
+	}
+	b.WriteString("## Issue Phases\n\n")
+	b.WriteString("The route this issue takes. File a comment at the station the work is at with `multica issue comment add <id> --phase <name>`:\n\n")
+	for _, phase := range ctx.IssuePhases {
+		name := strings.TrimSpace(phase.Name)
+		if name == "" {
+			continue
+		}
+		switch {
+		case phase.Completed:
+			fmt.Fprintf(b, "- %s — done\n", name)
+		case phase.Entered:
+			fmt.Fprintf(b, "- **%s — CURRENT**\n", name)
+		default:
+			fmt.Fprintf(b, "- %s — not reached\n", name)
+		}
+	}
+	// An issue whose route exists but was never walked is the common case, and
+	// silence there reads as "no station applies to me". Say what to do.
+	anyOpen := false
+	for _, phase := range ctx.IssuePhases {
+		if phase.Entered && !phase.Completed {
+			anyOpen = true
+			break
+		}
+	}
+	if !anyOpen {
+		b.WriteString("\nNo station is open. File under the one your work belongs to rather than leaving the comment unfiled.\n")
+	}
+	b.WriteString("\n")
+}
+
+// nestInlinedHeadings pushes a borrowed document's headings below the heading
+// that introduces it.
+//
+// The conclusions section carries its own `## …` heading. Pasted verbatim under
+// a `###` it reads as a sibling of `## Issue Documents` instead of part of it,
+// so the brief's outline says the wrong thing about what belongs to what — and
+// a reader skimming headings lands in the middle of a borrowed document
+// believing it is a new top-level section.
+//
+// Only line-leading hashes are touched, so a `#` inside a code fence or a
+// table cell is left alone.
+func nestInlinedHeadings(content string) string {
+	lines := strings.Split(content, "\n")
+	for i, line := range lines {
+		if strings.HasPrefix(line, "#") {
+			lines[i] = "##" + line
+		}
+	}
+	return strings.Join(lines, "\n")
+}
+
+// writeIssueDecisionSummary renders what the issue has decided and what it has
+// not.
+//
+// One line per decision — the question and the answer — because that pair is
+// what a later run needs and the reasoning behind it is a fetch away. A
+// superseded decision is left out entirely: it is history, and listing it here
+// beside the one that replaced it would make the reader do the sorting.
+//
+// Open questions are shown even though nobody has answered them, because an
+// unanswered question is the single most useful thing to know before starting:
+// it is where the work will stall, and where a run is most likely to invent an
+// answer nobody agreed to.
+func writeIssueDecisionSummary(b *strings.Builder, ctx TaskContextForEnv) {
+	var live []IssueDecisionForEnv
+	for _, d := range ctx.IssueDecisions {
+		if !d.Superseded {
+			live = append(live, d)
+		}
+	}
+	if len(live) == 0 && len(ctx.IssueOpenQuestions) == 0 {
+		return
+	}
+
+	if len(live) > 0 {
+		b.WriteString("#### 现在算数的决策\n\n")
+		for _, d := range live {
+			question := strings.TrimSpace(d.Question)
+			if question == "" {
+				question = "(未记问题)"
+			}
+			summary := strings.TrimSpace(d.Summary)
+			if summary == "" {
+				summary = "(未记结论)"
+			}
+			fmt.Fprintf(b, "- **%s** %s → %s", d.ID, question, summary)
+			// Naming the decider matters when it is not whoever typed it up:
+			// half of what a decision record answers is who made the call.
+			if by := strings.TrimSpace(d.DecidedBy); by != "" {
+				fmt.Fprintf(b, "（%s 定）", by)
+			}
+			fmt.Fprintf(b, " — `%s`\n", d.DocID)
+		}
+		b.WriteString("\n")
+	}
+
+	if len(ctx.IssueOpenQuestions) > 0 {
+		b.WriteString("#### 未决\n\n")
+		b.WriteString("这些是某个决策明确留下、还没有决策关闭的。**不要自行替它们作答**——需要答案时说明它挡住了什么，交给能拍板的人。\n\n")
+		for _, q := range ctx.IssueOpenQuestions {
+			fmt.Fprintf(b, "- `%s` %s\n", q.Ref, strings.TrimSpace(q.Question))
+		}
+		b.WriteString("\n")
+	}
+}
+
+// writeWorkspaceAssets names the workspace's own writing: what has been
+// learned here, and how things are done here.
+//
+// Both existed and neither reached an agent. Six recorded cases and ten
+// manuals that no run had ever been told about, which makes "archived
+// experience feeds the next round" a claim rather than a mechanism — an agent
+// cannot look up a lesson it does not know was written.
+//
+// Titles only, and one line per group saying when to reach for it. A case
+// title already states its own trigger, so the name is enough to decide
+// whether to open it; shipping the bodies would repeat the mistake that once
+// cost 40% of a brief.
+//
+// Not gated on task kind. These belong to the workspace rather than to an
+// issue, and a chat is where "have we hit this before" gets asked most often.
+func writeWorkspaceAssets(b *strings.Builder, ctx TaskContextForEnv) {
+	groups := make([]assetmap.Group, 0, len(ctx.WorkspaceAssets))
+	for _, g := range ctx.WorkspaceAssets {
+		docs := make([]assetmap.Doc, 0, len(g.Docs))
+		for _, d := range g.Docs {
+			docs = append(docs, assetmap.Doc{ID: d.ID, Title: d.Title, Kind: d.Kind})
+		}
+		groups = append(groups, assetmap.Group{
+			Label: g.Label, When: g.When, Docs: docs, Dropped: g.Dropped,
+		})
+	}
+	if !assetmap.HasAny(groups) {
+		return
+	}
+	b.WriteString("## Workspace Assets\n\n")
+	// Rendered by the shared package so a dispatched run and a terminal
+	// session describe the same asset the same way.
+	assetmap.RenderGroups(b, "What this workspace has written down. Open one with `"+
+		assetmap.ReadCommand+"` when it bears on the task — not by default:", groups)
+	b.WriteString(assetmap.SourceOfTruthNotice + "\n\n")
+}
+
+// docTitleOrPlaceholder keeps a titleless document findable by id rather than
+// dropping its row, which would silently shrink the index.
+func docTitleOrPlaceholder(doc IssueDocForEnv) string {
+	if title := strings.TrimSpace(doc.Title); title != "" {
+		return title
+	}
+	return "(untitled)"
+}
+
+// issueDocsBriefLimit caps how many documents the brief names. An issue that
+// has run many review rounds accumulates one document per round, and the brief
+// is paid for on every turn of every run; past this many the list stops being
+// an index and starts being a wall.
+const issueDocsBriefLimit = 20
+
+// writeIssueDocuments names the documents written for this issue.
+//
+// The issue's own artefacts — its spec, its plans, the conclusion of each
+// closed review round — were invisible to the agent working on it. Description
+// and comments arrived, the documents did not, so whoever dispatched the run
+// pasted them in by hand or the agent re-derived what a previous round had
+// already settled.
+//
+// Titles and ids only. A spec can be thousands of words and most runs need
+// none of them; naming the document costs a line and lets the agent decide.
+// Omitted entirely when the issue has no documents, so an issue that never
+// produced one renders exactly as before.
+func writeIssueDocuments(b *strings.Builder, ctx TaskContextForEnv) {
+	if len(ctx.IssueDocs) == 0 {
+		return
+	}
+	b.WriteString("## Issue Documents\n\n")
+
+	// The spec states where the issue stands; the rounds and decisions beside
+	// it record how it got there. Rendered flat they read as peers, and an
+	// agent with a question about the present has no reason to prefer the one
+	// document that answers it.
+	// A decision that still holds is rendered as a one-liner under the state of
+	// record, so listing its card again under history would show the same
+	// decision twice and leave the reader deciding which entry to trust. A
+	// superseded one belongs to history and is listed there.
+	liveDecisionDocs := map[string]bool{}
+	for _, d := range ctx.IssueDecisions {
+		if !d.Superseded && d.DocID != "" {
+			liveDecisionDocs[d.DocID] = true
+		}
+	}
+
+	var current, history []IssueDocForEnv
+	for _, doc := range ctx.IssueDocs {
+		if doc.Current {
+			current = append(current, doc)
+			continue
+		}
+		if liveDecisionDocs[doc.ID] {
+			continue
+		}
+		history = append(history, doc)
+	}
+
+	for _, doc := range current {
+		label := strings.TrimSpace(doc.Label)
+		if label == "" {
+			label = "Current state of record"
+		}
+		fmt.Fprintf(b, "### %s — %s\n\n", label, docTitleOrPlaceholder(doc))
+		fmt.Fprintf(b, "`%s` — full text with `multica wiki get %s --output json`.\n\n", doc.Kind, doc.ID)
+		if conclusions := strings.TrimSpace(doc.Conclusions); conclusions != "" {
+			// Inlined because this is the densest answer on the issue and the
+			// smallest: one row per closed round. Left one fetch away, agents
+			// rebuilt the same answer by re-reading the comment history.
+			b.WriteString(nestInlinedHeadings(conclusions))
+			b.WriteString("\n\n")
+		} else {
+			b.WriteString("No rounds have been closed on it yet, so it records no conclusions.\n\n")
+		}
+	}
+
+	// Decisions render inside the state of record rather than beside it. The
+	// issue has one document that says where it stands, and a second heading
+	// claiming to be current would be exactly the thing that invariant exists
+	// to prevent — so what holds now appears as part of it.
+	writeIssueDecisionSummary(b, ctx)
+
+	if len(history) == 0 {
+		b.WriteString("\n")
+		return
+	}
+	if len(current) > 0 {
+		b.WriteString("### History\n\n")
+		b.WriteString("Closed rounds and decisions — how the issue reached the state above. Read one with `multica wiki get <id> --output json`, when the task actually needs it:\n\n")
+	} else {
+		b.WriteString("Written for this issue. Read one with `multica wiki get <id> --output json` — do it when the task actually needs it, not by default:\n\n")
+	}
+
+	shown := history
+	if len(shown) > issueDocsBriefLimit {
+		shown = shown[:issueDocsBriefLimit]
+	}
+	for _, doc := range shown {
+		if kind := strings.TrimSpace(doc.Kind); kind != "" {
+			fmt.Fprintf(b, "- **%s** — `%s` — `%s`\n", docTitleOrPlaceholder(doc), kind, doc.ID)
+			continue
+		}
+		fmt.Fprintf(b, "- **%s** — `%s`\n", docTitleOrPlaceholder(doc), doc.ID)
+	}
+	// Say what was left out. A truncated list that does not admit it reads as
+	// the whole set, and the agent stops looking exactly where the older
+	// rounds are.
+	if dropped := len(history) - len(shown); dropped > 0 {
+		fmt.Fprintf(b, "\n%d more not listed here — `multica issue get <id> --output json` for the full set.\n", dropped)
+	}
+	b.WriteString("\n")
+}
+
 // writeIssueMetadata emits the Issue Metadata discipline section
 // (compressed). The dispatcher gates by kind.hasIssueContext(); this
 // helper does not re-check.
@@ -499,6 +778,37 @@ func writeWorkflowAutopilot(b *strings.Builder, ctx TaskContextForEnv) {
 	b.WriteString("- " + AutopilotIssueCommandsGuard + "\n\n")
 }
 
+// writeIssueCatchUpStep emits step 3 — how the run learns what it is walking
+// into.
+//
+// The step used to say one thing: read every comment, always. That was the only
+// honest instruction while the decided state lived nowhere else, and the step
+// said so — skipping it was named as the most common cause of a run acting on
+// stale instructions. It also meant every run rebuilt the same answer from the
+// same chat history, and the cost grew with the issue.
+//
+// When the issue carries documents, the answer is already in this file: the
+// state of record and its conclusions, and the station the work is at. The
+// comment read narrows to what came after the conclusions were written, which
+// the watermark names. It narrows rather than disappears — comments still carry
+// questions nobody answered and constraints stated in passing, and no document
+// has those yet.
+//
+// When the issue carries none, the wording is unchanged. Most issues are in
+// that state, pointing them at a section that is not there would be a dead
+// instruction, and byte-identical output keeps their cached prompt prefix
+// intact.
+func writeIssueCatchUpStep(b *strings.Builder, ctx TaskContextForEnv) {
+	if len(ctx.IssueDocs) == 0 && len(ctx.IssuePhases) == 0 {
+		b.WriteString("3. Catch up on the comment history — this is mandatory, not optional — in two bounded reads, never one bulk pull: scan every thread cheaply (`--roots-only --summary --compact`), then expand only the threads that matter (`--thread <id> --tail 30 --compact`). Earlier comments often carry context the issue body lacks. Skipping this step is the most common cause of agents acting on stale or incomplete instructions — so always run the scan, even when the trigger looks self-contained. In Reply mode the per-turn user message names the thread to expand first; the scan is how you decide whether any OTHER thread is also relevant.\n")
+		return
+	}
+	b.WriteString("3. **Read what was decided before reading what was said, then catch up on the rest.**\n")
+	b.WriteString("   - **Start with this file.** `## Issue Documents` carries the state of record with the conclusions of every closed round inlined under it; `## Issue Phases` says which station the work is at. No command needed. What is settled there is settled — do not re-derive it, and do not reopen it without new evidence.\n")
+	b.WriteString("   - **Then read the comments the conclusions do not cover.** When the conclusions carry a watermark (\"结论计入截至 <time>\"), everything up to that moment is already in the table: read only what came after, with `--since <that time> --compact`, plus the thread the per-turn user message names in Reply mode. With no conclusions or no watermark, do the full catch-up instead — scan every thread cheaply (`--roots-only --summary --compact`), then expand only the threads that matter (`--thread <id> --tail 30 --compact`), never one bulk pull.\n")
+	b.WriteString("   Do not skip the comment read either way. Comments carry what no document has yet — a question nobody answered, a constraint stated in passing, work someone did and only mentioned. Acting on stale or incomplete instructions is the most common way a run goes wrong; the watermark narrows that read, it does not remove it.\n")
+}
+
 // writeWorkflowIssue emits the single issue workflow used by BOTH
 // assignment-triggered and comment-triggered runs.
 //
@@ -549,7 +859,7 @@ func writeWorkflowIssue(b *strings.Builder, ctx TaskContextForEnv) {
 	b.WriteString("**Steps 1–6 — both modes** (the per-turn user message carries this issue's real id and ready-to-run context-read commands; assemble other calls from `## Available Commands`)\n\n")
 	b.WriteString("1. Read the issue (`multica issue get`) to understand the context.\n")
 	b.WriteString("2. Read the metadata bag (`multica issue metadata list`) — best-effort, empty `{}` and CLI failures are normal. What to look for: `## Issue Metadata`.\n")
-	b.WriteString("3. Catch up on the comment history — this is mandatory, not optional — in two bounded reads, never one bulk pull: scan every thread cheaply (`--roots-only --summary --compact`), then expand only the threads that matter (`--thread <id> --tail 30 --compact`). Earlier comments often carry context the issue body lacks. Skipping this step is the most common cause of agents acting on stale or incomplete instructions — so always run the scan, even when the trigger looks self-contained. In Reply mode the per-turn user message names the thread to expand first; the scan is how you decide whether any OTHER thread is also relevant.\n")
+	writeIssueCatchUpStep(b, ctx)
 	b.WriteString("4. Complete the task within your Agent Identity boundaries (`## Instruction Precedence` lists the actions Agent Identity can forbid). If your role is delegation-only, perform the allowed delegation work and stop once that outcome is delivered.\n")
 	if ctx.IsSquadLeader {
 		b.WriteString("5. **Post your final results as a comment** (unless your outcome is `no_action` — in that case, calling `multica squad activity <issue-id> no_action --reason \"...\"` alone is sufficient; you MUST exit without posting any comment. DO NOT post a comment announcing no_action or saying you are exiting silently): post it with `multica issue comment add` using the platform-correct non-inline mode from ## Comment Formatting (never inline `--content`). Your results are only visible to the user if posted via this CLI call; text in your terminal or run logs is NOT delivered.\n")
@@ -744,6 +1054,9 @@ func writeOutput(b *strings.Builder, kind taskKind, ctx TaskContextForEnv) {
 //	Comment Formatting    |    ✓    |   ✓    |     —     |      —       |  —
 //	Repositories          |    △    |   △    |     △     |      —       |  △
 //	Project Context       |    △    |   △    |     △     |      △       |  △
+//	Workspace Assets      |    △    |   △    |     △     |      △       |  △
+//	Issue Phases          |    △    |   △    |     —     |      —       |  —
+//	Issue Documents       |    △    |   △    |     —     |      —       |  —
 //	Issue Metadata        |    ✓    |   ✓    |     —     |      —       |  —
 //	Instruction Precedence|    —    |   ✓    |     —     |      —       |  —
 //	Sub-issue Creation    |    ✓    |   ✓    |     —     |      —       |  —
@@ -768,6 +1081,7 @@ func buildMetaSkillContentSlim(provider string, ctx TaskContextForEnv) string {
 	writeAgentIdentity(&b, ctx)
 	writeRequestingUser(&b, ctx)
 	writeWorkspaceContext(&b, ctx)
+	writeWorkspaceAssets(&b, ctx)
 
 	switch kind {
 	case kindQuickCreate:
@@ -788,6 +1102,8 @@ func buildMetaSkillContentSlim(provider string, ctx TaskContextForEnv) string {
 	writeProjectContext(&b, ctx)
 
 	if kind.hasIssueContext() {
+		writeIssuePhases(&b, ctx)
+		writeIssueDocuments(&b, ctx)
 		writeIssueMetadata(&b)
 	}
 

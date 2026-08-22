@@ -76,6 +76,7 @@ export type WorkspacePageKey =
   | "workspaceAssets"
   | "workspaceWiki"
   | "workspaceSkills"
+  | "workspaceInstructions"
   | "workspaceWorktree"
   | "workspaceAgentWiki"
   | "settings";
@@ -112,6 +113,7 @@ export const WORKSPACE_PAGES: Record<WorkspacePageKey, WorkspacePage> = {
   workspaceAssets: { segment: "workspace", icon: "FileText", navKey: "docs" },
   workspaceWiki: { segment: "workspace/wiki", icon: "FileText", navKey: "docs" },
   workspaceSkills: { segment: "workspace/skills", icon: "FileText", navKey: "docs" },
+  workspaceInstructions: { segment: "workspace/instructions", icon: "FileText", navKey: "docs" },
   workspaceWorktree: { segment: "workspace/worktree", icon: "FileText", navKey: "docs" },
   workspaceAgentWiki: { segment: "workspace/agentwiki", icon: "FileText", navKey: "docs" },
   settings: { segment: "settings", icon: "Settings", navKey: "settings" },

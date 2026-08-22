@@ -200,6 +200,11 @@ export const appRoutes: RouteObject[] = [
             handle: { title: "Workspace" },
           },
           {
+            path: "workspace/instructions",
+            element: <OpenwikiPage tab="instructions" />,
+            handle: { title: "Workspace" },
+          },
+          {
             path: "workspace/worktree",
             element: <OpenwikiPage tab="worktree" />,
             handle: { title: "Workspace" },
