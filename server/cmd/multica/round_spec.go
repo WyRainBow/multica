@@ -43,6 +43,17 @@ type RoundDoc struct {
 	// What the checks said — "tests 4044/4044", "手工验收通过". A verdict with
 	// no evidence beside it is an opinion.
 	Evidence string
+	// Rework is what this round found and fixed on the spot. Present or
+	// absent is the countable part: a station that reworks round after round
+	// is struggling, and nothing else in the record says so. Every one of the
+	// first 18 rounds closed `approve`, including a card that ran four rounds
+	// at one station, because the verdict field answers "did this round end"
+	// rather than "did the work pass".
+	Rework string
+	// Detour is a wrong turn worth remembering — time spent looking in the
+	// wrong place, a cause that was not what it looked like. The worktree
+	// ledger records progress and never this.
+	Detour string
 	// The document's own id, so the spec can point at the full text.
 	DocID string
 }
@@ -123,10 +134,39 @@ func RenderRoundSection(rounds []RoundDoc, watermark string) string {
 				cellEscape(r.DocID),
 			))
 		}
+		writeStruggleHistory(&b, sorted)
 	}
 	b.WriteString("\n")
 	b.WriteString(specSectionClose)
 	return b.String()
+}
+
+// writeStruggleHistory lists the rounds that recorded a rework or a detour.
+//
+// It is a list under the table rather than two more columns because most
+// rounds have neither, and widening a table read across seven columns to serve
+// a minority of rows costs every reader. Nothing renders when nothing was
+// recorded: an empty "过程记录" heading would read as "checked, nothing went
+// wrong", which is a claim no one made.
+func writeStruggleHistory(b *strings.Builder, sorted []RoundDoc) {
+	type line struct{ round, kind, text string }
+	var lines []line
+	for _, r := range sorted {
+		label := fmt.Sprintf("R%d %s", r.Number, strings.TrimSpace(r.Phase))
+		if text := strings.TrimSpace(r.Rework); text != "" {
+			lines = append(lines, line{label, "返工", text})
+		}
+		if text := strings.TrimSpace(r.Detour); text != "" {
+			lines = append(lines, line{label, "弯路", text})
+		}
+	}
+	if len(lines) == 0 {
+		return
+	}
+	b.WriteString("\n**过程记录**（表格之外的挣扎史，收口时用 `--rework` / `--detour` 记的）：\n\n")
+	for _, l := range lines {
+		fmt.Fprintf(b, "- %s · %s：%s\n", l.round, l.kind, strings.ReplaceAll(l.text, "\n", " "))
+	}
 }
 
 // cellEscape keeps a pipe in a summary from splitting the row it is written in.
