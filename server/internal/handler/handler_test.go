@@ -56,13 +56,13 @@ func TestMain(m *testing.M) {
 
 	pool, err := pgxpool.New(ctx, dbURL)
 	if err != nil {
-		fmt.Printf("Skipping tests: could not connect to database: %v\n", err)
-		os.Exit(0)
+		fmt.Print(unreachableDatabaseNotice(dbURL, err))
+		os.Exit(databaseUnreachableExitCode())
 	}
 	if err := pool.Ping(ctx); err != nil {
-		fmt.Printf("Skipping tests: database not reachable: %v\n", err)
+		fmt.Print(unreachableDatabaseNotice(dbURL, err))
 		pool.Close()
-		os.Exit(0)
+		os.Exit(databaseUnreachableExitCode())
 	}
 
 	queries := db.New(pool)
@@ -4220,4 +4220,47 @@ func TestUpsertSkillFileRejectsSkillMd(t *testing.T) {
 	if !strings.Contains(upsertRec.Body.String(), "SKILL.md is reserved") {
 		t.Fatalf("expected error message about reserved SKILL.md, got: %s", upsertRec.Body.String())
 	}
+}
+
+// allowDatabaseSkipEnv opts out of the failure below, for the case where
+// someone deliberately has no database and only wants the package to compile.
+const allowDatabaseSkipEnv = "MULTICA_ALLOW_DB_SKIP"
+
+// databaseUnreachableExitCode decides whether an unreachable database is a
+// failure or a sanctioned skip.
+//
+// It used to be exit 0 always, which printed `ok` — byte for byte what a full
+// pass looks like. The notice was there, but `go test` hides stdout without
+// -v, so the only visible output was success. That cost three separate
+// false "it passes" readings in one evening: a pause/resume suite that never
+// ran, two pre-existing failures that looked fixed, and a card opened about
+// the skip itself.
+//
+// Failing by default puts the signal where it cannot be missed. Anyone who
+// genuinely wants the skip sets MULTICA_ALLOW_DB_SKIP=1 and gets the old
+// behaviour, now with a notice that says so.
+func databaseUnreachableExitCode() int {
+	if os.Getenv(allowDatabaseSkipEnv) != "" {
+		return 0
+	}
+	return 1
+}
+
+// unreachableDatabaseNotice says what broke and what to type. The DSN is
+// echoed because the usual cause is the wrong port, and the wrong port looks
+// identical to no database at all.
+func unreachableDatabaseNotice(dbURL string, err error) string {
+	head := "FAIL: this package's tests need a database and none was reachable."
+	tail := "Set " + allowDatabaseSkipEnv + "=1 to skip them instead (they will NOT have run).\n"
+	if os.Getenv(allowDatabaseSkipEnv) != "" {
+		head = "SKIPPED: database not reachable, and " + allowDatabaseSkipEnv + " is set."
+		tail = "These tests did NOT run. Unset " + allowDatabaseSkipEnv + " to make this a failure.\n"
+	}
+	return "\n" + strings.Repeat("=", 72) + "\n" +
+		head + "\n" +
+		"  tried: " + dbURL + "\n" +
+		"  error: " + err.Error() + "\n" +
+		"  fix:   DATABASE_URL=postgres://multica:multica@localhost:5433/multica?sslmode=disable go test ./internal/handler\n" +
+		"  " + tail +
+		strings.Repeat("=", 72) + "\n\n"
 }
