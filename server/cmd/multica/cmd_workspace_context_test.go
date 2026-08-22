@@ -1,10 +1,17 @@
 package main
 
 import (
+	"context"
+	"encoding/json"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
+
+	"github.com/spf13/cobra"
 )
 
 // The map's job is to say what exists without claiming to be everything, and
@@ -106,5 +113,49 @@ func TestAKindWithNonASCIISurvivesTheQueryString(t *testing.T) {
 	}
 	if !strings.HasPrefix(got, "AgentWiki/cases_") {
 		t.Errorf("the ASCII path was mangled: %q", got)
+	}
+}
+
+func TestRecentIssuesReadsTheEnvelope(t *testing.T) {
+	// /api/issues answers with {"issues": [...]}, not a bare array. Decoding it
+	// as an array fails, the failure is swallowed, and the whole "what else
+	// moved" section disappears without a word — the same envelope the assets
+	// fetch already got wrong once.
+	var gotQuery string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/api/issues" {
+			http.NotFound(w, r)
+			return
+		}
+		gotQuery = r.URL.RawQuery
+		now := time.Now().UTC().Format(time.RFC3339)
+		old := time.Now().UTC().Add(-30 * 24 * time.Hour).Format(time.RFC3339)
+		json.NewEncoder(w).Encode(map[string]any{
+			"issues": []map[string]any{
+				{"identifier": "COC-1", "title": "fresh", "updated_at": now},
+				{"identifier": "COC-2", "title": "self", "updated_at": now},
+				{"identifier": "COC-3", "title": "stale", "updated_at": old},
+			},
+			"total": 3,
+		})
+	}))
+	defer srv.Close()
+
+	t.Setenv("MULTICA_SERVER_URL", srv.URL)
+	t.Setenv("MULTICA_WORKSPACE_ID", "ws-1")
+	t.Setenv("MULTICA_TOKEN", "test-token")
+
+	client, err := newAPIClient(&cobra.Command{})
+	if err != nil {
+		t.Fatalf("newAPIClient: %v", err)
+	}
+	got := fetchRecentIssues(context.Background(), client, "COC-2")
+	if len(got) != 1 || got[0].Identifier != "COC-1" {
+		t.Fatalf("got %+v, want only the fresh issue that is not the current one", got)
+	}
+	// Recency is what this section claims, so it has to be what the query asks
+	// for. Board order would answer "near the top", not "moved lately".
+	if !strings.Contains(gotQuery, "sort=updated_at") || !strings.Contains(gotQuery, "direction=desc") {
+		t.Errorf("query = %q, want it sorted by updated_at desc", gotQuery)
 	}
 }
