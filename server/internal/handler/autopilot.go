@@ -326,12 +326,16 @@ type CreateAutopilotRequest struct {
 }
 
 type UpdateAutopilotRequest struct {
-	Title              *string `json:"title"`
-	Description        *string `json:"description"`
-	ProjectID          *string `json:"project_id"`
-	AssigneeType       *string `json:"assignee_type"`
-	AssigneeID         *string `json:"assignee_id"`
-	Status             *string `json:"status"`
+	Title        *string `json:"title"`
+	Description  *string `json:"description"`
+	ProjectID    *string `json:"project_id"`
+	AssigneeType *string `json:"assignee_type"`
+	AssigneeID   *string `json:"assignee_id"`
+	Status       *string `json:"status"`
+	// PauseReason rides with a status change and only with one: the reason and
+	// the status are written in the same statement so they can never disagree.
+	// Omitted on a resume, which is what clears it.
+	PauseReason        *string `json:"pause_reason"`
 	ExecutionMode      *string `json:"execution_mode"`
 	IssueTitleTemplate *string `json:"issue_title_template"`
 	// Wholesale replacement when present; omit to leave subscribers untouched.
@@ -816,6 +820,13 @@ func (h *Handler) UpdateAutopilot(w http.ResponseWriter, r *http.Request) {
 	}
 	if req.Status != nil {
 		params.Status = pgtype.Text{String: *req.Status, Valid: true}
+		reason := ""
+		if req.PauseReason != nil {
+			reason = strings.TrimSpace(*req.PauseReason)
+		}
+		if reason != "" {
+			params.PauseReason = pgtype.Text{String: reason, Valid: true}
+		}
 	}
 	if req.ExecutionMode != nil {
 		params.ExecutionMode = pgtype.Text{String: *req.ExecutionMode, Valid: true}
@@ -2070,7 +2081,15 @@ func (h *Handler) TriggerAutopilot(w http.ResponseWriter, r *http.Request) {
 	if !h.requireAutopilotWrite(w, r, autopilot, workspaceID) {
 		return
 	}
-	if autopilot.Status != "active" {
+	// A paused autopilot still runs by hand. Pausing stops the SCHEDULE, and
+	// the reason to pause one is usually that its prompt needs work — which
+	// cannot be checked without running it. Archived is different: that one is
+	// gone, not resting.
+	if autopilot.Status == "archived" {
+		writeError(w, http.StatusBadRequest, "autopilot is archived")
+		return
+	}
+	if autopilot.Status != "active" && autopilot.Status != "paused" {
 		writeError(w, http.StatusBadRequest, "autopilot is not active")
 		return
 	}

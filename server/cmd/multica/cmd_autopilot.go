@@ -212,7 +212,9 @@ func runAutopilotList(cmd *cobra.Command, _ []string) error {
 		rows = append(rows, []string{
 			displayID(strVal(a, "id"), fullID),
 			strVal(a, "title"),
-			strVal(a, "status"),
+			// A paused row that does not say why is a question, not an answer:
+			// the pause outlives the session that made it.
+			autopilotStatusCell(strVal(a, "status"), strVal(a, "pause_reason")),
 			strVal(a, "execution_mode"),
 			actors.agent(strVal(a, "assignee_id")),
 			strVal(a, "last_run_at"),
@@ -810,4 +812,17 @@ func resolveAgent(ctx context.Context, client *cli.APIClient, nameOrID string) (
 		}
 		return "", fmt.Errorf("ambiguous agent %q; matches:\n%s", nameOrID, strings.Join(parts, "\n"))
 	}
+}
+
+// autopilotStatusCell shows the pause reason next to the status. Kept short —
+// the column is one cell in a table, and the full text is in `autopilot get`.
+func autopilotStatusCell(status, reason string) string {
+	reason = strings.TrimSpace(reason)
+	if status != "paused" || reason == "" {
+		return status
+	}
+	if runes := []rune(reason); len(runes) > 40 {
+		reason = string(runes[:40]) + "…"
+	}
+	return status + " (" + reason + ")"
 }
