@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/multica-ai/multica/server/internal/assetmap"
 	"github.com/multica-ai/multica/server/internal/runtimeapps"
 )
 
@@ -506,35 +507,25 @@ func writeIssueDecisionSummary(b *strings.Builder, ctx TaskContextForEnv) {
 // Not gated on task kind. These belong to the workspace rather than to an
 // issue, and a chat is where "have we hit this before" gets asked most often.
 func writeWorkspaceAssets(b *strings.Builder, ctx TaskContextForEnv) {
-	if len(ctx.WorkspaceAssets) == 0 {
+	groups := make([]assetmap.Group, 0, len(ctx.WorkspaceAssets))
+	for _, g := range ctx.WorkspaceAssets {
+		docs := make([]assetmap.Doc, 0, len(g.Docs))
+		for _, d := range g.Docs {
+			docs = append(docs, assetmap.Doc{ID: d.ID, Title: d.Title, Kind: d.Kind})
+		}
+		groups = append(groups, assetmap.Group{
+			Label: g.Label, When: g.When, Docs: docs, Dropped: g.Dropped,
+		})
+	}
+	if !assetmap.HasAny(groups) {
 		return
 	}
 	b.WriteString("## Workspace Assets\n\n")
-	b.WriteString("What this workspace has written down. Open one with `multica wiki get <id> --output json` when it bears on the task — not by default:\n\n")
-
-	for _, group := range ctx.WorkspaceAssets {
-		if len(group.Docs) == 0 {
-			continue
-		}
-		fmt.Fprintf(b, "**%s**", group.Label)
-		if when := strings.TrimSpace(group.When); when != "" {
-			fmt.Fprintf(b, " — %s", when)
-		}
-		b.WriteString("\n\n")
-		for _, doc := range group.Docs {
-			title := strings.TrimSpace(doc.Title)
-			if title == "" {
-				title = "(untitled)"
-			}
-			fmt.Fprintf(b, "- %s — `%s`\n", title, doc.ID)
-		}
-		// A truncated list that does not admit it reads as the whole set, and
-		// the reader stops looking exactly where the older entries are.
-		if group.Dropped > 0 {
-			fmt.Fprintf(b, "- …%d more, list them with `multica wiki list --kind <folder>`\n", group.Dropped)
-		}
-		b.WriteString("\n")
-	}
+	// Rendered by the shared package so a dispatched run and a terminal
+	// session describe the same asset the same way.
+	assetmap.RenderGroups(b, "What this workspace has written down. Open one with `"+
+		assetmap.ReadCommand+"` when it bears on the task — not by default:", groups)
+	b.WriteString(assetmap.SourceOfTruthNotice + "\n\n")
 }
 
 // docTitleOrPlaceholder keeps a titleless document findable by id rather than
