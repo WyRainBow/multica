@@ -46,6 +46,30 @@ type Group struct {
 // run.
 const ReadCommand = "multica wiki get <id> --output json"
 
+// CaseDraftKind is where a machine-written retro lands before a person has
+// read it. Promotion is a kind change and nothing else — the document that was
+// reviewed is the document that becomes the case.
+//
+// A SIBLING of the cases folder, never a child. Kind is a path, so a folder
+// selects everything beneath it, and a drafts folder nested under cases would
+// be swept into the reviewed set the moment anything read it.
+//
+// Unlike the labels around it, this string is shared rather than duplicated
+// per binary: labels differing between two releases is cosmetic, while a kind
+// differing means the writer files drafts where no reader looks.
+const CaseDraftKind = "AgentWiki/case-drafts_案例草稿"
+
+// CaseDraftLabel and CaseDraftWhen name the group on every surface. A reader
+// who sees only the heading has to know the contents are not vouched for.
+const (
+	CaseDraftLabel = "复盘草稿（待人审）"
+	CaseDraftWhen  = "机器收口时写的，还没有人读过。当线索用，别当结论用；审过了就把 kind 改成 " + casesKind
+)
+
+// casesKind is named here only so the promotion target appears in the line
+// that tells a reader how to promote.
+const casesKind = "AgentWiki/cases_案例"
+
 // ComfortableIndexSize is where a names-only list stops working.
 //
 // Below it a reader scans the titles and picks; above it they are doing

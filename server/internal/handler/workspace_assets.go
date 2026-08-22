@@ -5,6 +5,8 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/multica-ai/multica/server/internal/assetmap"
+
 	"github.com/multica-ai/multica/server/internal/util"
 	db "github.com/multica-ai/multica/server/pkg/db/generated"
 )
@@ -33,6 +35,10 @@ var workspaceAssetFolders = []struct {
 	{"AgentWiki/cases_案例", "经验案例", "撞到类似问题时先看这里，每条都是一次真实的坑与它的解法"},
 	{"指南", "指南", "长期有效的做法与边界"},
 	{"AgentWiki/playbooks_手册", "手册", "某一类工作的完整打法"},
+	// Last on purpose. Reviewed experience is what a run should reach for
+	// first; an unreviewed draft placed above it would invert the review step
+	// it is waiting on. Present at all because a draft nothing surfaces rots.
+	{assetmap.CaseDraftKind, assetmap.CaseDraftLabel, assetmap.CaseDraftWhen},
 }
 
 // workspaceAssetsPerFolder bounds one folder's contribution. Generous relative

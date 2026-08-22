@@ -288,6 +288,10 @@ var contextAssetFolders = []struct{ kind, label, when string }{
 	{"AgentWiki/cases_案例", "经验案例", "撞到类似问题时先看这里，每条都是一次真实的坑与它的解法"},
 	{"指南", "指南", "长期有效的做法与边界"},
 	{"AgentWiki/playbooks_手册", "手册", "某一类工作的完整打法"},
+	// Last, and marked. See assetmap.CaseDraftKind: reviewed experience
+	// outranks an unreviewed draft, and the kind is shared rather than spelled
+	// out here because a writer and a reader disagreeing on it is silent.
+	{assetmap.CaseDraftKind, assetmap.CaseDraftLabel, assetmap.CaseDraftWhen},
 }
 
 func fetchWorkspaceAssetGroups(ctx context.Context, client *cli.APIClient) []assetmap.Group {
