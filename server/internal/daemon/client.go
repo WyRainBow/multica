@@ -318,6 +318,14 @@ func (c *Client) ExtendTaskPrepareLease(ctx context.Context, runtimeID, taskID s
 	return c.postJSON(ctx, fmt.Sprintf("/api/daemon/runtimes/%s/tasks/%s/prepare-lease", runtimeID, taskID), map[string]any{}, nil)
 }
 
+// RecordBriefSnapshot stores the brief this run was actually handed, so a
+// later investigation reads what the agent saw rather than what the same
+// inputs would render today.
+func (c *Client) RecordBriefSnapshot(ctx context.Context, taskID, brief string) error {
+	return c.postJSON(ctx, fmt.Sprintf("/api/daemon/tasks/%s/brief-snapshot", taskID),
+		map[string]any{"brief": brief}, nil)
+}
+
 func (c *Client) StartTask(ctx context.Context, taskID string) error {
 	return c.postJSON(ctx, fmt.Sprintf("/api/daemon/tasks/%s/start", taskID), map[string]any{}, nil)
 }

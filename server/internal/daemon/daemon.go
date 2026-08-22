@@ -5942,6 +5942,16 @@ func (d *Daemon) runTask(ctx context.Context, task Task, provider string, slot i
 	if err != nil {
 		d.logger.Warn("execenv: inject runtime config failed (non-fatal)", "error", err)
 	}
+	// Persist what this run was actually given. The workdir copy is deleted
+	// with the workdir, and re-rendering later answers a different question:
+	// the brief is built from current data, so a spec or decision that moved
+	// since produces a brief this run never saw. Best-effort — the run is
+	// already going and a lost snapshot is not worth failing it over.
+	if strings.TrimSpace(runtimeBrief) != "" {
+		if serr := d.client.RecordBriefSnapshot(ctx, task.ID, runtimeBrief); serr != nil {
+			taskLog.Warn("record brief snapshot failed", "error", serr)
+		}
+	}
 	// Workdir is preserved for reuse by future tasks on the same (agent,
 	// issue) pair in cloud mode; the work_dir path is stored in DB on task
 	// completion and passed back via PriorWorkDir on the next claim, so

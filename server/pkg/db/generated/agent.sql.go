@@ -6000,6 +6000,37 @@ func (q *Queries) ReclaimStaleDispatchedTasksForRuntimes(ctx context.Context, ar
 	return items, nil
 }
 
+const recordAgentTaskBriefSnapshot = `-- name: RecordAgentTaskBriefSnapshot :exec
+UPDATE agent_task_queue
+SET context = jsonb_set(
+        COALESCE(NULLIF(context, 'null'::jsonb), '{}'::jsonb),
+        '{brief_snapshot}',
+        to_jsonb($1::text),
+        true
+    )
+WHERE id = $2
+`
+
+type RecordAgentTaskBriefSnapshotParams struct {
+	Brief string      `json:"brief"`
+	ID    pgtype.UUID `json:"id"`
+}
+
+// Stores the brief the agent was actually handed for this run.
+//
+// The brief is rendered fresh from current data on every run, so replaying it
+// later answers "what would this issue produce now", not "what did that run
+// see". Once a spec or a decision moves, those are different documents — and
+// the second question is the one asked when a run went wrong.
+//
+// Written at start rather than completion: a task that dies hard never
+// completes, and those are exactly the runs worth reconstructing. Lands in the
+// otherwise-unused `context` JSONB so no table or column is added.
+func (q *Queries) RecordAgentTaskBriefSnapshot(ctx context.Context, arg RecordAgentTaskBriefSnapshotParams) error {
+	_, err := q.db.Exec(ctx, recordAgentTaskBriefSnapshot, arg.Brief, arg.ID)
+	return err
+}
+
 const recoverOrphanedTasksForRuntime = `-- name: RecoverOrphanedTasksForRuntime :many
 UPDATE agent_task_queue
 SET status = 'failed',

@@ -2968,6 +2968,51 @@ func (h *Handler) ExtendTaskPrepareLease(w http.ResponseWriter, r *http.Request)
 	writeJSON(w, http.StatusOK, taskToResponse(*updated, taskWorkspaceID))
 }
 
+// TaskBriefSnapshotRequest carries the brief a run was actually handed.
+type TaskBriefSnapshotRequest struct {
+	Brief string `json:"brief"`
+}
+
+// RecordTaskBriefSnapshot stores the runtime brief this run was given.
+//
+// The brief is rendered fresh from current data on every run, so replaying it
+// later answers "what would this issue produce now" rather than "what did that
+// run see". Once a spec or a decision has moved those are different documents,
+// and the second question is the one asked when a run went wrong.
+//
+// A separate call rather than a field on start: the brief is only final after
+// the resume gating that runs between them, and moving the start transition
+// later would reorder a race-sensitive block (issue #3999 race A) for no gain.
+//
+// Best-effort by contract. The run is already underway by the time this lands,
+// so a failure here is worth logging and not worth failing a task over.
+func (h *Handler) RecordTaskBriefSnapshot(w http.ResponseWriter, r *http.Request) {
+	taskID := chi.URLParam(r, "taskId")
+	if _, ok := h.requireDaemonTaskAccess(w, r, taskID); !ok {
+		return
+	}
+	var req TaskBriefSnapshotRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid request body")
+		return
+	}
+	brief := strings.TrimSpace(req.Brief)
+	if brief == "" {
+		// An empty snapshot would record "this run was given nothing", which is
+		// a claim, not an absence. Absence is the honest state here.
+		writeJSON(w, http.StatusOK, map[string]string{"status": "skipped"})
+		return
+	}
+	if err := h.Queries.RecordAgentTaskBriefSnapshot(r.Context(), db.RecordAgentTaskBriefSnapshotParams{
+		ID: parseUUID(taskID), Brief: brief,
+	}); err != nil {
+		slog.Warn("record brief snapshot failed", "task_id", taskID, "error", err)
+		writeError(w, http.StatusInternalServerError, "failed to record brief snapshot")
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
+}
+
 // StartTask marks a dispatched task as running.
 func (h *Handler) StartTask(w http.ResponseWriter, r *http.Request) {
 	taskID := chi.URLParam(r, "taskId")
