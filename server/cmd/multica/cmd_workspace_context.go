@@ -377,10 +377,19 @@ type recentIssue struct {
 }
 
 func fetchRecentIssues(ctx context.Context, client *cli.APIClient, excludeKey string) []recentIssue {
-	var rows []recentIssue
-	if err := client.GetJSON(ctx, "/api/issues?limit=40", &rows); err != nil {
+	// The list endpoint answers with an envelope, the same one the asset fetch
+	// above already got wrong. Decoding it as a bare array fails, the failure
+	// is swallowed here, and the section disappears without a word.
+	//
+	// Sorted by the field the section is actually about: in board order
+	// "recent" would silently mean "near the top of the board".
+	var resp struct {
+		Issues []recentIssue `json:"issues"`
+	}
+	if err := client.GetJSON(ctx, "/api/issues?limit=40&sort=updated_at&direction=desc", &resp); err != nil {
 		return nil
 	}
+	rows := resp.Issues
 	cutoff := time.Now().Add(-relatedIssueWindow)
 	var out []recentIssue
 	for _, r := range rows {
