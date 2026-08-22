@@ -772,6 +772,17 @@ SET context = jsonb_set(
     )
 WHERE id = sqlc.arg(id);
 
+-- name: GetAgentTaskBriefSnapshot :one
+-- Reads back the brief a run was handed.
+--
+-- A snapshot nobody can retrieve is a log nobody reads: the write was built
+-- first and looked finished, which is worse than absent because the answer is
+-- assumed available until the moment it is needed. Returns the text alone —
+-- the row it lives on is already reachable through the task API.
+SELECT context->>'brief_snapshot' AS brief
+FROM agent_task_queue
+WHERE id = sqlc.arg(id);
+
 -- name: MarkAgentTaskWaitingLocalDirectory :one
 -- Transitions a freshly-dispatched task into 'waiting_local_directory' while
 -- the daemon waits for another in-flight task to release the path lock on a

@@ -72,6 +72,12 @@ func init() {
 	issueRoundCloseCmd.Flags().String("sha", "", "Baseline the round reviewed, so the next one can diff from it")
 	issueRoundCloseCmd.Flags().String("verified-sha", "", "The commit the verdict was actually checked against — not the merge SHA, which can differ")
 	issueRoundCloseCmd.Flags().String("evidence", "", "What the checks said, e.g. 'views 4044/4044, typecheck 6/6'. A verdict without it is an opinion")
+	issueRoundCloseCmd.Flags().String("rework", "",
+		"What this round found and fixed on the spot. Rounds close `approve` even when the work was reworked inside them, "+
+			"so without this the record cannot tell a clean pass from a struggle")
+	issueRoundCloseCmd.Flags().String("detour", "",
+		"A wrong turn worth remembering — time spent in the wrong place, a cause that was not what it looked like. "+
+			"The worktree ledger records progress and never this")
 	issueRoundCloseCmd.Flags().String("output", "json", "Output format: table or json")
 }
 
@@ -154,7 +160,21 @@ func runIssueRoundClose(cmd *cobra.Command, args []string) error {
 	if verdict == "approve" && verifiedSHA == "" && evidence == "" {
 		fmt.Fprintf(os.Stderr, "Note: approving with no --verified-sha and no --evidence; the spec will record this round as unverified.\n")
 	}
-	roundBody := renderRoundBody(number, phase, verdict, summary, mustString(cmd, "sha"), verifiedSHA, evidence, body)
+	// One value, used for both the document and the spec. It was two, and the
+	// spec's copy was assembled by hand — so a field added to the document was
+	// silently missing from the table until some later round re-read it from
+	// disk. That is not a bug to fix twice; it is a duplicate to delete.
+	closing := RoundDoc{
+		Number:      number,
+		Phase:       phase,
+		Verdict:     verdict,
+		Summary:     summary,
+		VerifiedSHA: verifiedSHA,
+		Evidence:    evidence,
+		Rework:      strings.TrimSpace(mustString(cmd, "rework")),
+		Detour:      strings.TrimSpace(mustString(cmd, "detour")),
+	}
+	roundBody := renderRoundBody(closing, mustString(cmd, "sha"), body)
 	roundDoc, err := createDoc(ctx, client, docRequest{
 		Title:   fmt.Sprintf("%s R%d %s：%s", key, number, phase, summary),
 		Kind:    roundKind,
@@ -168,11 +188,8 @@ func runIssueRoundClose(cmd *cobra.Command, args []string) error {
 
 	// 2. The spec, rebuilt from every round document including the one just
 	//    written. Derived, so there is nothing to remember to update.
-	rounds = append(rounds, RoundDoc{
-		Number: number, Phase: phase, Verdict: verdict,
-		Summary: summary, VerifiedSHA: verifiedSHA, Evidence: evidence,
-		DocID: roundDoc.ID,
-	})
+	closing.DocID = roundDoc.ID
+	rounds = append(rounds, closing)
 	// Closing is the moment the conclusions become true, so it is also the
 	// moment everything argued so far is accounted for. Recording it lets a
 	// later reader tell "these conclusions are current" from "these
@@ -231,6 +248,11 @@ func runIssueRoundClose(cmd *cobra.Command, args []string) error {
 	}
 	if verdict == "request_changes" {
 		fmt.Fprintf(os.Stderr, "request_changes: open the next round before work resumes.\n")
+	}
+	// A route that ran to its end is worth a nudge; one sent back for changes
+	// is not, because it has not finished being learned yet.
+	if verdict != "request_changes" && shouldPromptRetro("", phase) {
+		writeRetroPrompt(os.Stderr, key, phase+" 已收口")
 	}
 	if output, _ := cmd.Flags().GetString("output"); output == "table" {
 		return nil
@@ -337,6 +359,8 @@ func roundsFromDocs(key string, docs []docRow) []RoundDoc {
 			Summary:     summaryFromTitle(doc.Title),
 			VerifiedSHA: bodyField(doc.Content, "验收版本"),
 			Evidence:    bodyField(doc.Content, "验证证据"),
+			Rework:      bodyField(doc.Content, "本轮返工"),
+			Detour:      bodyField(doc.Content, "本轮弯路"),
 			DocID:       doc.ID,
 		})
 	}
@@ -363,20 +387,31 @@ func bodyField(body, name string) string {
 	return ""
 }
 
-func renderRoundBody(number int, phase, verdict, summary, sha, verifiedSHA, evidence, body string) string {
+// renderRoundBody writes the round document. It takes the RoundDoc the spec
+// already models rather than a growing parameter list, so a field added to the
+// record shows up here and in the table from one place.
+func renderRoundBody(r RoundDoc, sha, body string) string {
 	var b strings.Builder
-	fmt.Fprintf(&b, "# R%d %s\n\n", number, phase)
-	fmt.Fprintf(&b, "- 结论：%s\n", verdict)
-	fmt.Fprintf(&b, "- 要点：%s\n", summary)
+	fmt.Fprintf(&b, "# R%d %s\n\n", r.Number, r.Phase)
+	fmt.Fprintf(&b, "- 结论：%s\n", r.Verdict)
+	fmt.Fprintf(&b, "- 要点：%s\n", r.Summary)
 	if strings.TrimSpace(sha) != "" {
 		// The next round diffs from here rather than re-reading everything.
 		fmt.Fprintf(&b, "- 评审基线：%s\n", strings.TrimSpace(sha))
 	}
-	if verifiedSHA != "" {
-		fmt.Fprintf(&b, "- 验收版本：%s\n", verifiedSHA)
+	if r.VerifiedSHA != "" {
+		fmt.Fprintf(&b, "- 验收版本：%s\n", r.VerifiedSHA)
 	}
-	if evidence != "" {
-		fmt.Fprintf(&b, "- 验证证据：%s\n", evidence)
+	if r.Evidence != "" {
+		fmt.Fprintf(&b, "- 验证证据：%s\n", r.Evidence)
+	}
+	// Written to the document even though the table does not carry them: the
+	// document is the whole record, and the spec is rebuilt from it.
+	if r.Rework != "" {
+		fmt.Fprintf(&b, "- 本轮返工：%s\n", r.Rework)
+	}
+	if r.Detour != "" {
+		fmt.Fprintf(&b, "- 本轮弯路：%s\n", r.Detour)
 	}
 	b.WriteString("\n")
 	if strings.TrimSpace(body) != "" {

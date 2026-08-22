@@ -3016,6 +3016,47 @@ func (h *Handler) RecordTaskBriefSnapshot(w http.ResponseWriter, r *http.Request
 	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 }
 
+// GetTaskBriefSnapshot returns the brief a run was handed.
+//
+// Served on its own rather than folded into the task response: a brief runs to
+// thousands of characters, and putting it in a list would bury every other
+// field in the rows around it. Anyone asking for it is asking about one run.
+func (h *Handler) GetTaskBriefSnapshot(w http.ResponseWriter, r *http.Request) {
+	taskID := chi.URLParam(r, "taskId")
+	taskUUID, ok := parseUUIDOrBadRequest(w, taskID, "task_id")
+	if !ok {
+		return
+	}
+	task, err := h.Queries.GetAgentTask(r.Context(), taskUUID)
+	if err != nil {
+		writeError(w, http.StatusNotFound, "task not found")
+		return
+	}
+	// A brief carries the workspace's own rules and its issue's documents, so
+	// it is scoped exactly as tightly as the task it belongs to.
+	wsID := h.TaskService.ResolveTaskWorkspaceID(r.Context(), task)
+	if wsID == "" || wsID != middleware.WorkspaceIDFromContext(r.Context()) {
+		writeError(w, http.StatusNotFound, "task not found")
+		return
+	}
+	brief, err := h.Queries.GetAgentTaskBriefSnapshot(r.Context(), taskUUID)
+	if err != nil {
+		writeError(w, http.StatusNotFound, "task not found")
+		return
+	}
+	// A run that predates the snapshot, or one whose report never landed, has
+	// none. Saying so beats an empty string, which reads as "it was given
+	// nothing" — a claim about the run rather than about the record.
+	text, _ := brief.(string)
+	if strings.TrimSpace(text) == "" {
+		writeJSON(w, http.StatusOK, map[string]any{"task_id": taskID, "recorded": false})
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{
+		"task_id": taskID, "recorded": true, "brief": text,
+	})
+}
+
 // StartTask marks a dispatched task as running.
 func (h *Handler) StartTask(w http.ResponseWriter, r *http.Request) {
 	taskID := chi.URLParam(r, "taskId")

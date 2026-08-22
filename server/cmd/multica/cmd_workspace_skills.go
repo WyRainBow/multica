@@ -173,47 +173,14 @@ func runWorkspaceSkills(cmd *cobra.Command, args []string, statusOnly bool) erro
 	// goes leaves half the directory updated when it hits the first name it
 	// must not touch, and "some of your skills are new and some are not" is a
 	// worse state than either outcome.
-	type plan struct {
-		name, target, body, print string
-		skill                     workspaceSkill
-	}
-	var toWrite []plan
-	var current, stale, missing, conflicts []string
-
-	for _, skill := range skills {
-		name := sanitizePulledSkillName(skill.Name)
-		if name == "" {
-			fmt.Fprintf(os.Stderr, "Note: skipping skill %q (no usable directory name).\n", skill.Name)
-			continue
-		}
-		target := filepath.Join(root, name)
-		body := renderPulledSkill(skill)
-		print := pulledSkillFingerprint(body, skill.Files)
-
-		marker, hasMarker := readPulledSkillMarker(target)
-		_, statErr := os.Stat(target)
-
-		switch {
-		case os.IsNotExist(statErr):
-			missing = append(missing, name)
-		case !hasMarker:
-			// Somebody's own skill sits here. Never quietly replace it.
-			conflicts = append(conflicts, name)
-			if !force {
-				continue
-			}
-		case marker.Fingerprint == print:
-			current = append(current, name)
-			continue
-		default:
-			stale = append(stale, name)
-		}
-		toWrite = append(toWrite, plan{name, target, body, print, skill})
-	}
+	classified := classifyLocalSkills(root, skills, force)
 
 	if statusOnly {
-		return reportSkillStatus(dir, ws.Slug, current, stale, missing, conflicts)
+		return reportSkillStatus(dir, ws.Slug,
+			classified.current, classified.stale, classified.missing, classified.conflicts)
 	}
+	toWrite := classified.toWrite
+	conflicts, current := classified.conflicts, classified.current
 
 	// Mirror everything that is ours, then report what was not. Refusing the
 	// whole run over one conflicting name would let a single deliberate local
@@ -227,6 +194,9 @@ func runWorkspaceSkills(cmd *cobra.Command, args []string, statusOnly bool) erro
 		written = append(written, p.name)
 	}
 	sort.Strings(written)
+	// Recorded even when nothing needed writing: the directory is a mirror of
+	// this workspace either way, and that is what the patrol needs to know.
+	notePullTarget(pullTargetKindSkills, root, ws.Slug)
 	switch {
 	case len(written) > 0:
 		fmt.Fprintf(os.Stderr, "Mirrored %d skill(s) from %s into %s: %s\n",
@@ -243,6 +213,64 @@ func runWorkspaceSkills(cmd *cobra.Command, args []string, statusOnly bool) erro
 			strings.Join(conflicts, ", "))
 	}
 	return nil
+}
+
+// skillPlan is one skill's local destination and the bytes that belong there.
+type skillPlan struct {
+	name, target, body, print string
+	skill                     workspaceSkill
+}
+
+// localSkillState is how a local directory compares to the workspace.
+type localSkillState struct {
+	current, stale, missing, conflicts []string
+	toWrite                            []skillPlan
+}
+
+// classifyLocalSkills compares the mirror on disk against the workspace
+// without writing anything.
+//
+// Everything is classified before anything is written: a loop that writes as
+// it goes leaves half the directory updated when it hits the first name it
+// must not touch, and "some of your skills are new and some are not" is worse
+// than either outcome.
+//
+// Extracted so the daily patrol asks this exactly the way `skills status`
+// does. A second implementation of "is this copy current" is how the same
+// mirror ends up described two ways.
+func classifyLocalSkills(root string, skills []workspaceSkill, force bool) localSkillState {
+	var state localSkillState
+	for _, skill := range skills {
+		name := sanitizePulledSkillName(skill.Name)
+		if name == "" {
+			fmt.Fprintf(os.Stderr, "Note: skipping skill %q (no usable directory name).\n", skill.Name)
+			continue
+		}
+		target := filepath.Join(root, name)
+		body := renderPulledSkill(skill)
+		print := pulledSkillFingerprint(body, skill.Files)
+
+		marker, hasMarker := readPulledSkillMarker(target)
+		_, statErr := os.Stat(target)
+
+		switch {
+		case os.IsNotExist(statErr):
+			state.missing = append(state.missing, name)
+		case !hasMarker:
+			// Somebody's own skill sits here. Never quietly replace it.
+			state.conflicts = append(state.conflicts, name)
+			if !force {
+				continue
+			}
+		case marker.Fingerprint == print:
+			state.current = append(state.current, name)
+			continue
+		default:
+			state.stale = append(state.stale, name)
+		}
+		state.toWrite = append(state.toWrite, skillPlan{name, target, body, print, skill})
+	}
+	return state
 }
 
 func reportSkillStatus(dir, slug string, current, stale, missing, conflicts []string) error {

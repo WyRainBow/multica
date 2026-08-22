@@ -9,6 +9,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/multica-ai/multica/server/internal/assetmap"
 	"time"
 
 	"github.com/spf13/cobra"
@@ -157,5 +159,33 @@ func TestRecentIssuesReadsTheEnvelope(t *testing.T) {
 	// for. Board order would answer "near the top", not "moved lately".
 	if !strings.Contains(gotQuery, "sort=updated_at") || !strings.Contains(gotQuery, "direction=desc") {
 		t.Errorf("query = %q, want it sorted by updated_at desc", gotQuery)
+	}
+}
+
+func TestTheTerminalMapNamesTheDraftsFolderTheWriterUses(t *testing.T) {
+	t.Parallel()
+	// The folder lists are duplicated per binary on purpose — labels drifting
+	// between releases is cosmetic. The kind is not: a retro filed under a
+	// kind the map does not read is a draft nobody will ever see, and nothing
+	// anywhere reports that.
+	var found bool
+	for _, folder := range contextAssetFolders {
+		if folder.kind == assetmap.CaseDraftKind {
+			found = true
+			if !strings.Contains(folder.label+folder.when, "待人审") {
+				t.Errorf("the drafts folder does not say it is unreviewed: %q / %q", folder.label, folder.when)
+			}
+		}
+	}
+	if !found {
+		t.Errorf("the terminal asset map does not read %s", assetmap.CaseDraftKind)
+	}
+	// Reviewed cases must still come first; the drafts entry is meant to be
+	// appended, not to displace anything.
+	if contextAssetFolders[0].kind != "AgentWiki/cases_案例" {
+		t.Errorf("reviewed cases are no longer first: %q", contextAssetFolders[0].kind)
+	}
+	if contextAssetFolders[len(contextAssetFolders)-1].kind != assetmap.CaseDraftKind {
+		t.Error("drafts must render last, below the writing a person vouched for")
 	}
 }

@@ -1870,6 +1870,12 @@ func runIssueStatus(cmd *cobra.Command, args []string) error {
 
 	fmt.Fprintf(os.Stderr, "Issue %s status changed to %s.\n", issueDisplayKey(result), status)
 
+	// Finishing is the moment the run is still fresh enough to reconstruct.
+	// A line, not a step: see retro_prompt.go for why this never runs itself.
+	if shouldPromptRetro(status, "") {
+		writeRetroPrompt(os.Stderr, issueDisplayKey(result), "状态改为 "+status)
+	}
+
 	output, _ := cmd.Flags().GetString("output")
 	if output == "json" {
 		return cli.PrintJSON(os.Stdout, result)
