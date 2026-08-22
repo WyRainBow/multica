@@ -205,6 +205,13 @@ func scanStaleLocalCopies(ctx context.Context, client *cli.APIClient, wsID strin
 			if len(state.missing) > 0 {
 				parts = append(parts, fmt.Sprintf("%d 个没拉过（%s）", len(state.missing), strings.Join(state.missing, ", ")))
 			}
+			// Conflicts are deliberately NOT reported. A local file under a
+			// workspace skill's name is usually a router: a thin page that
+			// exists precisely to defer to the workspace version, which is
+			// what `interview-retro` is here. Nothing distinguishes that from
+			// an accidental divergence without new state, so reporting it
+			// would put an item in this digest that can never be cleared —
+			// and a permanent line is how a reader learns to skip the slot.
 			if len(parts) == 0 {
 				continue
 			}
