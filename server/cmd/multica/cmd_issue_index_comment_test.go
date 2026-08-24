@@ -129,6 +129,7 @@ func TestRunIssueCreatePostsPinnedIndexComment(t *testing.T) {
 
 - 待补
 - 建卡会话（建卡当刻快照，不随会话变动）：` + "`sess-abc`" + `
+- 调研：见调研记录阶段评论
 
 ## 当前状态
 

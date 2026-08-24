@@ -6,8 +6,10 @@ container inside one issue holding the comments written while it was there.
 
 Not a status: `status` forgets the route, a phase stays.
 
-**Every new issue is created with 需求梳理 → 方案评审 → 代码评审 → 测试验收 →
-需求冻结 on it**, sub-issues included. The two reviews are separate on purpose:
+**Every new issue is created with 调研记录 → 需求梳理 → 方案评审 → 代码评审 →
+测试验收 → 需求冻结 on it**, sub-issues included. Put research findings and
+conclusions in the 调研记录 phase, not in a review phase. The two reviews are
+separate on purpose:
 方案评审 asks whether this is the right thing to build, 代码评审 whether it was
 built right, and one combined station puts both answers in the same pile.
 

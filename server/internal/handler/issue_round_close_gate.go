@@ -61,7 +61,7 @@ func (h *Handler) checkRoundClosureForDone(
 	}
 
 	// A phase that exists is not a phase that happened. Every card is created
-	// with the five default stations already listed, all pending and never
+// with the six default stations already listed, all pending and never
 	// entered — matching on the name alone refused `done` on every card in the
 	// workspace, which is how a gate stops being a gate and becomes an outage.
 	//

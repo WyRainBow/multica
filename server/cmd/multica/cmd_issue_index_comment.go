@@ -51,6 +51,7 @@ func issueIndexCommentContent(session string) string {
 		"\n" +
 		"- 待补\n" +
 		"- 建卡会话（建卡当刻快照，不随会话变动）：" + recorded + "\n" +
+		"- 调研：见调研记录阶段评论\n" +
 		"\n" +
 		"## 当前状态\n" +
 		"\n" +

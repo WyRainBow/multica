@@ -39,9 +39,10 @@ var issuePhaseListCmd = &cobra.Command{
 	Short: "List the phases of an issue",
 	Long: `List the phases of an issue.
 
-Every new issue is created with five stations already on it, sub-issues
+Every new issue is created with six stations already on it, sub-issues
 included:
 
+  调研记录    research findings and conclusions; file them here, not in a review
   需求梳理    what this is and why — the reading, the boundaries, the constraints
   方案评审    whether this is the right thing to build
   代码评审    whether it was built right

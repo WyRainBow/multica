@@ -49,10 +49,10 @@ export function phaseState(phase: IssuePhase): PhaseState {
 /**
  * The one ready-made route: what a single issue passes through.
  *
- * The same five whatever the issue is about — a requirement, a design, an
- * implementation all get specified, reviewed, built, checked and closed. That
- * sameness is what makes it a property of an issue rather than a process for
- * one kind of work, and properties are what belong in a tool.
+ * The same six whatever the issue is about — a requirement, a design, an
+ * implementation all get researched, specified, reviewed, built, checked and
+ * closed. That sameness is what makes it a property of an issue rather than a
+ * process for one kind of work, and properties are what belong in a tool.
  *
  * The two reviews are named separately on purpose: 方案评审 and 代码评审 ask
  * different questions of different artifacts — "is this the right thing to
@@ -61,7 +61,7 @@ export function phaseState(phase: IssuePhase): PhaseState {
  *
  * An earlier version listed nine, down to 合并 MR. That is a chain of separate
  * ISSUES, each with its own owner and its own comments, not the life of one —
- * the two were conflated. These five stay inside one issue.
+ * the two were conflated. These six stay inside one issue.
  *
  * The ends overlap with `status` (需求梳理 ≈ in_progress, 需求冻结 ≈ done), and
  * on their own they would add nothing. What they add is rounds: review happens
@@ -71,7 +71,7 @@ export function phaseState(phase: IssuePhase): PhaseState {
  * Kept in lockstep with issuephase.DefaultRoute on the server.
  */
 const PHASE_TEMPLATES = [
-  { key: "requirement", names: ["需求梳理", "方案评审", "代码评审", "测试验收", "需求冻结"] },
+  { key: "requirement", names: ["调研记录", "需求梳理", "方案评审", "代码评审", "测试验收", "需求冻结"] },
 ] as const;
 
 type TemplateKey = (typeof PHASE_TEMPLATES)[number]["key"];

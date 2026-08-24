@@ -79,7 +79,7 @@ func TestUnresolveHelp_ExplainsTheReopenGap(t *testing.T) {
 // never shown to anyone.
 func TestPhaseListHelp_NamesTheDefaultRoute(t *testing.T) {
 	long := issuePhaseListCmd.Long
-	for _, station := range []string{"需求梳理", "方案评审", "代码评审", "测试验收", "需求冻结"} {
+	for _, station := range []string{"调研记录", "需求梳理", "方案评审", "代码评审", "测试验收", "需求冻结"} {
 		if !strings.Contains(long, station) {
 			t.Errorf("phase list --help does not name %q", station)
 		}

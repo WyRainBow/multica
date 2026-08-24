@@ -8,8 +8,9 @@ const PositionStep = 1000
 
 // DefaultRoute is the route every new issue starts with.
 //
-// The same five stations whatever the issue is about — a requirement, a design,
-// an implementation all get specified, reviewed, built, checked and closed.
+// The same six stations whatever the issue is about — a requirement, a design,
+// an implementation all get researched, specified, reviewed, built, checked
+// and closed.
 // That sameness is what makes a route a property of an issue rather than a
 // process for one kind of work, and it is why seeding it at creation is
 // reasonable at all: a route that differed per issue could not have a default.
@@ -29,4 +30,4 @@ const PositionStep = 1000
 // its "apply template" menu. Duplicated rather than shared because the two live
 // on opposite sides of the API and cannot import each other; the menu stays
 // because a route can be deleted and someone has to be able to put it back.
-var DefaultRoute = []string{"需求梳理", "方案评审", "代码评审", "测试验收", "需求冻结"}
+var DefaultRoute = []string{"调研记录", "需求梳理", "方案评审", "代码评审", "测试验收", "需求冻结"}

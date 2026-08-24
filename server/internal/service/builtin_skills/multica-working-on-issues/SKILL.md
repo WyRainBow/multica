@@ -257,8 +257,9 @@ multica issue comment add <id> --phase 评审 --content "..."
 multica issue phase list <id>
 ```
 
-**Every new issue is created with 需求梳理 → 方案评审 → 代码评审 → 测试验收 →
-需求冻结 already on it** — file into
+**Every new issue is created with 调研记录 → 需求梳理 → 方案评审 → 代码评审 →
+测试验收 → 需求冻结 already on it** — file research findings and conclusions
+under 调研记录, not a review phase, then file into
 those rather than building a route first. `<phase>` is the NAME, matched
 exact-first so `评审` still resolves once `评审 2` exists.
 
