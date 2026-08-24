@@ -14,12 +14,12 @@ WHERE id = $1 AND workspace_id = $2;
 -- as a backlog to work down. The keyset ordering matches
 -- idx_card_workspace_created.
 SELECT * FROM card
-WHERE workspace_id = $1
+WHERE workspace_id = $1 AND NOT is_placeholder
 ORDER BY created_at DESC, id DESC
 LIMIT $2 OFFSET $3;
 
 -- name: CountCards :one
-SELECT count(*) FROM card WHERE workspace_id = $1;
+SELECT count(*) FROM card WHERE workspace_id = $1 AND NOT is_placeholder;
 
 -- name: SearchCards :many
 -- Cards are written to be found again months later, so a title-only match
@@ -29,6 +29,7 @@ SELECT count(*) FROM card WHERE workspace_id = $1;
 -- from Go so SQL lowercases one side only.
 SELECT * FROM card
 WHERE workspace_id = sqlc.arg(workspace_id)
+  AND NOT is_placeholder
   AND (LOWER(title) LIKE sqlc.arg(pattern) OR LOWER(content) LIKE sqlc.arg(pattern))
 ORDER BY created_at DESC, id DESC
 LIMIT sqlc.arg('limit') OFFSET sqlc.arg('offset');
@@ -38,13 +39,14 @@ LIMIT sqlc.arg('limit') OFFSET sqlc.arg('offset');
 -- 13" reports the workspace rather than the search.
 SELECT count(*) FROM card
 WHERE workspace_id = sqlc.arg(workspace_id)
+  AND NOT is_placeholder
   AND (LOWER(title) LIKE sqlc.arg(pattern) OR LOWER(content) LIKE sqlc.arg(pattern));
 
 -- name: ListCardsForIssue :many
 -- The cards written for one requirement, oldest first: read together they
 -- are a narrative of how the work went, which reads forwards.
 SELECT * FROM card
-WHERE workspace_id = $1 AND issue_id = $2
+WHERE workspace_id = $1 AND issue_id = $2 AND NOT is_placeholder
 ORDER BY created_at ASC, id ASC;
 
 -- name: ListCardCountsForIssues :many
@@ -53,6 +55,7 @@ ORDER BY created_at ASC, id ASC;
 SELECT issue_id, count(*)::bigint AS card_count
 FROM card
 WHERE workspace_id = $1 AND issue_id = ANY(sqlc.arg('issue_ids')::uuid[])
+  AND NOT is_placeholder
 GROUP BY issue_id;
 
 -- name: UpdateCard :one
@@ -62,6 +65,12 @@ UPDATE card SET
     title = COALESCE(sqlc.narg('title'), title),
     content = COALESCE(sqlc.narg('content'), content),
     kind = COALESCE(sqlc.narg('kind'), kind),
+    -- An explicit edit is real content, so it promotes the row out of the
+    -- placeholder set in the same statement that writes the text. Two steps
+    -- (clear the flag, then save) would leave a window where the slot reads as
+    -- occupied but empty; one statement has no window. Already-real cards are
+    -- unaffected — FALSE is what they hold.
+    is_placeholder = FALSE,
     issue_id = CASE WHEN sqlc.arg('clear_issue')::boolean THEN NULL
                     ELSE COALESCE(sqlc.narg('issue_id'), issue_id) END,
     updated_at = now()
@@ -78,6 +87,7 @@ DELETE FROM card WHERE id = $1 AND workspace_id = $2;
 -- `本地联调整理`. Matches the client's filterDocsByPath.
 SELECT * FROM card
 WHERE workspace_id = sqlc.arg(workspace_id)
+  AND NOT is_placeholder
   AND (kind = sqlc.arg(kind) OR kind LIKE sqlc.arg(kind) || '/%')
 ORDER BY created_at DESC, id DESC
 LIMIT sqlc.arg('limit') OFFSET sqlc.arg('offset');
@@ -85,6 +95,7 @@ LIMIT sqlc.arg('limit') OFFSET sqlc.arg('offset');
 -- name: CountCardsByKind :one
 SELECT count(*) FROM card
 WHERE workspace_id = sqlc.arg(workspace_id)
+  AND NOT is_placeholder
   AND (kind = sqlc.arg(kind) OR kind LIKE sqlc.arg(kind) || '/%');
 
 -- name: ListCardKinds :many
@@ -94,6 +105,51 @@ WHERE workspace_id = sqlc.arg(workspace_id)
 -- label has nothing to render.
 SELECT kind, count(*) AS card_count
 FROM card
-WHERE workspace_id = $1 AND kind <> ''
+WHERE workspace_id = $1 AND kind <> '' AND NOT is_placeholder
 GROUP BY kind
 ORDER BY count(*) DESC, kind ASC;
+
+-- name: ListIssueNamespaceCards :many
+-- Every card filed under one issue, PLACEHOLDERS INCLUDED. The namespace view
+-- is the one read that is supposed to see the empty slots; everything else
+-- goes through ListCardsForIssue, which drops them.
+SELECT * FROM card
+WHERE workspace_id = $1 AND issue_id = $2
+ORDER BY created_at ASC, id ASC;
+
+-- name: CreateIssueNamespaceCard :one
+-- The skeleton writer. Separate from CreateCard because that one is the public
+-- write path and must never be able to mint a placeholder from a request body:
+-- placeholder-ness is decided by the lifecycle, not by a caller.
+INSERT INTO card (
+    workspace_id, issue_id, author_type, author_id, title, content, kind, is_placeholder
+) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+RETURNING *;
+
+-- name: PromotePlaceholderCard :one
+-- Real content arriving at a slot a placeholder is holding: one statement
+-- fills the row and clears the flag, so no reader can observe a slot that is
+-- neither placeholder nor document. Deleting the placeholder and inserting a
+-- document would open exactly that gap, and would change the card's id under
+-- anyone already linking to it.
+--
+-- Authorship moves too: the placeholder was minted by whoever created the
+-- issue, and the document belongs to whoever wrote it.
+UPDATE card SET
+    author_type = sqlc.arg('author_type'),
+    author_id = sqlc.arg('author_id'),
+    title = sqlc.arg('title'),
+    content = sqlc.arg('content'),
+    is_placeholder = FALSE,
+    updated_at = now()
+WHERE workspace_id = sqlc.arg('workspace_id')
+  AND issue_id = sqlc.arg('issue_id')
+  AND kind = sqlc.arg('kind')
+  AND is_placeholder
+RETURNING *;
+
+-- name: DeleteIssuePlaceholderCards :exec
+-- What a finished issue leaves behind. Only the slots still standing empty go;
+-- anything promoted is a document now and is not touched by this.
+DELETE FROM card
+WHERE workspace_id = $1 AND issue_id = $2 AND is_placeholder;

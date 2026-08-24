@@ -1327,6 +1327,10 @@ func NewRouterWithOptions(pool *pgxpool.Pool, hub *realtime.Hub, bus *events.Bus
 					r.Post("/park", h.ParkIssue)
 					r.Get("/parked", h.ListParkedFromIssue)
 					r.Get("/cards", h.ListCardsForIssue)
+					// The fixed document directory every issue gets, and the
+					// only read that shows the slots nobody has written into
+					// yet (COC-338). Every other card read filters them out.
+					r.Get("/namespace", h.GetIssueNamespace)
 					// Delivery receipts gate done on a real verification (COC-282).
 					r.Post("/delivery-receipt", h.CreateDeliveryReceipt)
 					r.Get("/delivery-receipt", h.GetDeliveryReceipt)

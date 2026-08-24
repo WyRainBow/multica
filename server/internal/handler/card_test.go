@@ -120,12 +120,25 @@ func TestListCardsForIssue_ReturnsEveryCardOldestFirst(t *testing.T) {
 	if err := json.NewDecoder(recorder.Body).Decode(&response); err != nil {
 		t.Fatalf("decode: %v", err)
 	}
-	if len(response.Cards) != 2 {
-		t.Fatalf("got %d cards, want 2", len(response.Cards))
+	// Three, not two: since COC-338 every issue is created with its body
+	// already filed as a document (the R0 snapshot), so the two written here
+	// are not the whole list. What this test is about is the order of the ones
+	// written, so it reads their positions rather than the length.
+	firstAt, secondAt := -1, -1
+	for i, card := range response.Cards {
+		switch card.ID {
+		case first.ID:
+			firstAt = i
+		case second.ID:
+			secondAt = i
+		}
+	}
+	if firstAt < 0 || secondAt < 0 {
+		t.Fatalf("written cards missing from the list: %+v", response.Cards)
 	}
 	// Read together they are a narrative of how the work went, which reads
 	// forwards.
-	if response.Cards[0].ID != first.ID || response.Cards[1].ID != second.ID {
+	if firstAt > secondAt {
 		t.Fatalf("cards not in creation order")
 	}
 }
@@ -150,7 +163,7 @@ func TestListCards_NewestFirst(t *testing.T) {
 	}
 	var response struct {
 		Cards []CardResponse `json:"cards"`
-		Total  int64           `json:"total"`
+		Total int64          `json:"total"`
 	}
 	if err := json.NewDecoder(recorder.Body).Decode(&response); err != nil {
 		t.Fatalf("decode: %v", err)

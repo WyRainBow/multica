@@ -40,6 +40,12 @@
     "unlink": "연결 해제",
     "link_failed": "연결을 변경하지 못했습니다."
   },
+  "namespace": {
+    "title": "문서 디렉터리",
+    "pending": "작성 전",
+    "absent": "미생성",
+    "count_other": "{{count}}개"
+  },
   "detail": {
     "not_found": "이 문서가 없거나 삭제되었습니다.",
     "back": "문서로 돌아가기",

@@ -12,7 +12,7 @@ import (
 )
 
 const countCards = `-- name: CountCards :one
-SELECT count(*) FROM card WHERE workspace_id = $1
+SELECT count(*) FROM card WHERE workspace_id = $1 AND NOT is_placeholder
 `
 
 func (q *Queries) CountCards(ctx context.Context, workspaceID pgtype.UUID) (int64, error) {
@@ -25,6 +25,7 @@ func (q *Queries) CountCards(ctx context.Context, workspaceID pgtype.UUID) (int6
 const countCardsByKind = `-- name: CountCardsByKind :one
 SELECT count(*) FROM card
 WHERE workspace_id = $1
+  AND NOT is_placeholder
   AND (kind = $2 OR kind LIKE $2 || '/%')
 `
 
@@ -43,6 +44,7 @@ func (q *Queries) CountCardsByKind(ctx context.Context, arg CountCardsByKindPara
 const countSearchCards = `-- name: CountSearchCards :one
 SELECT count(*) FROM card
 WHERE workspace_id = $1
+  AND NOT is_placeholder
   AND (LOWER(title) LIKE $2 OR LOWER(content) LIKE $2)
 `
 
@@ -63,7 +65,7 @@ func (q *Queries) CountSearchCards(ctx context.Context, arg CountSearchCardsPara
 const createCard = `-- name: CreateCard :one
 INSERT INTO card (workspace_id, issue_id, author_type, author_id, title, content, kind)
 VALUES ($1, $7, $2, $3, $4, $5, $6)
-RETURNING id, workspace_id, issue_id, author_type, author_id, title, content, created_at, updated_at, kind
+RETURNING id, workspace_id, issue_id, author_type, author_id, title, content, created_at, updated_at, kind, is_placeholder
 `
 
 type CreateCardParams struct {
@@ -98,6 +100,56 @@ func (q *Queries) CreateCard(ctx context.Context, arg CreateCardParams) (Card, e
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.Kind,
+		&i.IsPlaceholder,
+	)
+	return i, err
+}
+
+const createIssueNamespaceCard = `-- name: CreateIssueNamespaceCard :one
+INSERT INTO card (
+    workspace_id, issue_id, author_type, author_id, title, content, kind, is_placeholder
+) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+RETURNING id, workspace_id, issue_id, author_type, author_id, title, content, created_at, updated_at, kind, is_placeholder
+`
+
+type CreateIssueNamespaceCardParams struct {
+	WorkspaceID   pgtype.UUID `json:"workspace_id"`
+	IssueID       pgtype.UUID `json:"issue_id"`
+	AuthorType    string      `json:"author_type"`
+	AuthorID      pgtype.UUID `json:"author_id"`
+	Title         string      `json:"title"`
+	Content       string      `json:"content"`
+	Kind          string      `json:"kind"`
+	IsPlaceholder bool        `json:"is_placeholder"`
+}
+
+// The skeleton writer. Separate from CreateCard because that one is the public
+// write path and must never be able to mint a placeholder from a request body:
+// placeholder-ness is decided by the lifecycle, not by a caller.
+func (q *Queries) CreateIssueNamespaceCard(ctx context.Context, arg CreateIssueNamespaceCardParams) (Card, error) {
+	row := q.db.QueryRow(ctx, createIssueNamespaceCard,
+		arg.WorkspaceID,
+		arg.IssueID,
+		arg.AuthorType,
+		arg.AuthorID,
+		arg.Title,
+		arg.Content,
+		arg.Kind,
+		arg.IsPlaceholder,
+	)
+	var i Card
+	err := row.Scan(
+		&i.ID,
+		&i.WorkspaceID,
+		&i.IssueID,
+		&i.AuthorType,
+		&i.AuthorID,
+		&i.Title,
+		&i.Content,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.Kind,
+		&i.IsPlaceholder,
 	)
 	return i, err
 }
@@ -116,8 +168,25 @@ func (q *Queries) DeleteCard(ctx context.Context, arg DeleteCardParams) error {
 	return err
 }
 
+const deleteIssuePlaceholderCards = `-- name: DeleteIssuePlaceholderCards :exec
+DELETE FROM card
+WHERE workspace_id = $1 AND issue_id = $2 AND is_placeholder
+`
+
+type DeleteIssuePlaceholderCardsParams struct {
+	WorkspaceID pgtype.UUID `json:"workspace_id"`
+	IssueID     pgtype.UUID `json:"issue_id"`
+}
+
+// What a finished issue leaves behind. Only the slots still standing empty go;
+// anything promoted is a document now and is not touched by this.
+func (q *Queries) DeleteIssuePlaceholderCards(ctx context.Context, arg DeleteIssuePlaceholderCardsParams) error {
+	_, err := q.db.Exec(ctx, deleteIssuePlaceholderCards, arg.WorkspaceID, arg.IssueID)
+	return err
+}
+
 const getCard = `-- name: GetCard :one
-SELECT id, workspace_id, issue_id, author_type, author_id, title, content, created_at, updated_at, kind FROM card
+SELECT id, workspace_id, issue_id, author_type, author_id, title, content, created_at, updated_at, kind, is_placeholder FROM card
 WHERE id = $1 AND workspace_id = $2
 `
 
@@ -142,6 +211,7 @@ func (q *Queries) GetCard(ctx context.Context, arg GetCardParams) (Card, error) 
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.Kind,
+		&i.IsPlaceholder,
 	)
 	return i, err
 }
@@ -150,6 +220,7 @@ const listCardCountsForIssues = `-- name: ListCardCountsForIssues :many
 SELECT issue_id, count(*)::bigint AS card_count
 FROM card
 WHERE workspace_id = $1 AND issue_id = ANY($2::uuid[])
+  AND NOT is_placeholder
 GROUP BY issue_id
 `
 
@@ -188,7 +259,7 @@ func (q *Queries) ListCardCountsForIssues(ctx context.Context, arg ListCardCount
 const listCardKinds = `-- name: ListCardKinds :many
 SELECT kind, count(*) AS card_count
 FROM card
-WHERE workspace_id = $1 AND kind <> ''
+WHERE workspace_id = $1 AND kind <> '' AND NOT is_placeholder
 GROUP BY kind
 ORDER BY count(*) DESC, kind ASC
 `
@@ -223,8 +294,8 @@ func (q *Queries) ListCardKinds(ctx context.Context, workspaceID pgtype.UUID) ([
 }
 
 const listCards = `-- name: ListCards :many
-SELECT id, workspace_id, issue_id, author_type, author_id, title, content, created_at, updated_at, kind FROM card
-WHERE workspace_id = $1
+SELECT id, workspace_id, issue_id, author_type, author_id, title, content, created_at, updated_at, kind, is_placeholder FROM card
+WHERE workspace_id = $1 AND NOT is_placeholder
 ORDER BY created_at DESC, id DESC
 LIMIT $2 OFFSET $3
 `
@@ -258,6 +329,7 @@ func (q *Queries) ListCards(ctx context.Context, arg ListCardsParams) ([]Card, e
 			&i.CreatedAt,
 			&i.UpdatedAt,
 			&i.Kind,
+			&i.IsPlaceholder,
 		); err != nil {
 			return nil, err
 		}
@@ -270,8 +342,9 @@ func (q *Queries) ListCards(ctx context.Context, arg ListCardsParams) ([]Card, e
 }
 
 const listCardsByKind = `-- name: ListCardsByKind :many
-SELECT id, workspace_id, issue_id, author_type, author_id, title, content, created_at, updated_at, kind FROM card
+SELECT id, workspace_id, issue_id, author_type, author_id, title, content, created_at, updated_at, kind, is_placeholder FROM card
 WHERE workspace_id = $1
+  AND NOT is_placeholder
   AND (kind = $2 OR kind LIKE $2 || '/%')
 ORDER BY created_at DESC, id DESC
 LIMIT $4 OFFSET $3
@@ -313,6 +386,7 @@ func (q *Queries) ListCardsByKind(ctx context.Context, arg ListCardsByKindParams
 			&i.CreatedAt,
 			&i.UpdatedAt,
 			&i.Kind,
+			&i.IsPlaceholder,
 		); err != nil {
 			return nil, err
 		}
@@ -325,8 +399,8 @@ func (q *Queries) ListCardsByKind(ctx context.Context, arg ListCardsByKindParams
 }
 
 const listCardsForIssue = `-- name: ListCardsForIssue :many
-SELECT id, workspace_id, issue_id, author_type, author_id, title, content, created_at, updated_at, kind FROM card
-WHERE workspace_id = $1 AND issue_id = $2
+SELECT id, workspace_id, issue_id, author_type, author_id, title, content, created_at, updated_at, kind, is_placeholder FROM card
+WHERE workspace_id = $1 AND issue_id = $2 AND NOT is_placeholder
 ORDER BY created_at ASC, id ASC
 `
 
@@ -357,6 +431,7 @@ func (q *Queries) ListCardsForIssue(ctx context.Context, arg ListCardsForIssuePa
 			&i.CreatedAt,
 			&i.UpdatedAt,
 			&i.Kind,
+			&i.IsPlaceholder,
 		); err != nil {
 			return nil, err
 		}
@@ -368,9 +443,116 @@ func (q *Queries) ListCardsForIssue(ctx context.Context, arg ListCardsForIssuePa
 	return items, nil
 }
 
+const listIssueNamespaceCards = `-- name: ListIssueNamespaceCards :many
+SELECT id, workspace_id, issue_id, author_type, author_id, title, content, created_at, updated_at, kind, is_placeholder FROM card
+WHERE workspace_id = $1 AND issue_id = $2
+ORDER BY created_at ASC, id ASC
+`
+
+type ListIssueNamespaceCardsParams struct {
+	WorkspaceID pgtype.UUID `json:"workspace_id"`
+	IssueID     pgtype.UUID `json:"issue_id"`
+}
+
+// Every card filed under one issue, PLACEHOLDERS INCLUDED. The namespace view
+// is the one read that is supposed to see the empty slots; everything else
+// goes through ListCardsForIssue, which drops them.
+func (q *Queries) ListIssueNamespaceCards(ctx context.Context, arg ListIssueNamespaceCardsParams) ([]Card, error) {
+	rows, err := q.db.Query(ctx, listIssueNamespaceCards, arg.WorkspaceID, arg.IssueID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []Card{}
+	for rows.Next() {
+		var i Card
+		if err := rows.Scan(
+			&i.ID,
+			&i.WorkspaceID,
+			&i.IssueID,
+			&i.AuthorType,
+			&i.AuthorID,
+			&i.Title,
+			&i.Content,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.Kind,
+			&i.IsPlaceholder,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const promotePlaceholderCard = `-- name: PromotePlaceholderCard :one
+UPDATE card SET
+    author_type = $1,
+    author_id = $2,
+    title = $3,
+    content = $4,
+    is_placeholder = FALSE,
+    updated_at = now()
+WHERE workspace_id = $5
+  AND issue_id = $6
+  AND kind = $7
+  AND is_placeholder
+RETURNING id, workspace_id, issue_id, author_type, author_id, title, content, created_at, updated_at, kind, is_placeholder
+`
+
+type PromotePlaceholderCardParams struct {
+	AuthorType  string      `json:"author_type"`
+	AuthorID    pgtype.UUID `json:"author_id"`
+	Title       string      `json:"title"`
+	Content     string      `json:"content"`
+	WorkspaceID pgtype.UUID `json:"workspace_id"`
+	IssueID     pgtype.UUID `json:"issue_id"`
+	Kind        string      `json:"kind"`
+}
+
+// Real content arriving at a slot a placeholder is holding: one statement
+// fills the row and clears the flag, so no reader can observe a slot that is
+// neither placeholder nor document. Deleting the placeholder and inserting a
+// document would open exactly that gap, and would change the card's id under
+// anyone already linking to it.
+//
+// Authorship moves too: the placeholder was minted by whoever created the
+// issue, and the document belongs to whoever wrote it.
+func (q *Queries) PromotePlaceholderCard(ctx context.Context, arg PromotePlaceholderCardParams) (Card, error) {
+	row := q.db.QueryRow(ctx, promotePlaceholderCard,
+		arg.AuthorType,
+		arg.AuthorID,
+		arg.Title,
+		arg.Content,
+		arg.WorkspaceID,
+		arg.IssueID,
+		arg.Kind,
+	)
+	var i Card
+	err := row.Scan(
+		&i.ID,
+		&i.WorkspaceID,
+		&i.IssueID,
+		&i.AuthorType,
+		&i.AuthorID,
+		&i.Title,
+		&i.Content,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.Kind,
+		&i.IsPlaceholder,
+	)
+	return i, err
+}
+
 const searchCards = `-- name: SearchCards :many
-SELECT id, workspace_id, issue_id, author_type, author_id, title, content, created_at, updated_at, kind FROM card
+SELECT id, workspace_id, issue_id, author_type, author_id, title, content, created_at, updated_at, kind, is_placeholder FROM card
 WHERE workspace_id = $1
+  AND NOT is_placeholder
   AND (LOWER(title) LIKE $2 OR LOWER(content) LIKE $2)
 ORDER BY created_at DESC, id DESC
 LIMIT $4 OFFSET $3
@@ -413,6 +595,7 @@ func (q *Queries) SearchCards(ctx context.Context, arg SearchCardsParams) ([]Car
 			&i.CreatedAt,
 			&i.UpdatedAt,
 			&i.Kind,
+			&i.IsPlaceholder,
 		); err != nil {
 			return nil, err
 		}
@@ -429,11 +612,17 @@ UPDATE card SET
     title = COALESCE($1, title),
     content = COALESCE($2, content),
     kind = COALESCE($3, kind),
+    -- An explicit edit is real content, so it promotes the row out of the
+    -- placeholder set in the same statement that writes the text. Two steps
+    -- (clear the flag, then save) would leave a window where the slot reads as
+    -- occupied but empty; one statement has no window. Already-real cards are
+    -- unaffected — FALSE is what they hold.
+    is_placeholder = FALSE,
     issue_id = CASE WHEN $4::boolean THEN NULL
                     ELSE COALESCE($5, issue_id) END,
     updated_at = now()
 WHERE id = $6 AND workspace_id = $7
-RETURNING id, workspace_id, issue_id, author_type, author_id, title, content, created_at, updated_at, kind
+RETURNING id, workspace_id, issue_id, author_type, author_id, title, content, created_at, updated_at, kind, is_placeholder
 `
 
 type UpdateCardParams struct {
@@ -470,6 +659,7 @@ func (q *Queries) UpdateCard(ctx context.Context, arg UpdateCardParams) (Card, e
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.Kind,
+		&i.IsPlaceholder,
 	)
 	return i, err
 }

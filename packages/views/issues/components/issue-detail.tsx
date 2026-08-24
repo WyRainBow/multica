@@ -149,7 +149,7 @@ import { ProjectPicker } from "../../projects/components/project-picker";
 import { LocalDirectoryHint } from "../../projects/components/local-directory-hint";
 import { CommentCard } from "./comment-card";
 import { IssueResourcesSection } from "./issue-resources-section";
-import { IssueDocsSection } from "../../docs";
+import { IssueDocsSection, IssueNamespaceSection } from "../../docs";
 import { IssueWorktreeSection } from "./issue-worktree-section";
 import { PhaseTrack } from "./phase-track";
 import { phaseAtTime } from "./phase-window";
@@ -3605,6 +3605,12 @@ export function IssueDetail({
               cards section because a resource is a pointer and a card is
               writing: you reach for the pointer far more often. */}
             <IssueResourcesSection issueId={id} />
+
+            {/* The fixed slot directory, above the documents list because it
+              answers the question the list cannot: which of the six things
+              every issue is supposed to have are still unwritten. The list
+              below can only show what exists. */}
+            <IssueNamespaceSection issueId={id} />
 
             {/* Documents this issue needs. Below resources because a resource is
               a pointer somewhere else and a document is writing that lives

@@ -12,6 +12,7 @@ import (
 	"github.com/multica-ai/multica/server/internal/analytics"
 	"github.com/multica-ai/multica/server/internal/events"
 	"github.com/multica-ai/multica/server/internal/issueguard"
+	"github.com/multica-ai/multica/server/internal/issuenamespace"
 	"github.com/multica-ai/multica/server/internal/issuephase"
 	"github.com/multica-ai/multica/server/internal/issueposition"
 	obsmetrics "github.com/multica-ai/multica/server/internal/metrics"
@@ -344,6 +345,33 @@ func (s *IssueService) Create(ctx context.Context, p IssueCreateParams, opts Iss
 	// Positions are 0, 1000, 2000 rather than a max+step read: nothing exists
 	// yet to read a maximum from.
 	if err := seedDefaultPhases(ctx, qtx, p.WorkspaceID, issue.ID); err != nil {
+		return IssueCreateResult{}, err
+	}
+
+	// The issue's document directory, seeded here for the same reason the route
+	// above is: a directory that only appears once somebody writes into it
+	// cannot tell "no design doc" apart from "nobody has looked at the design
+	// yet", and a post-commit round trip that half-fails leaves exactly the
+	// issues nobody would think to check. The body snapshot goes in with it, so
+	// the text the first review round is given has a predecessor to be read
+	// against.
+	//
+	// The automatic pinned index comment is deliberately NOT here: it stays a
+	// post-commit best-effort in the CLI (COC-329, see cmd_issue.go). Folding it
+	// in would make a failed comment roll back a created issue, and the retry
+	// that follows creates a second one.
+	ws, err := qtx.GetWorkspace(ctx, p.WorkspaceID)
+	if err != nil {
+		return IssueCreateResult{}, fmt.Errorf("load workspace for issue namespace: %w", err)
+	}
+	// A card created straight into a terminal status never crosses the boundary
+	// the cleanup hangs on, so its placeholders would stand empty forever —
+	// exactly the "no empty documents in the terminal state" invariant this
+	// whole card exists to hold. Seed the body snapshot, which is real content,
+	// and skip the placeholders: an issue born finished has no active phase for
+	// them to make predictable.
+	if err := issuenamespace.Seed(ctx, qtx, ws, issue, issue.Description.String,
+		issuenamespace.SkipPlaceholders(issue.Status)); err != nil {
 		return IssueCreateResult{}, err
 	}
 
