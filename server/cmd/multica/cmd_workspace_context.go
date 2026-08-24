@@ -48,31 +48,30 @@ const (
 
 var workspaceContextCmd = &cobra.Command{
 	Use:   "context [workspace-id|slug|prefix]",
-	Short: "Print the workspace's asset map for this session",
-	Long: `Prints what this workspace has, so a terminal session can find it.
+	Short: "读取资产地图（旧命令）",
+	Long: `读取当前工作区的资产地图，让手动打开的终端知道有哪些团队规则、skill、Wiki 资产和相关线索。
 
-A dispatched agent receives this in its brief. A session started by hand does
-not, and 'instructions pull' / 'skills pull' bring the content across without
-telling anyone what else exists.
+它与 'workspace get assets' 输出相同。旧命令继续保留兼容。
 
-Four sections: the team rules and whether the local copy is current, the skills
-available, the workspace's own writing, and — with --issue — what that issue has
-settled and what moved near it recently.
+加 --issue 还能看到这张卡已经定下的内容，以及最近动过的相关线索。
 
-Leads, not conclusions. Nothing here says what to read; it says what exists and
-how to open it. Nothing is written, so running it costs nothing and skipping it
-breaks nothing.`,
+这里只列有什么和怎么打开，不替你下结论，也不会写入任何东西。`,
 	Args: cobra.MaximumNArgs(1),
 	RunE: runWorkspaceContext,
 }
 
+func addWorkspaceContextFlags(cmd *cobra.Command) {
+	cmd.Flags().String("issue", "", "同时显示这张卡已定内容和近期相关线索")
+	cmd.Flags().String("instructions-file", "",
+		"检查本机团队指令副本是否最新，例如 ~/.claude/CLAUDE.md")
+	cmd.Flags().String("skills-dir", "",
+		"检查本机 skill 镜像是否最新，例如 ~/.claude/skills")
+}
+
 func init() {
 	workspaceCmd.AddCommand(workspaceContextCmd)
-	workspaceContextCmd.Flags().String("issue", "", "Also show what this issue has settled and what moved near it")
-	workspaceContextCmd.Flags().String("instructions-file", "",
-		"Local agent config to check the instructions copy against, e.g. ~/.claude/CLAUDE.md")
-	workspaceContextCmd.Flags().String("skills-dir", "",
-		"Local skills directory to check the skill mirror against, e.g. ~/.claude/skills")
+	addWorkspaceContextFlags(workspaceContextCmd)
+	addWorkspaceContextFlags(workspaceGetAssetsCmd)
 }
 
 func runWorkspaceContext(cmd *cobra.Command, args []string) error {

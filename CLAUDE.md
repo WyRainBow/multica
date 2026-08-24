@@ -258,3 +258,10 @@ only surfaced when they finally met.
 
 - All queries filter by `workspace_id`; membership gates access; `X-Workspace-ID` selects the workspace.
 - Issue assignees are polymorphic: `assignee_type` plus `assignee_id` can reference a member or an agent.
+
+## Multica workspace（cocoyu）
+
+本仓的 COC 工作流规则不在此文件重复。
+动手前运行 `multica --profile local workspace get instruction` 现拉团队指令。
+运行 `multica --profile local workspace get assets` 查看资产地图。
+保命三条照全局口径：建卡前查重，开团队命名分支即登记工作树，不给 Claude/Codex 指派或 @ 它们。

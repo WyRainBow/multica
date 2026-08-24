@@ -50,7 +50,7 @@ var workspaceInstructionsCmd = &cobra.Command{
 	Short: "Work with the workspace's shared agent instructions",
 	Long: `The instructions every agent in this workspace follows on every task.
 
-Read or edit them with 'workspace get' / 'workspace update --context'; this
+Read or edit them with 'workspace get instruction' / 'workspace update --context'; this
 group is about getting them to a runtime the daemon does not reach.`,
 }
 

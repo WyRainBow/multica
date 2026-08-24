@@ -40,12 +40,28 @@ var workspaceCreateCmd = &cobra.Command{
 
 var workspaceGetCmd = &cobra.Command{
 	Use:   "get [workspace-id|slug|prefix]",
-	Short: "Get workspace details",
-	Long: "Prints the full details of a workspace. The argument accepts a full " +
-		"UUID, a slug, or a short UUID prefix (≥4 hex chars) as shown in " +
-		"'workspace list'. If omitted, the current default workspace is used.",
-	Args: cobra.MaximumNArgs(1),
-	RunE: runWorkspaceGet,
+	Short: "读取工作区详情",
+	Long: "直接运行这个旧命令会读取工作区详情，原有输出保持不变。需要团队指令全文时用 " +
+		"'workspace get instruction'，需要资产地图时用 'workspace get assets'。",
+	Example: "  multica workspace get\n  multica workspace get instruction\n  multica workspace get assets",
+	Args:    cobra.MaximumNArgs(1),
+	RunE:    runWorkspaceGet,
+}
+
+var workspaceGetInstructionCmd = &cobra.Command{
+	Use:   "instruction [workspace-id|slug|prefix]",
+	Short: "读取团队指令全文",
+	Long:  "读取当前工作区的团队指令全文，这是团队规则的默认资源名。省略工作区参数时使用当前默认工作区。",
+	Args:  cobra.MaximumNArgs(1),
+	RunE:  runWorkspaceGetInstruction,
+}
+
+var workspaceGetAssetsCmd = &cobra.Command{
+	Use:   "assets [workspace-id|slug|prefix]",
+	Short: "读取资产地图",
+	Long:  "读取当前工作区的资产地图，内容与旧命令 'workspace context' 完全相同。省略工作区参数时使用当前默认工作区。",
+	Args:  cobra.MaximumNArgs(1),
+	RunE:  runWorkspaceContext,
 }
 
 var workspaceMemberCmd = &cobra.Command{
@@ -102,6 +118,8 @@ func init() {
 	workspaceCmd.AddCommand(workspaceListCmd)
 	workspaceCmd.AddCommand(workspaceCreateCmd)
 	workspaceCmd.AddCommand(workspaceGetCmd)
+	workspaceGetCmd.AddCommand(workspaceGetInstructionCmd)
+	workspaceGetCmd.AddCommand(workspaceGetAssetsCmd)
 	workspaceCmd.AddCommand(workspaceMemberCmd)
 	workspaceMemberCmd.AddCommand(workspaceMemberListCmd)
 	workspaceMemberCmd.AddCommand(workspaceMemberInviteCmd)
@@ -421,6 +439,34 @@ func runWorkspaceGet(cmd *cobra.Command, args []string) error {
 	}
 
 	return printWorkspace(cmd, ws)
+}
+
+func runWorkspaceGetInstruction(cmd *cobra.Command, args []string) error {
+	wsID, err := resolveWorkspaceArg(cmd, args)
+	if err != nil {
+		return err
+	}
+	if wsID == "" {
+		return fmt.Errorf("workspace ID is required: pass an id/slug/prefix as argument or set MULTICA_WORKSPACE_ID")
+	}
+
+	client, err := newAPIClient(cmd)
+	if err != nil {
+		return err
+	}
+
+	ctx, cancel := cli.APIContext(context.Background())
+	defer cancel()
+
+	var ws struct {
+		Context string `json:"context"`
+	}
+	if err := client.GetJSON(ctx, "/api/workspaces/"+wsID, &ws); err != nil {
+		return fmt.Errorf("get workspace instructions: %w", err)
+	}
+
+	_, err = fmt.Fprint(os.Stdout, ws.Context)
+	return err
 }
 
 func printWorkspace(cmd *cobra.Command, ws map[string]any) error {
