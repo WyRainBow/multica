@@ -147,4 +147,10 @@ export interface Issue {
   // requirement's status or archiving. May point at an issue that has since
   // been deleted, so readers must tolerate it resolving to nothing.
   parked_from_issue_id: string | null;
+  // The body's optimistic-concurrency counter, quoted back as
+  // `base_description_revision` on a write to prove the writer edited the
+  // text that is still there (COC-342). Optional: older backends and
+  // list projections that don't carry the column send nothing, and absence
+  // means "no claim possible", not revision 0.
+  description_revision?: number;
 }

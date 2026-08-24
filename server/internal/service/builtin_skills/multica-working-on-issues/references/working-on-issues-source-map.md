@@ -272,6 +272,24 @@ comment-triggered runs otherwise must not change status unless asked.
 | Per-type value validation (self-correcting errors) | `server/internal/handler/property.go` (`validatePropertyValue`) |
 | API routes (`/api/properties`, PUT/DELETE `/api/issues/{id}/properties/{propertyId}`) | `server/cmd/server/router.go` |
 
+## `--base-revision` — declaring which body you edited (COC-342)
+
+| Behavior | File:line |
+|---|---|
+| `issue.description_revision` column (BIGINT, starts at 1, no index) | `server/migrations/299_issue_description_revision.up.sql` |
+| Counter moves in the same statement as the body, and only when the text actually changes | `server/pkg/db/queries/issue.sql` (`UpdateIssue`) |
+| Channel-media materialization deliberately does NOT move it | `server/pkg/db/queries/issue.sql` (`MaterializeIssueChannelMediaMarkdown`) |
+| Revision checked under the row lock BEFORE the channel-media merge | `server/internal/handler/issue.go` (`updateIssueWithDescriptionMerge`) |
+| 409 body: `code`, `error`, `base_description_revision`, `current_description_revision`, `next` | `server/internal/handler/issue.go` (`writeDescriptionRevisionStale`) |
+| Who is refused with 400 for omitting the base: `resolveActor` == agent, or `X-Client-Platform: cli`. Never `DetectHarness`, which is display-only | `server/internal/handler/issue.go` (`issueDescriptionBaseRequired`) |
+| CLI flag; refuses locally when absent and never fetches a value of its own | `server/cmd/multica/cmd_issue.go` (`runIssueUpdate`, `--base-revision`) |
+| Handler tests (8 cases) | `server/internal/handler/issue_description_revision_test.go` |
+| Frontend schema (optional field, `parseWithFallback`) | `packages/core/api/schemas.ts` (`IssueSchema`) |
+
+Batch update (`PUT /api/issues/batch`) passes a nil base: one number cannot name
+the base of N different bodies, so batch body writes stay legacy unprotected,
+as do web and desktop, which do not send the field at all.
+
 ## A finished issue: frozen body, and a record on read
 
 | Behavior | File:line |

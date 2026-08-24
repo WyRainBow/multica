@@ -28,6 +28,7 @@ import {
   EMPTY_CREATE_FEEDBACK_RESPONSE,
   EMPTY_INBOX_ITEMS,
   EMPTY_INBOX_UNREAD_SUMMARY,
+  EMPTY_LIST_ISSUES_RESPONSE,
   EMPTY_SEARCH_PROJECTS_RESPONSE,
   EMPTY_USER,
   InboxItemListSchema,
@@ -106,6 +107,36 @@ describe("IssueSchema (via ListIssuesResponseSchema)", () => {
       total: 1,
     };
     expect(ListIssuesResponseSchema.safeParse(payload).success).toBe(false);
+  });
+
+  // COC-342: `issue get` now returns the body's optimistic-concurrency
+  // counter. Parsing must survive it being present, absent (older backend or a
+  // list projection that doesn't select the column), and wrong.
+  it("accepts description_revision from the server", () => {
+    const payload = { issues: [{ ...baseIssue, description_revision: 7 }], total: 1 };
+    const parsed = parseWithFallback(payload, ListIssuesResponseSchema, EMPTY_LIST_ISSUES_RESPONSE, {
+      endpoint: "GET /api/issues",
+    });
+    expect(parsed.issues[0]?.description_revision).toBe(7);
+  });
+
+  it("parses without description_revision when the server omits it (older backend)", () => {
+    const parsed = parseWithFallback(
+      { issues: [baseIssue], total: 1 },
+      ListIssuesResponseSchema,
+      EMPTY_LIST_ISSUES_RESPONSE,
+      { endpoint: "GET /api/issues" },
+    );
+    expect(parsed.issues[0]?.id).toBe(baseIssue.id);
+    expect(parsed.issues[0]?.description_revision).toBeUndefined();
+  });
+
+  it("falls back instead of throwing on a malformed description_revision", () => {
+    const payload = { issues: [{ ...baseIssue, description_revision: "seven" }], total: 1 };
+    const parsed = parseWithFallback(payload, ListIssuesResponseSchema, EMPTY_LIST_ISSUES_RESPONSE, {
+      endpoint: "GET /api/issues",
+    });
+    expect(parsed).toEqual(EMPTY_LIST_ISSUES_RESPONSE);
   });
 
   it("accepts a numeric stage", () => {
