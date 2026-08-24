@@ -428,6 +428,12 @@
     "edit_placeholder": "Edit comment...",
     "save_action": "Save",
     "cancel_edit": "Cancel",
+    "type": {
+      "comment": "Reply",
+      "progress_update": "Progress update",
+      "status_change": "Status change",
+      "system": "System"
+    },
     "copy_action": "Copy",
     "copied_toast": "Copied",
     "edit_action": "Edit",

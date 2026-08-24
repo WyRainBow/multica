@@ -417,6 +417,12 @@
     "edit_placeholder": "コメントを編集...",
     "save_action": "保存",
     "cancel_edit": "キャンセル",
+    "type": {
+      "comment": "返信",
+      "progress_update": "進捗更新",
+      "status_change": "ステータス変更",
+      "system": "システム"
+    },
     "copy_action": "コピー",
     "copied_toast": "コピーしました",
     "edit_action": "編集",

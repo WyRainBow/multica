@@ -6,6 +6,7 @@ import { CheckCircle2, ChevronRight, CornerDownRight, ListChevronsDownUp, Copy, 
 import { toast } from "sonner";
 import { Card } from "@multica/ui/components/ui/card";
 import { Button } from "@multica/ui/components/ui/button";
+import { Badge } from "@multica/ui/components/ui/badge";
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -41,7 +42,7 @@ import { api, dispatchReasonCode } from "@multica/core/api";
 import { ReplyInput } from "./reply-input";
 import { CommentTriggerChips } from "./comment-trigger-chips";
 import { useCommentTriggerPreview } from "../hooks/use-comment-trigger-preview";
-import type { TimelineEntry, Attachment } from "@multica/core/types";
+import type { CommentType, TimelineEntry, Attachment } from "@multica/core/types";
 import { contentReferencesAttachment } from "@multica/core/types";
 import { selectStandaloneAttachments } from "@multica/core/attachments/image-sequence";
 import { useCommentCollapseStore, useCommentDraftStore } from "@multica/core/issues/stores";
@@ -301,6 +302,52 @@ function CommentIdChip({ id }: { id: string }) {
         <span className="font-mono">{id}</span>
       </TooltipContent>
     </Tooltip>
+  );
+}
+
+const COMMENT_TYPE_BADGE_CLASS: Record<CommentType, string> = {
+  comment: "bg-info/15 text-info",
+  progress_update: "bg-violet-500/15 text-violet-700 dark:text-violet-300",
+  status_change: "bg-warning/15 text-warning",
+  system: "bg-destructive/15 text-destructive",
+};
+
+function commentTypeOf(entry: TimelineEntry): CommentType {
+  switch (entry.comment_type) {
+    case "comment":
+    case "progress_update":
+    case "status_change":
+    case "system":
+      return entry.comment_type;
+    default:
+      return "comment";
+  }
+}
+
+function CommentTypeBadge({ type }: { type: CommentType }) {
+  const { t } = useT("issues");
+  let label: string;
+  switch (type) {
+    case "comment":
+      label = t(($) => $.comment.type.comment);
+      break;
+    case "progress_update":
+      label = t(($) => $.comment.type.progress_update);
+      break;
+    case "status_change":
+      label = t(($) => $.comment.type.status_change);
+      break;
+    case "system":
+      label = t(($) => $.comment.type.system);
+      break;
+  }
+  return (
+    <Badge
+      variant="secondary"
+      className={cn("h-4 px-1.5 text-micro", COMMENT_TYPE_BADGE_CLASS[type])}
+    >
+      {label}
+    </Badge>
   );
 }
 
@@ -647,6 +694,7 @@ function CommentRow({
         <span className="cursor-pointer text-body font-medium">
           {getActorName(entry.actor_type, entry.actor_id)}
         </span>
+        <CommentTypeBadge type={commentTypeOf(entry)} />
         {replyingTo && (
           <span className="flex shrink-0 items-center gap-1 text-caption text-muted-foreground">
             <CornerDownRight className="h-3 w-3" />
@@ -1046,6 +1094,7 @@ function CommentCardImpl({
               <span className="shrink-0 cursor-pointer text-body font-medium">
                 {getActorName(entry.actor_type, entry.actor_id)}
               </span>
+              <CommentTypeBadge type={commentTypeOf(entry)} />
               {/* Which station this was said at. On the ROOT comment's own
                   header — CommentCardImpl draws that itself and does not go
                   through CommentRow, which renders replies. Putting it only in

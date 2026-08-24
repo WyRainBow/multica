@@ -417,6 +417,12 @@
     "edit_placeholder": "编辑评论...",
     "save_action": "保存",
     "cancel_edit": "取消",
+    "type": {
+      "comment": "回复",
+      "progress_update": "进展更新",
+      "status_change": "状态变更",
+      "system": "系统"
+    },
     "copy_action": "复制",
     "copied_toast": "已复制",
     "edit_action": "编辑",

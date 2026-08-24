@@ -417,6 +417,12 @@
     "edit_placeholder": "댓글 수정...",
     "save_action": "저장",
     "cancel_edit": "취소",
+    "type": {
+      "comment": "댓글",
+      "progress_update": "진행 업데이트",
+      "status_change": "상태 변경",
+      "system": "시스템"
+    },
     "copy_action": "복사",
     "copied_toast": "복사했습니다",
     "edit_action": "수정",
