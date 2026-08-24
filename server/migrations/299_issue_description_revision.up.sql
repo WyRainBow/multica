@@ -1,0 +1,17 @@
+-- Optimistic concurrency for the issue body.
+--
+-- Two writers who both read the same description and then save minutes apart
+-- do not conflict at the database level: the second UPDATE simply overwrites
+-- the first, and nothing in the response tells anyone a paragraph disappeared.
+-- A monotonic counter on the row turns that silent overwrite into a refusal —
+-- a writer states the revision it edited, and the server rejects the write if
+-- the body has moved on since.
+--
+-- Starts at 1 rather than 0 so "no revision" (an absent field decoded as the
+-- zero value) can never be mistaken for a legitimate base.
+--
+-- Only description writes move it; see UpdateIssue in pkg/db/queries/issue.sql
+-- for the same-statement bump, which fires only when the text actually
+-- changes. No index: the value is only ever read on a row already fetched by
+-- primary key, never used as a search condition.
+ALTER TABLE issue ADD COLUMN description_revision BIGINT NOT NULL DEFAULT 1;

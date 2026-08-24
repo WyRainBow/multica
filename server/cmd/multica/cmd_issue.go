@@ -663,6 +663,7 @@ func init() {
 	issueUpdateCmd.Flags().Bool("description-stdin", false, "Read new description from stdin (preserves multi-line content verbatim)")
 	issueUpdateCmd.Flags().String("description-file", "", "Read new description from a UTF-8 file (preserves multi-line content verbatim; use this on Windows when stdin piping mangles non-ASCII bytes). The path must be inside the current working directory unless --allow-external-file is set.")
 	issueUpdateCmd.Flags().Bool("allow-external-file", false, "Allow --description-file to read a path outside the current working directory. Off by default so a stale temp file from another run/environment can't be picked up (MUL-4252).")
+	issueUpdateCmd.Flags().Int64("base-revision", 0, "The description_revision you read before editing, from the same `issue get --output json` whose description you edited. Required with --description; the server refuses the write with 409 if the body has moved on since. The CLI never fills this in for you — a value it fetched itself would only prove the body existed, not that you read it.")
 	issueUpdateCmd.Flags().String("status", "", "New status")
 	issueUpdateCmd.Flags().String("priority", "", "New priority")
 	issueUpdateCmd.Flags().String("assignee", "", "New assignee name (member, agent, or squad; fuzzy match)")
@@ -1605,7 +1606,25 @@ func runIssueUpdate(cmd *cobra.Command, args []string) error {
 			"`multica issue update` cannot carry files — deliver the file with `multica issue comment add <issue-id> --attachment <path>` instead, and drop the link."); err != nil {
 			return err
 		}
+		// The caller declares which version of the body it edited, and only
+		// the caller can: it is the one that read the text. The CLI must never
+		// GET the issue here to supply a value of its own — that would attach
+		// a fresh revision to a body composed from a stale copy, certifying
+		// exactly the overwrite the check exists to stop.
+		if !cmd.Flags().Changed("base-revision") {
+			return fmt.Errorf("--base-revision is required with --description: run `multica issue get %s --output json`, "+
+				"edit the description you read there, and pass that response's description_revision", args[0])
+		}
+		baseRevision, _ := cmd.Flags().GetInt64("base-revision")
+		if baseRevision < 1 {
+			return fmt.Errorf("--base-revision must be >= 1; copy description_revision from `multica issue get %s --output json`", args[0])
+		}
 		body["description"] = desc
+		body["base_description_revision"] = baseRevision
+	}
+	if !cmd.Flags().Changed("description") && !cmd.Flags().Changed("description-stdin") &&
+		!cmd.Flags().Changed("description-file") && cmd.Flags().Changed("base-revision") {
+		return fmt.Errorf("--base-revision only applies to a description write; pass --description (or --description-stdin / --description-file) too")
 	}
 	if statusChanged {
 		body["status"] = statusFlag

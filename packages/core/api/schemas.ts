@@ -852,6 +852,11 @@ export const IssueSchema = z.object({
   archived_at: z.string().nullable().default(null),
   archived_by: z.string().nullable().default(null),
   parked_from_issue_id: z.string().nullable().default(null),
+  // Optimistic-concurrency counter for the body (COC-342). Optional because
+  // backends that predate it send nothing, and projections that don't select
+  // the column omit it — a caller must treat "absent" as "cannot claim a
+  // base", never as revision 0.
+  description_revision: z.number().optional(),
   created_at: z.string(),
   updated_at: z.string(),
 }).loose();

@@ -269,6 +269,22 @@ feature has no route, which is **not a bug to fix** — drop the flag rather tha
 fabricating stations the work never took. Commands, the 409 rules, and how
 activities are placed: `references/phases.md`.
 
+## Rewriting a description: say which version you edited
+
+`multica issue update --description` requires `--base-revision`, and the number
+has to come from the `issue get --output json` whose body you actually read and
+edited. If someone else rewrote the description in the meantime the write is
+refused with **409** `description_revision_stale`, which reports both revisions
+— re-read, merge the two by hand, retry with the new number. Leaving the flag
+off is refused too, with **400**, before anything is written.
+
+Do not run `issue get` just to harvest a revision to pass. A number fetched one
+command before the write proves the body exists, not that you read it, and
+quoting it certifies exactly the silent overwrite the check exists to stop.
+
+Web and desktop still write without declaring a base — that path is legacy
+unprotected, so a description is not globally protected against overwrite yet.
+
 ## An issue that ended: frozen, archived, deleted
 
 Once an issue is `done` or `cancelled`, its **title and description are frozen**

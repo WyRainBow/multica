@@ -7,7 +7,8 @@
 -- "Assigned to me"), and the two filters must produce disjoint result sets.
 SELECT i.id, i.workspace_id, i.title, i.description, i.status, i.priority,
        i.assignee_type, i.assignee_id, i.creator_type, i.creator_id,
-       i.parent_issue_id, i.position, i.start_date, i.due_date, i.created_at, i.updated_at, i.number, i.project_id, i.metadata, i.stage, i.properties
+       i.parent_issue_id, i.position, i.start_date, i.due_date, i.created_at, i.updated_at, i.number, i.project_id, i.metadata, i.stage, i.properties,
+       i.description_revision
 FROM issue i
 WHERE i.workspace_id = $1
   AND (sqlc.narg('status')::text IS NULL OR i.status = sqlc.narg('status'))
@@ -92,6 +93,9 @@ FOR KEY SHARE;
 -- Serialize user description saves with detached channel-media appends. The
 -- handler merges channel media that landed after the editor's submitted base
 -- while holding this lock, then performs UpdateIssue in the same transaction.
+-- The returned row carries description_revision, which the handler checks
+-- against the caller's declared base BEFORE merging — a stale base has to be
+-- refused, not merged into.
 SELECT * FROM issue
 WHERE id = $1 AND workspace_id = $2
 FOR UPDATE;
@@ -102,6 +106,12 @@ FOR UPDATE;
 -- with the fully composed Markdown so rich-text ordering survives. If a user
 -- edited concurrently (or the adapter has no inline layout), append instead;
 -- preserving user-authored bytes takes precedence over layout fidelity.
+--
+-- Deliberately does NOT move description_revision. This is the platform
+-- attaching media the user already sent, not a competing author, and the
+-- editor's save path merges it back non-destructively (see
+-- mergeIssueChannelMediaDescription). Bumping here would 409 a save that the
+-- merge is designed to accept, trading a solved problem for a new one.
 UPDATE issue
 SET description = CASE
         WHEN sqlc.narg('base_description')::text IS NOT NULL
@@ -162,6 +172,17 @@ UPDATE issue SET
         WHEN sqlc.narg('status')::text IS NOT NULL
          AND sqlc.narg('status')::text IS DISTINCT FROM status
         THEN now() ELSE status_changed_at
+    END,
+    -- The body's optimistic-concurrency counter, bumped in the same statement
+    -- that writes the body so no window exists where one has moved and the
+    -- other has not. Same shape as status_changed_at above: comparing against
+    -- the column means a caller re-sending the text it already had leaves the
+    -- counter alone, and a harmless no-op write cannot invalidate the base
+    -- another writer is holding.
+    description_revision = CASE
+        WHEN sqlc.narg('description')::text IS NOT NULL
+         AND sqlc.narg('description')::text IS DISTINCT FROM description
+        THEN description_revision + 1 ELSE description_revision
     END,
     updated_at = now()
 WHERE id = $1

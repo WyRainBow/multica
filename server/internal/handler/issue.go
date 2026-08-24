@@ -85,6 +85,13 @@ type IssueResponse struct {
 	// for a label or a comment and so cannot answer "how long has this been
 	// in review".
 	StatusChangedAt *string `json:"status_changed_at"`
+	// DescriptionRevision is the counter a writer quotes back as
+	// `base_description_revision` to prove it edited the body that is still
+	// there (COC-342). Starts at 1 and only moves when the text actually
+	// changes. omitempty because the zero value is never a real revision:
+	// projections whose query does not select the column emit no field at all
+	// rather than an unusable 0 a client might quote back.
+	DescriptionRevision int64 `json:"description_revision,omitempty"`
 }
 
 // validIssueStatuses / validIssuePriorities mirror the CHECK constraints on
@@ -132,8 +139,9 @@ func issueToResponse(i db.Issue, issuePrefix string) IssueResponse {
 		ArchivedAt:    timestampToPtr(i.ArchivedAt),
 		ArchivedBy:    uuidToPtr(i.ArchivedBy),
 
-		ParkedFromIssueID: uuidToPtr(i.ParkedFromIssueID),
-		StatusChangedAt:   timestampToPtr(i.StatusChangedAt),
+		ParkedFromIssueID:   uuidToPtr(i.ParkedFromIssueID),
+		StatusChangedAt:     timestampToPtr(i.StatusChangedAt),
+		DescriptionRevision: i.DescriptionRevision,
 	}
 }
 
@@ -163,6 +171,8 @@ func issueListRowToResponse(i db.ListIssuesRow, issuePrefix string) IssueRespons
 		UpdatedAt:     timestampToString(i.UpdatedAt),
 		Metadata:      parseIssueMetadata(i.Metadata),
 		Properties:    parseIssueProperties(i.Properties),
+
+		DescriptionRevision: i.DescriptionRevision,
 	}
 }
 
@@ -2822,17 +2832,25 @@ type UpdateIssueRequest struct {
 	// that landed asynchronously after that base without making media already
 	// present in the base impossible for the user to delete. Older clients omit
 	// it and receive conservative channel-media preservation.
-	DescriptionBase *string  `json:"description_base,omitempty"`
-	Status          *string  `json:"status"`
-	Priority        *string  `json:"priority"`
-	AssigneeType    *string  `json:"assignee_type"`
-	AssigneeID      *string  `json:"assignee_id"`
-	Position        *float64 `json:"position"`
-	StartDate       *string  `json:"start_date"`
-	DueDate         *string  `json:"due_date"`
-	ParentIssueID   *string  `json:"parent_issue_id"`
-	ProjectID       *string  `json:"project_id"`
-	Stage           *int32   `json:"stage"`
+	DescriptionBase *string `json:"description_base,omitempty"`
+	// BaseDescriptionRevision is the `description_revision` the caller read
+	// before composing Description (COC-342). When present it is checked
+	// against the row under lock and a mismatch is refused with 409 — a writer
+	// working from a body someone else has since replaced does not get to
+	// overwrite it. Absent means the caller cannot make that claim; see
+	// issueDescriptionBaseRequired for who is refused for omitting it and who
+	// is left on the legacy unprotected path.
+	BaseDescriptionRevision *int64   `json:"base_description_revision,omitempty"`
+	Status                  *string  `json:"status"`
+	Priority                *string  `json:"priority"`
+	AssigneeType            *string  `json:"assignee_type"`
+	AssigneeID              *string  `json:"assignee_id"`
+	Position                *float64 `json:"position"`
+	StartDate               *string  `json:"start_date"`
+	DueDate                 *string  `json:"due_date"`
+	ParentIssueID           *string  `json:"parent_issue_id"`
+	ProjectID               *string  `json:"project_id"`
+	Stage                   *int32   `json:"stage"`
 	// AttachmentIDs lets the description editor bind newly uploaded files to
 	// this issue so they surface in `GET /api/issues/:id/attachments` and the
 	// editor's preview Eye keeps working past a refresh. Existing bindings
@@ -2980,7 +2998,58 @@ func refreshUntouchedNullableIssueParams(params *db.UpdateIssueParams, current d
 	}
 }
 
-func (h *Handler) updateIssueWithDescriptionMerge(ctx context.Context, workspaceID pgtype.UUID, params db.UpdateIssueParams, rawFields map[string]json.RawMessage, base *string) (db.Issue, db.Issue, error) {
+// descriptionRevisionConflict reports that the body moved on after the caller
+// read it. Carried out of the transaction as an error so the caller — which
+// owns the ResponseWriter — decides the status code; the merge helper itself
+// never writes a response.
+type descriptionRevisionConflict struct {
+	Base    int64
+	Current int64
+}
+
+func (e *descriptionRevisionConflict) Error() string {
+	return fmt.Sprintf("issue description revision %d is stale, current is %d", e.Base, e.Current)
+}
+
+// writeDescriptionRevisionStale answers a stale-base write. Same shape as
+// writeDoneReviewRequired: a machine-readable code, a sentence a person can
+// act on, and enough data for the caller to decide its next move without a
+// second round-trip guessing what happened.
+func writeDescriptionRevisionStale(w http.ResponseWriter, conflict *descriptionRevisionConflict) {
+	writeJSON(w, http.StatusConflict, map[string]any{
+		"code":                         "description_revision_stale",
+		"error":                        "正文已被他人更新，请重取后再写",
+		"base_description_revision":    conflict.Base,
+		"current_description_revision": conflict.Current,
+		"next":                         "multica issue get <key> --output json 重取正文与 revision，比对后合并，再带新的 base 重试",
+	})
+}
+
+// issueDescriptionBaseRequired reports whether this caller must declare
+// `base_description_revision` to write the body at all.
+//
+// Agents and the CLI are refused mechanically when they omit it: they are the
+// writers that compose a whole replacement body from a copy read minutes
+// earlier, which is exactly the write that silently deletes someone else's
+// paragraph. Everyone else — installed web/desktop builds that predate the
+// field — stays on the legacy unprotected path, so description writes are NOT
+// globally protected yet. See the migration endpoint in the COC-342 spec.
+//
+// The agent half is decided by resolveActor, the server's own answer to who is
+// writing. Deliberately NOT DetectHarness / X-Client-Harness: cli/harness.go
+// says that signal is display-only and must never gate anything.
+func issueDescriptionBaseRequired(r *http.Request, actorType string) bool {
+	return actorType == "agent" ||
+		strings.EqualFold(r.Header.Get(middleware.HeaderClientPlatform), cliClientPlatform)
+}
+
+// cliClientPlatform is the X-Client-Platform value the CLI sends
+// (internal/cli.ClientPlatform). Duplicated as a constant rather than imported
+// so the handler package does not depend on the CLI's HTTP client, and so a
+// test that reassigns that package-level var cannot move this gate.
+const cliClientPlatform = "cli"
+
+func (h *Handler) updateIssueWithDescriptionMerge(ctx context.Context, workspaceID pgtype.UUID, params db.UpdateIssueParams, rawFields map[string]json.RawMessage, base *string, baseRevision *int64) (db.Issue, db.Issue, error) {
 	if h.TxStarter == nil {
 		return db.Issue{}, db.Issue{}, errors.New("issue description update requires transaction starter")
 	}
@@ -2998,6 +3067,17 @@ func (h *Handler) updateIssueWithDescriptionMerge(ctx context.Context, workspace
 	if err != nil {
 		return db.Issue{}, db.Issue{}, fmt.Errorf("lock issue description: %w", err)
 	}
+
+	// Revision check comes FIRST, before any merging. Merging a stale body
+	// with the current one would produce a document neither writer wrote and
+	// then save it — the conflict has to be refused while the two versions are
+	// still distinguishable.
+	if baseRevision != nil && *baseRevision != current.DescriptionRevision {
+		return db.Issue{}, db.Issue{}, &descriptionRevisionConflict{
+			Base: *baseRevision, Current: current.DescriptionRevision,
+		}
+	}
+
 	attachments, err := qtx.ListAttachmentsByIssue(ctx, db.ListAttachmentsByIssueParams{
 		IssueID:     current.ID,
 		WorkspaceID: current.WorkspaceID,
@@ -3244,6 +3324,21 @@ func (h *Handler) UpdateIssue(w http.ResponseWriter, r *http.Request) {
 	}
 
 	actorType, actorID := h.resolveActor(r, userID, workspaceID)
+
+	// Mechanical refusal, placed before any side effect this request could
+	// otherwise have (done-review resolutions write comments). An agent or CLI
+	// that never says which body it edited gets told to go read one, not
+	// helped along — the server filling the base in would make the check
+	// certify nothing.
+	if req.Description != nil && req.BaseDescriptionRevision == nil && issueDescriptionBaseRequired(r, actorType) {
+		writeJSON(w, http.StatusBadRequest, map[string]any{
+			"code":  "description_revision_required",
+			"error": "写正文必须带 base_description_revision，声明你编辑的是哪一版",
+			"next":  "multica issue get <key> --output json 读取 description 与 description_revision，再带 --base-revision 重试",
+		})
+		return
+	}
+
 	var doneReview doneReviewEvaluation
 	if req.Status != nil && prevIssue.Status != "done" && *req.Status == "done" {
 		prefix := h.getIssuePrefix(r.Context(), prevIssue.WorkspaceID)
@@ -3291,13 +3386,22 @@ func (h *Handler) UpdateIssue(w http.ResponseWriter, r *http.Request) {
 	if req.Description != nil {
 		var lockedPrev db.Issue
 		issue, lockedPrev, err = h.updateIssueWithDescriptionMerge(
-			r.Context(), prevIssue.WorkspaceID, params, rawFields, req.DescriptionBase,
+			r.Context(), prevIssue.WorkspaceID, params, rawFields, req.DescriptionBase, req.BaseDescriptionRevision,
 		)
 		if err == nil {
 			prevIssue = lockedPrev
 		}
 	} else {
 		issue, err = h.Queries.UpdateIssue(r.Context(), params)
+	}
+	var revisionConflict *descriptionRevisionConflict
+	if errors.As(err, &revisionConflict) {
+		slog.Info("issue description revision conflict",
+			append(logger.RequestAttrs(r), "issue_id", id, "workspace_id", workspaceID,
+				"base_description_revision", revisionConflict.Base,
+				"current_description_revision", revisionConflict.Current)...)
+		writeDescriptionRevisionStale(w, revisionConflict)
+		return
 	}
 	if err != nil {
 		slog.Warn("update issue failed", append(logger.RequestAttrs(r), "error", err, "issue_id", id, "workspace_id", workspaceID)...)
@@ -4019,9 +4123,12 @@ func (h *Handler) BatchUpdateIssues(w http.ResponseWriter, r *http.Request) {
 			// One batch-level base cannot describe multiple issue documents.
 			// Preserve every marked channel-media block conservatively, matching
 			// legacy single-update clients that omit description_base.
+			//
+			// nil revision for the same reason: one number cannot name the base
+			// of N different bodies. Batch body writes stay legacy unprotected.
 			var lockedPrev db.Issue
 			issue, lockedPrev, err = h.updateIssueWithDescriptionMerge(
-				r.Context(), prevIssue.WorkspaceID, params, rawUpdates, nil,
+				r.Context(), prevIssue.WorkspaceID, params, rawUpdates, nil, nil,
 			)
 			if err == nil {
 				prevIssue = lockedPrev
