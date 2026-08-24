@@ -394,6 +394,22 @@ create first — but read `wiki kinds` before inventing a path, because a
 near-duplicate folder is worse than a wrong one: nobody looking in either finds
 both.
 
+### An issue's own documents come with the issue
+
+The one exception to "a folder exists as long as a document names it". Every
+issue is created with a fixed directory under its key — `COC-97/requirements`,
+`COC-97/design`, `COC-97/spec`, `COC-97/decisions/`, `COC-97/rounds/`,
+`COC-97/snapshots/` — so "is there a design doc" has an answer before anyone
+writes one. `COC-97/snapshots/body/R0-created` holds the body as it read at
+creation and is a real document from the start.
+
+The slots nobody has written into are placeholders, and placeholders are not
+documents: they never show in `wiki list`, `wiki kinds`, `--search`, or an
+agent's brief, and they take no decision or round number. `wiki add --issue
+COC-97 --kind "COC-97/design"` fills that slot in place, keeping its document
+id. Slots still empty at `done` / `cancelled` are dropped; reopening restores
+the missing ones and touches nothing already written.
+
 ## Mark a throwaway issue as a test
 
 An issue you create to try something out must be marked, or it sits in the

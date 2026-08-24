@@ -9,6 +9,7 @@ import type {
   IssueResource,
   CreateIssueResourceRequest,
   UpdateIssueResourceRequest,
+  IssueNamespace,
   CardListResponse,
   IssuePhase,
   CreateCardRequest,
@@ -226,6 +227,7 @@ import {
   CardListResponseSchema,
   IssueResourceSchema,
   IssueResourceListResponseSchema,
+  IssueNamespaceSchema,
   WorktreeSchema,
   WorktreeListResponseSchema,
   WorktreeEntrySchema,
@@ -1251,6 +1253,24 @@ export class ApiClient {
     });
     return parseWithFallback(raw, WorktreeEntrySchema, null, {
       endpoint: "POST /api/worktrees/:ref/entries",
+    });
+  }
+
+  /**
+   * The fixed document directory for one issue: six named slots, each held
+   * open by a placeholder card until real content lands in it.
+   *
+   * The ONLY endpoint that can see placeholders — the card list, search and
+   * the brief all filter them out in SQL — so an unanswered slot and a missing
+   * one are the same observation everywhere else.
+   *
+   * Null on drift rather than a synthesised directory: six slots invented by
+   * the client would claim the issue has a directory it may not have.
+   */
+  async getIssueNamespace(issueId: string): Promise<IssueNamespace | null> {
+    const raw = await this.fetch<unknown>(`/api/issues/${issueId}/namespace`);
+    return parseWithFallback(raw, IssueNamespaceSchema, null, {
+      endpoint: "GET /api/issues/:id/namespace",
     });
   }
 

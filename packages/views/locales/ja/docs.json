@@ -40,6 +40,12 @@
     "unlink": "リンクを解除",
     "link_failed": "リンクを変更できませんでした。"
   },
+  "namespace": {
+    "title": "ドキュメント一覧",
+    "pending": "未記入",
+    "absent": "未作成",
+    "count_other": "{{count}} 件"
+  },
   "detail": {
     "not_found": "このドキュメントは存在しないか削除されました。",
     "back": "ドキュメントに戻る",

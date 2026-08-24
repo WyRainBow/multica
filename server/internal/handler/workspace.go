@@ -11,27 +11,23 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/multica-ai/multica/server/internal/analytics"
+	"github.com/multica-ai/multica/server/internal/issuenamespace"
 	"github.com/multica-ai/multica/server/internal/logger"
 	obsmetrics "github.com/multica-ai/multica/server/internal/metrics"
 	db "github.com/multica-ai/multica/server/pkg/db/generated"
 	"github.com/multica-ai/multica/server/pkg/protocol"
 )
 
-var nonAlpha = regexp.MustCompile(`[^a-zA-Z]`)
 var workspaceSlugPattern = regexp.MustCompile(`^[a-z0-9]+(?:-[a-z0-9]+)*$`)
 
 // generateIssuePrefix produces a 2-5 char uppercase prefix from a workspace name.
 // Examples: "Jiayuan's Workspace" → "JIA", "My Team" → "MYT", "AB" → "AB".
+//
+// Delegates to issuenamespace, which needs the same answer to file an issue's
+// documents under the same key the issue shows. Two implementations would let a
+// workspace with no chosen prefix file its documents under a key nobody sees.
 func generateIssuePrefix(name string) string {
-	letters := nonAlpha.ReplaceAllString(name, "")
-	if len(letters) == 0 {
-		return "WS"
-	}
-	letters = strings.ToUpper(letters)
-	if len(letters) > 3 {
-		letters = letters[:3]
-	}
-	return letters
+	return issuenamespace.FallbackPrefix(name)
 }
 
 type WorkspaceResponse struct {

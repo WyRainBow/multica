@@ -21,6 +21,7 @@ import (
 	"github.com/multica-ai/multica/server/internal/channelmedia"
 	"github.com/multica-ai/multica/server/internal/dispatch"
 	"github.com/multica-ai/multica/server/internal/issueguard"
+	"github.com/multica-ai/multica/server/internal/issuenamespace"
 	"github.com/multica-ai/multica/server/internal/logger"
 	"github.com/multica-ai/multica/server/internal/middleware"
 	"github.com/multica-ai/multica/server/internal/service"
@@ -2882,7 +2883,8 @@ var issueBodyFields = []string{"title", "description"}
 // `cancelled` counts with `done`: both are decisions about how the work ended,
 // and a record of a decision is exactly the thing that should not drift.
 func isTerminalIssueStatus(status string) bool {
-	return status == "done" || status == "cancelled"
+	// One definition, in the package whose lifecycle hangs on this boundary.
+	return issuenamespace.IsTerminalStatus(status)
 }
 
 // allowIssueBodyWrite refuses to rewrite the title or description of an issue
@@ -3103,6 +3105,12 @@ func (h *Handler) updateIssueWithDescriptionMerge(ctx context.Context, workspace
 	issue, err := qtx.UpdateIssue(ctx, params)
 	if err != nil {
 		return db.Issue{}, db.Issue{}, fmt.Errorf("update locked issue description: %w", err)
+	}
+	// A body write can carry a status change with it, and the directory work a
+	// terminal crossing owes belongs in whichever transaction actually moves
+	// the status — here, when the request also touched the description.
+	if err := applyNamespaceStatusLifecycle(ctx, qtx, current.Status, issue); err != nil {
+		return db.Issue{}, db.Issue{}, err
 	}
 	if err := tx.Commit(ctx); err != nil {
 		return db.Issue{}, db.Issue{}, fmt.Errorf("commit issue description update: %w", err)
@@ -3392,7 +3400,7 @@ func (h *Handler) UpdateIssue(w http.ResponseWriter, r *http.Request) {
 			prevIssue = lockedPrev
 		}
 	} else {
-		issue, err = h.Queries.UpdateIssue(r.Context(), params)
+		issue, err = h.updateIssueWithNamespaceLifecycle(r.Context(), params, prevIssue.Status)
 	}
 	var revisionConflict *descriptionRevisionConflict
 	if errors.As(err, &revisionConflict) {
@@ -4134,7 +4142,7 @@ func (h *Handler) BatchUpdateIssues(w http.ResponseWriter, r *http.Request) {
 				prevIssue = lockedPrev
 			}
 		} else {
-			issue, err = h.Queries.UpdateIssue(r.Context(), params)
+			issue, err = h.updateIssueWithNamespaceLifecycle(r.Context(), params, prevIssue.Status)
 		}
 		if err != nil {
 			slog.Warn("batch update issue failed", "issue_id", issueID, "error", err)

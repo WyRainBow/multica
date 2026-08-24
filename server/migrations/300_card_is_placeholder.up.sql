@@ -1,0 +1,20 @@
+-- A card that exists only to hold a slot open.
+--
+-- Every issue gets a fixed set of document slots at creation — requirements,
+-- design, spec, decisions, rounds, snapshots — so the directory is visible
+-- before anyone has written a word into it. The rows that stand in for the
+-- unwritten documents are placeholders: they are addressable, so a writer can
+-- fill one in place, but they are not documents and must not be counted,
+-- searched, briefed to an agent, or fed to the round / decision numbering.
+--
+-- A boolean rather than a naming convention on `title` or `kind`: an empty
+-- document and a placeholder look identical in their text, and any rule that
+-- reads the text would classify a real document someone happened to leave
+-- blank as scaffolding and hide it. This column is the ONLY test for
+-- placeholder-ness anywhere in the system.
+--
+-- Defaults FALSE so every card written before this migration, and every card
+-- written by a caller that does not know the column exists, is a real
+-- document — the safe direction, because the failure mode of the other default
+-- is silently hiding real work.
+ALTER TABLE card ADD COLUMN is_placeholder BOOLEAN NOT NULL DEFAULT FALSE;

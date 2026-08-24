@@ -658,6 +658,39 @@ export const CardSchema = z.object({
   updated_at: z.string(),
 }).loose();
 
+// The fixed document directory an issue is created with: six named slots, each
+// held open by a placeholder card until real content lands in it. Defaults
+// everywhere, because this is the only view that can tell an unanswered slot
+// from a missing one — a slot that fails to parse takes that answer with it.
+export const IssueNamespaceSlotSchema = z.object({
+  // The stable key on the wire. No default: a slot with no name cannot be
+  // matched to anything, so it is not a degraded slot, it is not a slot.
+  name: z.string(),
+  // Server-owned so this build never keeps a second copy of the slot list; the
+  // row falls back to the name when an older backend omits it.
+  label: z.string().default(""),
+  kind: z.string().default(""),
+  // Server-driven enum kept as a plain string so a type this build has not
+  // heard of renders as itself instead of vanishing. Switches need a `default`.
+  type: z.string().default("document"),
+  exists: z.boolean().default(false),
+  // The one answer to "is this real yet", read off `is_placeholder`. Defaults
+  // to false: an unknown slot is better shown as written than falsely 待补.
+  placeholder: z.boolean().default(false),
+  // Omitted by the server for a folder whose placeholder is gone but which has
+  // documents beneath it, so `omitempty` and empty string mean the same thing.
+  card_id: z.string().default(""),
+  title: z.string().default(""),
+  count: z.number().default(0),
+}).loose();
+
+export const IssueNamespaceSchema = z.object({
+  issue_id: z.string().default(""),
+  key: z.string().default(""),
+  root: z.string().default(""),
+  slots: z.array(IssueNamespaceSlotSchema).default([]),
+}).loose();
+
 export const IssueResourceSchema = z.object({
   id: z.string(),
   workspace_id: z.string(),

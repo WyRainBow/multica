@@ -40,6 +40,12 @@
     "unlink": "Detach document",
     "link_failed": "Could not change the link."
   },
+  "namespace": {
+    "title": "Directory",
+    "pending": "To write",
+    "absent": "Not created",
+    "count_other": "{{count}}"
+  },
   "detail": {
     "not_found": "This document does not exist or was deleted.",
     "back": "Back to docs",

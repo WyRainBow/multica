@@ -31,9 +31,14 @@ type CardResponse struct {
 	Content    string  `json:"content"`
 	// Which tab this card sits under. Empty means uncategorised, which is a
 	// real answer rather than a missing one — most notes never get filed.
-	Kind      string `json:"kind"`
-	CreatedAt string `json:"created_at"`
-	UpdatedAt string `json:"updated_at"`
+	Kind string `json:"kind"`
+	// True while this row is only holding a slot open in its issue's document
+	// directory — no one has written the document yet. Placeholders are kept
+	// out of every list, search, brief, and numbering derivation; this field is
+	// how a caller that fetched one by id can tell.
+	IsPlaceholder bool   `json:"is_placeholder"`
+	CreatedAt     string `json:"created_at"`
+	UpdatedAt     string `json:"updated_at"`
 }
 
 const (
@@ -45,16 +50,17 @@ const (
 
 func cardToResponse(r db.Card) CardResponse {
 	return CardResponse{
-		ID:          uuidToString(r.ID),
-		WorkspaceID: uuidToString(r.WorkspaceID),
-		IssueID:     uuidToPtr(r.IssueID),
-		AuthorType:  r.AuthorType,
-		AuthorID:    uuidToString(r.AuthorID),
-		Title:       r.Title,
-		Content:     r.Content,
-		Kind:        r.Kind,
-		CreatedAt:   timestampToString(r.CreatedAt),
-		UpdatedAt:   timestampToString(r.UpdatedAt),
+		ID:            uuidToString(r.ID),
+		WorkspaceID:   uuidToString(r.WorkspaceID),
+		IssueID:       uuidToPtr(r.IssueID),
+		AuthorType:    r.AuthorType,
+		AuthorID:      uuidToString(r.AuthorID),
+		Title:         r.Title,
+		Content:       r.Content,
+		Kind:          r.Kind,
+		IsPlaceholder: r.IsPlaceholder,
+		CreatedAt:     timestampToString(r.CreatedAt),
+		UpdatedAt:     timestampToString(r.UpdatedAt),
 	}
 }
 
@@ -146,6 +152,36 @@ func (h *Handler) CreateCard(w http.ResponseWriter, r *http.Request) {
 
 	userID := requestUserID(r)
 	authorType, authorID := h.resolveActor(r, userID, workspaceID)
+	kind := strings.TrimSpace(req.Kind)
+
+	// Real content arriving at a slot a placeholder is holding takes the slot
+	// over in place, rather than being filed beside it. One statement flips
+	// is_placeholder and writes the text, so no reader sees the slot as neither
+	// pending nor written, and the card id anyone already linked to survives.
+	//
+	// A miss here is the ordinary case (no issue, no kind, or a kind nothing is
+	// holding open) and falls through to a plain insert.
+	if issueID.Valid && kind != "" {
+		promoted, err := h.Queries.PromotePlaceholderCard(r.Context(), db.PromotePlaceholderCardParams{
+			WorkspaceID: wsUUID,
+			IssueID:     issueID,
+			Kind:        kind,
+			AuthorType:  authorType,
+			AuthorID:    parseUUID(authorID),
+			Title:       title,
+			Content:     req.Content,
+		})
+		if err == nil {
+			writeJSON(w, http.StatusCreated, cardToResponse(promoted))
+			return
+		}
+		if !errors.Is(err, pgx.ErrNoRows) {
+			slog.Warn("promote placeholder card failed", append(logger.RequestAttrs(r), "error", err)...)
+			writeError(w, http.StatusInternalServerError, "failed to create card")
+			return
+		}
+	}
+
 	card, err := h.Queries.CreateCard(r.Context(), db.CreateCardParams{
 		WorkspaceID: wsUUID,
 		IssueID:     issueID,
@@ -153,7 +189,7 @@ func (h *Handler) CreateCard(w http.ResponseWriter, r *http.Request) {
 		AuthorID:    parseUUID(authorID),
 		Title:       title,
 		Content:     req.Content,
-		Kind:        strings.TrimSpace(req.Kind),
+		Kind:        kind,
 	})
 	if err != nil {
 		slog.Warn("create card failed", append(logger.RequestAttrs(r), "error", err)...)

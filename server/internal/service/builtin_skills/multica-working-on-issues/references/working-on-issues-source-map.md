@@ -356,6 +356,25 @@ is the same line comments already sit on.
 | Character count, runes in both CLI and app | `server/cmd/multica/cmd_doc.go` (`cardCharCount`), `packages/views/docs/doc-tree.ts` (`docLength`) |
 | `--kind` is a folder path; a folder query includes its subtree | `server/pkg/db/queries/card.sql` (`ListCardsByKind`), `packages/views/docs/doc-tree.ts` |
 
+## The document directory every issue is created with
+
+| Behavior | File:line |
+|---|---|
+| The six slots and the `R0-created` body snapshot | `server/internal/issuenamespace/namespace.go` (`Slots`, `BodySnapshotKind`) |
+| Seeded inside the issue-create transaction | `server/internal/service/issue.go` (`Create` → `issuenamespace.Seed`) |
+| A slot is a placeholder if and only if `card.is_placeholder` | `server/migrations/300_card_is_placeholder.up.sql` |
+| Placeholders excluded from every list / search / brief / count | `server/pkg/db/queries/card.sql` (`AND NOT is_placeholder`) |
+| The one read that shows them: `GET /api/issues/{id}/namespace` | `server/cmd/server/router.go`; `server/internal/handler/issue_namespace.go` (`GetIssueNamespace`) |
+| Whether `<KEY>/` is virtual or a stored index (COC-335, undecided) | `server/internal/issuenamespace/namespace.go` (`View` — the single switch point) |
+| Writing a real doc promotes the slot in place, same id | `server/pkg/db/queries/card.sql` (`PromotePlaceholderCard`); `server/internal/handler/card.go` (`CreateCard`) |
+| `done` / `cancelled` drops the empty slots; reopen restores them | `server/internal/handler/issue_namespace.go` (`applyNamespaceStatusLifecycle`) |
+| Tests | `server/internal/handler/issue_namespace_test.go` |
+
+The pinned index comment is deliberately NOT part of that transaction: it stays
+CLI-side and post-commit (see the section below), because a failed comment must
+not roll back a created issue and send the caller into a retry that makes a
+second one.
+
 `--detach` sends a JSON `null` for `issue_id`; omitting both `--issue` and
 `--detach` omits the field. The server reads it as `json.RawMessage` precisely
 so "absent" and "null" mean different things, and the CLI refuses the two

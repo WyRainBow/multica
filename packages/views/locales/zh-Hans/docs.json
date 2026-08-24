@@ -40,6 +40,12 @@
     "unlink": "取消关联",
     "link_failed": "关联没改成。"
   },
+  "namespace": {
+    "title": "文档目录",
+    "pending": "待补",
+    "absent": "未建",
+    "count_other": "{{count}} 篇"
+  },
   "detail": {
     "not_found": "这篇文档不存在或已被删除。",
     "back": "返回文档",
