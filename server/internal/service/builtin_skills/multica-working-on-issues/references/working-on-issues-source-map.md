@@ -343,6 +343,24 @@ is the same line comments already sit on.
 so "absent" and "null" mean different things, and the CLI refuses the two
 flags together rather than letting argument order decide.
 
+## `multica issue create` — the automatic pinned index
+
+| Behavior | File:line |
+|---|---|
+| Posted + pinned after the issue lands, two requests | `server/cmd/multica/cmd_issue.go:1526`; `server/cmd/multica/cmd_issue_index_comment.go:87` (`postIssueIndexComment`) |
+| Index body, including the session snapshot line | `server/cmd/multica/cmd_issue_index_comment.go:43` (`issueIndexCommentContent`) |
+| `--session` flag; falls back to `CLAUDE_CODE_SESSION_ID` / `CODEX_SESSION_ID`, then `未记录` | `server/cmd/multica/cmd_issue.go:658`; `server/cmd/multica/cmd_issue_index_comment.go:67` (`resolveIssueIndexSession`) |
+| The env vars themselves, shared with `worktree session --auto` | `server/cmd/multica/cmd_worktree.go:353` (`sessionEnv`) |
+| Type is `progress_update`, never `comment` | `server/cmd/multica/cmd_issue_index_comment.go:24` (`issueIndexCommentType`) |
+| Why `system` is not an option: POST /comments rejects it | `server/internal/handler/comment.go:2046` (`clientAuthorableCommentTypes`) |
+| Why `comment` is not an option: it is what the done gate selects | `server/pkg/db/queries/comment.sql:120` (`ListDoneReviewThreadsForIssue`) |
+| Tests | `server/cmd/multica/cmd_issue_index_comment_test.go`; `server/internal/handler/issue_index_done_sentinel_test.go` |
+
+Best effort by construction: the issue exists before either request runs, so a
+failure warns on stderr and leaves the exit code alone. Failing the command
+would invite a retry of `issue create` and produce a duplicate card — the same
+reasoning the attachment upload directly above it uses.
+
 ## `multica issue create --test` — mark a throwaway
 
 | Behavior | File:line |

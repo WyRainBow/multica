@@ -655,6 +655,7 @@ func init() {
 	issueCreateCmd.Flags().String("output", "json", "Output format: table or json")
 	issueCreateCmd.Flags().StringSlice("attachment", nil, "File path(s) to attach (can be specified multiple times)")
 	issueCreateCmd.Flags().StringSlice("attachment-id", nil, "Existing attachment UUID(s) to bind to the created issue (can be specified multiple times)")
+	issueCreateCmd.Flags().String("session", "", "Session id to record in the card's automatic index, as a snapshot of which session filed it. Defaults to the agent session this command runs inside (CLAUDE_CODE_SESSION_ID / CODEX_SESSION_ID); the index says \"未记录\" when there is neither.")
 
 	// issue update
 	issueUpdateCmd.Flags().String("title", "", "New title")
@@ -1519,6 +1520,10 @@ func runIssueCreate(cmd *cobra.Command, _ []string) error {
 		}
 		fmt.Fprintf(os.Stderr, "Uploaded %s\n", att.path)
 	}
+
+	// Give the new card its pinned ledger index, so the rule holds without
+	// anyone having to remember it. Best effort — see postIssueIndexComment.
+	postIssueIndexComment(ctx, client, issueID, strVal(result, "identifier"), resolveIssueIndexSession(cmd))
 
 	output, _ := cmd.Flags().GetString("output")
 	if output == "table" {
