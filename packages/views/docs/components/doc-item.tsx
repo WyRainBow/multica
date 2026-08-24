@@ -24,6 +24,7 @@ import { Input } from "@multica/ui/components/ui/input";
 import { RichContent } from "../../rich-content";
 import { StatusIcon } from "../../issues/components/status-icon";
 import { useT } from "../../i18n";
+import { useRowLink } from "../../navigation";
 import { docLength } from "../doc-tree";
 
 /**
@@ -61,6 +62,7 @@ export function DocItem({
   card,
   issue,
   issueGone = false,
+  docLink,
   onEdit,
   onOpenIssue,
 }: {
@@ -70,6 +72,8 @@ export function DocItem({
   /** The linked issue was looked up and is genuinely gone — not merely absent
    *  from the page of issues this view happened to load. */
   issueGone?: boolean;
+  /** Modifier-aware navigation props for the document entry points. */
+  docLink?: ReturnType<ReturnType<typeof useRowLink>>;
   onEdit: () => void;
   onOpenIssue: (identifier: string) => void;
 }) {
@@ -132,7 +136,7 @@ export function DocItem({
         ) : (
           <button
             type="button"
-            onClick={onEdit}
+            {...(docLink ?? { onClick: onEdit })}
             className="min-w-0 flex-1 text-left"
           >
             <h3 className="text-title-sm font-semibold leading-snug group-hover:underline">
@@ -164,7 +168,7 @@ export function DocItem({
             <Button
               size="icon-xs"
               variant="ghost"
-              onClick={onEdit}
+              {...(docLink ?? { onClick: onEdit })}
               aria-label={t(($) => $.doc.edit)}
             >
               <Pencil className="size-3.5" />
@@ -222,7 +226,7 @@ export function DocItem({
         // fade cuts the whole thing at the same place regardless of structure.
         <button
           type="button"
-          onClick={onEdit}
+          {...(docLink ?? { onClick: onEdit })}
           className="relative mt-2 block w-full overflow-hidden text-left"
           style={{ maxHeight: DOC_PREVIEW_MAX_HEIGHT }}
         >

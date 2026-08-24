@@ -14,7 +14,7 @@ import type { Issue, Card } from "@multica/core/types";
 import { Button } from "@multica/ui/components/ui/button";
 import { Input } from "@multica/ui/components/ui/input";
 import { useT } from "../../i18n";
-import { useNavigation } from "../../navigation";
+import { useNavigation, useRowLink } from "../../navigation";
 import { DocEditorDialog } from "./doc-editor-dialog";
 import { DocItem } from "./doc-item";
 import { groupCardsByDay } from "../group-by-day";
@@ -48,6 +48,7 @@ export function DocsPage({
   const wsId = useWorkspaceId();
   const paths = useWorkspacePaths();
   const navigation = useNavigation();
+  const rowLink = useRowLink();
   const [search, setSearch] = useState("");
   // "" is 全部. Stored rather than derived because selecting a tab that then
   // empties (its last card was recategorised) must keep showing that tab's
@@ -195,6 +196,7 @@ export function DocsPage({
                         issueGone={
                           !!card.issue_id && goneIssueIds.has(card.issue_id)
                         }
+                        docLink={rowLink(paths.docDetail(card.id))}
                         onEdit={() => navigation.push(paths.docDetail(card.id))}
                         onOpenIssue={(identifier) =>
                           navigation.push(paths.issueDetail(identifier))
