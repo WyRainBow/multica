@@ -553,6 +553,7 @@ func newIssueCreateTestCmd() *cobra.Command {
 	cmd.Flags().String("output", "json", "")
 	cmd.Flags().StringSlice("attachment", nil, "")
 	cmd.Flags().StringSlice("attachment-id", nil, "")
+	cmd.Flags().String("session", "", "")
 	return cmd
 }
 

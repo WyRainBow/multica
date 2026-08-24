@@ -302,6 +302,28 @@ so the default resolves to nothing and the issue is created unassigned exactly
 as before. Keep passing `--assignee <agent>` when handing work to an agent —
 that is still the only way the issue reaches one.
 
+## `issue create` posts the card's index for you
+
+Every card filed through `multica issue create` comes with its pinned root
+index already posted — the `产物落点` / `当前状态` skeleton the team ledger rule
+asks for. **Do not post a second one.** Update the existing one with `multica
+issue comment edit <comment-id>`; the pin survives an edit.
+
+The index records the session that filed the card, as a one-time snapshot taken
+at creation. It comes from `CLAUDE_CODE_SESSION_ID` / `CODEX_SESSION_ID` — the
+variables your runtime exports to the commands you spawn — so a card you file
+carries your own session id without you passing anything. `--session <id>`
+overrides it; with neither the line reads `未记录` and the card is still filed.
+
+That line is a snapshot and stays as written. Code progress is the other thing,
+it keeps moving, and it does not go in the index: leave it in the worktree,
+where `worktree sync` measures it, and point at it with `multica worktree show
+<name>`.
+
+Posting the index is best effort. If it fails, the card still exists and the
+CLI warns on stderr — post it by hand rather than re-running `issue create`,
+which would file a duplicate card.
+
 ## Resources: a page that lives somewhere else
 
 A design doc, a meeting note, a vendor page — anything whose home is outside
