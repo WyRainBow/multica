@@ -153,6 +153,22 @@ func runIssueDecide(cmd *cobra.Command, args []string) error {
 	recordedBy := resolveDecisionRecorder(ctx, client)
 	decidedBy := strings.TrimSpace(mustString(cmd, "decided-by"))
 	if decidedBy == "" {
+		// A dispatched agent may not let this default. The recorder comes from
+		// /api/me, which names the human whose token signed the call and never
+		// the agent, so defaulting puts that person's name on a decision they
+		// may never have made — and the "on behalf of" notice further down
+		// stays silent exactly because the two values match. That is the
+		// misattribution --decided-by exists to prevent, running backwards.
+		//
+		// Gated on MULTICA_AGENT_ID rather than DetectHarness: harness
+		// detection is documented as display-only and must never gate
+		// anything. So this catches agents the daemon dispatched; one driven
+		// by hand in a terminal is still on its operator to pass the flag.
+		if os.Getenv("MULTICA_AGENT_ID") != "" {
+			return fmt.Errorf("--decided-by is required when a dispatched agent records a decision: " +
+				"the recorder is the human whose token signed this call, so leaving it to default would " +
+				"file the decision as theirs. Name whoever actually made the call")
+		}
 		decidedBy = recordedBy
 	}
 
