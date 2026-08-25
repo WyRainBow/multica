@@ -268,7 +268,6 @@
     "quick_action_blocked_body": "「{{name}}」は、あなたが実行を許可されていないエージェントで動作します。ワークスペース管理者にそのエージェントをチームへ公開してもらうか、共有エージェントへの変更を依頼してください。",
     "quick_action_blocked_ok": "了解",
     "pull_requests_loading": "読み込み中...",
-    "pull_requests_empty": "まだリンクされた Pull request がありません。PR のブランチ名、タイトル、または本文にこのタスクの識別子を入れると、自動的にリンクされます。",
     "pull_request_state_open": "オープン",
     "pull_request_state_draft": "ドラフト",
     "pull_request_state_merged": "マージ済み",
@@ -808,7 +807,7 @@
   "pr_links": {
     "placeholder": "PR / MR のリンクを貼り付け",
     "add": "記録",
-    "empty": "まだレビューの記録がありません。リンクを貼るか multica issue pr add <カード> <URL> を実行してください。",
+    "empty": "PR はまだありません。PR のブランチ名・タイトル・本文にこのカードの identifier を書くと自動関連付けされます。URL を貼るか multica issue pr add <card> <url> で手動記録もできます。",
     "added_by": "{{who}} が記録",
     "added_unknown": "記録者不明",
     "remove": "削除",

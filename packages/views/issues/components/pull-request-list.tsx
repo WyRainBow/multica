@@ -52,12 +52,10 @@ export function PullRequestList({ issueId }: { issueId: string }) {
   if (isLoading) {
     return <p className="text-caption text-muted-foreground px-2">{t(($) => $.detail.pull_requests_loading)}</p>;
   }
+  // Empty copy lives in the adjacent PR slot (pr_links.empty) so the page
+  // says "no PRs yet" exactly once; this list stays silent when empty.
   if (prs.length === 0) {
-    return (
-      <p className="text-caption text-muted-foreground px-2">
-        {t(($) => $.detail.pull_requests_empty)}
-      </p>
-    );
+    return null;
   }
 
   // Render rule:
