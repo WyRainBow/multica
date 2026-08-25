@@ -1,6 +1,9 @@
 package cli
 
-import "os"
+import (
+	"os"
+	"strings"
+)
 
 // DetectHarness names the agent shell this CLI process is running inside, or
 // "" when it is a person at a terminal.
@@ -19,6 +22,12 @@ import "os"
 // headers and it is just as true here: this is client-controlled and trivial
 // to spoof, so it may label an activity row and must never gate anything.
 func DetectHarness() string {
+	// Explicit override: an agent that leaves no env-var footprint (grok)
+	// exports MULTICA_HARNESS itself. First because an explicit claim beats
+	// every inference below it.
+	if v := strings.TrimSpace(os.Getenv("MULTICA_HARNESS")); v != "" {
+		return v
+	}
 	// Ordered, and the order matters: harnesses nest, and every one in the
 	// chain leaves its variables in the environment. Nothing in an env var
 	// says which is inner, so this is a fixed precedence rather than a
@@ -45,6 +54,13 @@ func DetectHarness() string {
 		// Set by Claude Code for every child process; CLAUDE_CODE_ENTRYPOINT
 		// and CLAUDE_CODE_SESSION_ID travel with it, but this one is the flag.
 		{"CLAUDECODE", "claude-code"},
+		// Set by ZCode for every child process. ZCODE_APP_VERSION is set for
+		// the whole app lifetime, not per-session, but zcode does not nest
+		// inside another harness — a zcode child is a zcode command.
+		{"ZCODE_APP_VERSION", "zcode"},
+		// grok sets GROK_BIN_DIR for its children. Same nesting argument as
+		// zcode: grok does not nest inside another harness here.
+		{"GROK_BIN_DIR", "grok"},
 	} {
 		if os.Getenv(candidate.env) != "" {
 			return candidate.name

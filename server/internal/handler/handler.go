@@ -672,6 +672,12 @@ func harnessAgentName(harness string) string {
 	// that stops being true.
 	case "opencode":
 		return "DeepSeek"
+	// zcode runs GLM models; the workspace agent is named after the model
+	// family (GLM), not the shell, matching the opencode/DeepSeek precedent.
+	case "zcode":
+		return "GLM"
+	case "grok":
+		return "Grok"
 	default:
 		return ""
 	}
