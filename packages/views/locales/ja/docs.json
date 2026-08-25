@@ -7,7 +7,11 @@
     "empty": "まだドキュメントがありません。最新に保つべきものはここに。",
     "no_matches": "該当するものがありません。",
     "day_count_other": "{{count}} 件",
-    "all_kinds": "すべて"
+    "all_kinds": "すべて",
+    "type_requirements": "要件",
+    "type_design": "技術方案",
+    "type_spec": "Spec",
+    "type_decisions": "決定履歴"
   },
   "editor": {
     "new_title": "新規ドキュメント",

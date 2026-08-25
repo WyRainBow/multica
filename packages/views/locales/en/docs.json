@@ -7,7 +7,11 @@
     "empty": "No documents yet. Whatever has to stay current belongs here.",
     "no_matches": "Nothing matches.",
     "day_count_other": "{{count}}",
-    "all_kinds": "All"
+    "all_kinds": "All",
+    "type_requirements": "Requirements",
+    "type_design": "Design",
+    "type_spec": "Spec",
+    "type_decisions": "Decisions"
   },
   "editor": {
     "new_title": "New doc",

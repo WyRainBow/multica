@@ -807,7 +807,7 @@
   "pr_links": {
     "placeholder": "粘贴 PR / MR 地址",
     "add": "记下",
-    "empty": "还没有 PR。在 PR 的分支名、标题或正文引用本卡 identifier 可自动关联；或粘贴地址、用 multica issue pr add <卡号> <地址> 手动记录。",
+    "empty": "还没有 PR。在 PR 的分支名、标题或正文引用本卡 identifier 可自动关联。或粘贴地址、用 multica issue pr add <卡号> <地址> 手动记录。",
     "added_by": "{{who}} 记的",
     "added_unknown": "记录者未知",
     "remove": "移除",

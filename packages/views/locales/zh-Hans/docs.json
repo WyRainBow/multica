@@ -7,7 +7,11 @@
     "empty": "还没有文档。长期要维护的东西写在这里。",
     "no_matches": "没有匹配的文档。",
     "day_count_other": "{{count}} 条",
-    "all_kinds": "全部"
+    "all_kinds": "全部",
+    "type_requirements": "需求底稿",
+    "type_design": "技术方案",
+    "type_spec": "Spec",
+    "type_decisions": "决策历史"
   },
   "editor": {
     "new_title": "新建文档",
