@@ -59,6 +59,7 @@ import type {
   RuntimeProfile,
   CreateRuntimeProfileRequest,
   UpdateRuntimeProfileRequest,
+  ListWorkspaceHooksResponse,
   InboxItem,
   InboxWorkspaceUnread,
   IssueSubscriber,
@@ -372,6 +373,8 @@ import {
   EMPTY_LIST_GITHUB_REPOSITORIES_RESPONSE,
   RuntimeModelListRequestSchema,
   MALFORMED_RUNTIME_MODEL_LIST_REQUEST,
+  ListWorkspaceHooksResponseSchema,
+  EMPTY_LIST_WORKSPACE_HOOKS_RESPONSE,
 } from "./schemas";
 
 /** Identifies the calling client to the server.
@@ -2004,6 +2007,25 @@ export class ApiClient {
     await this.fetch(
       `/api/workspaces/${workspaceId}/runtime-profiles/${profileId}`,
       { method: "DELETE" },
+    );
+  }
+
+  // ---------------------------------------------------------------------
+  // Hook inventory (COC-341). Read-only: the daemon reports what it scanned,
+  // this endpoint reads it back grouped by runtime.
+  // ---------------------------------------------------------------------
+
+  async listWorkspaceHooks(
+    workspaceId: string,
+  ): Promise<ListWorkspaceHooksResponse> {
+    const raw = await this.fetch<unknown>(
+      `/api/workspaces/${workspaceId}/hooks`,
+    );
+    return parseWithFallback(
+      raw,
+      ListWorkspaceHooksResponseSchema,
+      EMPTY_LIST_WORKSPACE_HOOKS_RESPONSE,
+      { endpoint: "GET /api/workspaces/:id/hooks" },
     );
   }
 

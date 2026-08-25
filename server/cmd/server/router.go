@@ -1005,6 +1005,10 @@ func NewRouterWithOptions(pool *pgxpool.Pool, hub *realtime.Hub, bus *events.Bus
 		r.Post("/runtimes/{runtimeId}/update/{updateId}/result", h.ReportUpdateResult)
 		r.Post("/runtimes/{runtimeId}/models/{requestId}/result", h.ReportModelListResult)
 		r.Post("/runtimes/{runtimeId}/local-skills/{requestId}/result", h.ReportLocalSkillListResult)
+		// The runtime's complete Multica hook inventory, as last scanned on
+		// that machine. Full replacement, not an append: what the report
+		// omits is treated as uninstalled (COC-341).
+		r.Post("/runtimes/{runtimeId}/hooks", h.ReportRuntimeHooks)
 		r.Post("/runtimes/{runtimeId}/local-skills/import/{requestId}/result", h.ReportLocalSkillImportResult)
 
 		r.Get("/tasks/{taskId}/status", h.GetTaskStatus)
@@ -1099,6 +1103,10 @@ func NewRouterWithOptions(pool *pgxpool.Pool, hub *realtime.Hub, bus *events.Bus
 					// are admin-gated below).
 					r.Get("/runtime-profiles", h.ListRuntimeProfiles)
 					r.Get("/runtime-profiles/{profileId}", h.GetRuntimeProfile)
+					// Hook inventory — read-only, member-visible. Grouped by
+					// runtime so "no hooks installed" and "this provider has no
+					// hook mechanism" stay two visibly different answers.
+					r.Get("/hooks", h.ListWorkspaceHooks)
 				})
 				// Admin-level access
 				r.Group(func(r chi.Router) {

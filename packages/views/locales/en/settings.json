@@ -182,6 +182,7 @@
       "integrations": "Integrations",
       "labs": "Labs",
       "members": "Members",
+      "hooks": "Hooks",
       "labels": "Labels",
       "properties": "Properties",
       "quick_actions": "Quick Actions"
@@ -868,6 +869,40 @@
         "label": "Member",
         "description": "Create and work on issues"
       }
+    }
+  },
+  "hooks": {
+    "title": "Hooks",
+    "description": "Every Multica hook the daemon found on each runtime, and whether anyone has seen it run. Read-only — installing and removing hooks stays on the machine.",
+    "loading": "Loading hook inventory…",
+    "empty": {
+      "title": "No runtimes yet",
+      "description": "Connect a runtime and its daemon will report the Multica hooks it finds."
+    },
+    "runtime": {
+      "online": "Online",
+      "stale": "Offline",
+      "stale_since": "Offline · last seen {{when}}",
+      "observed_at": "Scanned {{when}}",
+      "never_observed": "Never scanned",
+      "unsupported": "Hooks aren't supported here",
+      "unsupported_hint": "{{provider}} has no hook mechanism, so there is nothing to install on this runtime.",
+      "never_scanned": "Never scanned",
+      "never_scanned_hint": "This runtime has not reported a hook inventory yet. Update its daemon and wait for the next heartbeat.",
+      "no_hooks": "No Multica hooks installed",
+      "no_hooks_hint": "The last scan found no Multica hooks on this machine."
+    },
+    "hook": {
+      "trigger": "Trigger",
+      "command": "Command",
+      "disabled": "Disabled"
+    },
+    "telemetry": {
+      "fired": "Fired",
+      "fired_at": "Fired · {{when}}",
+      "never_fired": "Never fired",
+      "unobserved": "Not yet observed",
+      "uncollectable": "Can't be collected"
     }
   }
 }

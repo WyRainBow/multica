@@ -813,6 +813,12 @@ func unbindRuntimeForDelete(ctx context.Context, qtx *db.Queries, runtimeID pgty
 	if _, err := qtx.UnbindTasksFromRuntime(ctx, runtimeID); err != nil {
 		return out, fmt.Errorf("unbind task history: %w", err)
 	}
+	// The hook inventory is an observation about a machine, not user data to
+	// preserve: once the runtime is gone nothing can re-confirm or refute it.
+	// No FK removes it, so it is removed here, inside the same transaction.
+	if err := qtx.DeleteRuntimeHooksByRuntime(ctx, runtimeID); err != nil {
+		return out, fmt.Errorf("delete hook inventory: %w", err)
+	}
 
 	// agent_invocation_target has no agent_id FK (MUL-3963).
 	if err := qtx.DeleteAgentInvocationTargetsBySystemRuntimeAgents(ctx, runtimeID); err != nil {

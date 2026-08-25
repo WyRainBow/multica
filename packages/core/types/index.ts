@@ -293,3 +293,9 @@ export type {
   UpdateWorktreeSessionRequest,
   CreateWorktreeEntryRequest,
 } from "./worktree";
+export type {
+  RuntimeHook,
+  RuntimeHookGroup,
+  RuntimeHookTelemetry,
+  ListWorkspaceHooksResponse,
+} from "./runtime-hook";

@@ -954,6 +954,23 @@ type QuickAction struct {
 	UpdatedAt     pgtype.Timestamptz `json:"updated_at"`
 }
 
+type RuntimeHook struct {
+	ID          pgtype.UUID        `json:"id"`
+	WorkspaceID pgtype.UUID        `json:"workspace_id"`
+	RuntimeID   pgtype.UUID        `json:"runtime_id"`
+	Provider    string             `json:"provider"`
+	HookName    string             `json:"hook_name"`
+	Event       string             `json:"event"`
+	TriggerSpec string             `json:"trigger_spec"`
+	CommandPath string             `json:"command_path"`
+	Enabled     bool               `json:"enabled"`
+	Telemetry   string             `json:"telemetry"`
+	LastFiredAt pgtype.Timestamptz `json:"last_fired_at"`
+	ObservedAt  pgtype.Timestamptz `json:"observed_at"`
+	CreatedAt   pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt   pgtype.Timestamptz `json:"updated_at"`
+}
+
 type RuntimeProfile struct {
 	ID             pgtype.UUID        `json:"id"`
 	WorkspaceID    pgtype.UUID        `json:"workspace_id"`

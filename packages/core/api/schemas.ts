@@ -51,6 +51,7 @@ import type {
   ListGitHubRepositoriesResponse,
   ListLabelsResponse,
   ListWebhookDeliveriesResponse,
+  ListWorkspaceHooksResponse,
   NotificationPreferenceResponse,
   ResourceLabelsResponse,
   RuntimeModelListRequest,
@@ -773,6 +774,52 @@ export const WorktreeEntrySchema = z.object({
 export const WorktreeEntryListResponseSchema = z.object({
   entries: z.array(WorktreeEntrySchema).default([]),
 }).loose();
+
+// The hook inventory (`GET /api/workspaces/:id/hooks`). Read-only.
+//
+// Every optional field defaults so a drifting backend degrades one row instead
+// of blanking the page — with two deliberate exceptions:
+//
+//   - `telemetry` defaults to `unobserved`, not `never_fired`. A response that
+//     omits the field has not told us the hook stayed quiet, only that it did
+//     not say. Defaulting the other way would accuse the hook of being dead.
+//   - `supported` defaults to `true`, matching every provider that has a hook
+//     mechanism. Guessing `false` would tell the user their machine cannot run
+//     hooks at all, which is a far worse thing to be wrong about than an empty
+//     list.
+export const RuntimeHookSchema = z.object({
+  id: z.string(),
+  hook_name: z.string(),
+  event: z.string().default(""),
+  trigger_spec: z.string().default(""),
+  command_path: z.string().default(""),
+  enabled: z.boolean().default(true),
+  // Server-driven enum kept as a plain string: a state this build has not
+  // heard of renders as itself instead of vanishing from the list.
+  telemetry: z.string().default("unobserved"),
+  last_fired_at: z.string().nullish().transform((v) => v ?? null),
+  observed_at: z.string().default(""),
+}).loose();
+
+export const RuntimeHookGroupSchema = z.object({
+  runtime_id: z.string(),
+  name: z.string().default(""),
+  provider: z.string().default(""),
+  host: z.string().default(""),
+  status: z.string().default("offline"),
+  last_seen_at: z.string().nullish().transform((v) => v ?? null),
+  observed_at: z.string().nullish().transform((v) => v ?? null),
+  supported: z.boolean().default(true),
+  hooks: z.array(RuntimeHookSchema).default([]),
+}).loose();
+
+export const ListWorkspaceHooksResponseSchema = z.object({
+  runtimes: z.array(RuntimeHookGroupSchema).default([]),
+}).loose();
+
+export const EMPTY_LIST_WORKSPACE_HOOKS_RESPONSE: ListWorkspaceHooksResponse = {
+  runtimes: [],
+};
 
 export const CardListResponseSchema = z.object({
   cards: z.array(CardSchema).default([]),

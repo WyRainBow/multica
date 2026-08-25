@@ -503,6 +503,23 @@ func (c *Client) ReportLocalSkillListResult(ctx context.Context, runtimeID, requ
 	return c.postJSON(ctx, fmt.Sprintf("/api/daemon/runtimes/%s/local-skills/%s/result", runtimeID, requestID), result, nil)
 }
 
+// ReportHookInventory sends one runtime's complete Multica hook inventory.
+//
+// It rides the heartbeat schedule (see runRuntimeHeartbeat) but is a separate
+// call rather than a field on SendHeartbeat: the HTTP heartbeat is skipped
+// entirely whenever the WebSocket path recently acked, so an inventory carried
+// inside the heartbeat body would silently never be sent on a WS-connected
+// daemon. Same cadence, same goroutine, its own request.
+//
+// supported=false means the provider has no hook mechanism at all. The server
+// needs that as a distinct fact from "supported, zero hooks found".
+func (c *Client) ReportHookInventory(ctx context.Context, runtimeID string, supported bool, hooks any) error {
+	return c.postJSON(ctx, fmt.Sprintf("/api/daemon/runtimes/%s/hooks", runtimeID), map[string]any{
+		"supported": supported,
+		"hooks":     hooks,
+	}, nil)
+}
+
 // ReportLocalSkillImportResult sends a runtime-local-skill bundle back to the server.
 func (c *Client) ReportLocalSkillImportResult(ctx context.Context, runtimeID, requestID string, result map[string]any) error {
 	return c.postJSON(ctx, fmt.Sprintf("/api/daemon/runtimes/%s/local-skills/import/%s/result", runtimeID, requestID), result, nil)

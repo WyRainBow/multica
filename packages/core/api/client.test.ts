@@ -2272,3 +2272,55 @@ describe("ApiClient listCards", () => {
     expect(String(fetchMock.mock.calls[0]![0])).not.toContain("search");
   });
 });
+
+// The hook inventory is read by a settings tab that has no other source of
+// truth. A drifting backend must leave that tab renderable — empty is a
+// survivable answer, a thrown parse error is not.
+describe("ApiClient listWorkspaceHooks", () => {
+  function stubJSON(body: unknown) {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify(body), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+    return fetchMock;
+  }
+
+  it("parses a grouped inventory and keeps unobserved distinct from never_fired", async () => {
+    stubJSON({
+      runtimes: [
+        {
+          runtime_id: "r-1",
+          name: "Claude (mac)",
+          provider: "claude",
+          host: "mac",
+          status: "online",
+          last_seen_at: "2026-08-24T12:00:00Z",
+          observed_at: "2026-08-24T12:00:00Z",
+          supported: true,
+          hooks: [
+            { id: "h-1", hook_name: "a", telemetry: "never_fired" },
+            { id: "h-2", hook_name: "b" },
+          ],
+        },
+      ],
+    });
+
+    const result = await new ApiClient(
+      "https://api.example.test",
+    ).listWorkspaceHooks("ws-1");
+    expect(result.runtimes[0]!.hooks[0]!.telemetry).toBe("never_fired");
+    expect(result.runtimes[0]!.hooks[1]!.telemetry).toBe("unobserved");
+  });
+
+  it("falls back to an empty inventory when the response is malformed", async () => {
+    stubJSON({ runtimes: "not-an-array" });
+
+    const result = await new ApiClient(
+      "https://api.example.test",
+    ).listWorkspaceHooks("ws-1");
+    expect(result).toEqual({ runtimes: [] });
+  });
+});

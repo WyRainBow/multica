@@ -3467,15 +3467,23 @@ func (d *Daemon) runRuntimeHeartbeat(ctx context.Context, rid string) {
 	}
 
 	tick()
+	// The hook inventory rides this goroutine so it inherits the runtime's
+	// lifetime and its jittered start, but on its own much slower ticker: hook
+	// config changes when a human edits a file, not every 15 seconds.
+	d.reportHookInventory(ctx, rid)
 
 	ticker := time.NewTicker(interval)
 	defer ticker.Stop()
+	hookTicker := time.NewTicker(hookScanInterval)
+	defer hookTicker.Stop()
 	for {
 		select {
 		case <-ctx.Done():
 			return
 		case <-ticker.C:
 			tick()
+		case <-hookTicker.C:
+			d.reportHookInventory(ctx, rid)
 		}
 	}
 }

@@ -182,6 +182,7 @@
       "integrations": "集成",
       "labs": "实验室",
       "members": "成员",
+      "hooks": "Hook",
       "labels": "标签",
       "properties": "属性",
       "quick_actions": "快捷操作"
@@ -867,6 +868,40 @@
         "label": "成员",
         "description": "创建并处理任务"
       }
+    }
+  },
+  "hooks": {
+    "title": "Hook",
+    "description": "守护进程在每个运行时上扫描到的 Multica hook，以及它们有没有真的触发过。只读 —— 安装和卸载 hook 仍在本机进行。",
+    "loading": "正在加载 hook 清单…",
+    "empty": {
+      "title": "还没有运行时",
+      "description": "连接一个运行时后，它的守护进程会上报扫描到的 Multica hook。"
+    },
+    "runtime": {
+      "online": "在线",
+      "stale": "离线",
+      "stale_since": "离线 · 最后在线 {{when}}",
+      "observed_at": "扫描于 {{when}}",
+      "never_observed": "从未扫描",
+      "unsupported": "这里不支持 hook",
+      "unsupported_hint": "{{provider}} 没有 hook 机制，这个运行时上没有可安装的东西。",
+      "never_scanned": "从未扫描",
+      "never_scanned_hint": "这个运行时还没有上报过 hook 清单。升级它的守护进程，等下一次心跳。",
+      "no_hooks": "没有安装 Multica hook",
+      "no_hooks_hint": "最近一次扫描没有在这台机器上找到 Multica hook。"
+    },
+    "hook": {
+      "trigger": "触发条件",
+      "command": "命令",
+      "disabled": "已禁用"
+    },
+    "telemetry": {
+      "fired": "已触发",
+      "fired_at": "已触发 · {{when}}",
+      "never_fired": "从未触发",
+      "unobserved": "尚未观测",
+      "uncollectable": "无法采集"
     }
   }
 }

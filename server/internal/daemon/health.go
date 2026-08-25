@@ -165,6 +165,7 @@ func (d *Daemon) serveHealth(ctx context.Context, ln net.Listener, startedAt tim
 	mux.HandleFunc("/health", d.healthHandler(startedAt))
 	mux.HandleFunc("/shutdown", d.shutdownHandler())
 	mux.HandleFunc("/repo/checkout", d.repoCheckoutHandler())
+	mux.HandleFunc("/hook/fired", d.hookFiredHandler())
 
 	srv := &http.Server{Handler: mux}
 
@@ -173,9 +174,63 @@ func (d *Daemon) serveHealth(ctx context.Context, ln net.Listener, startedAt tim
 		srv.Close()
 	}()
 
+	// The firing endpoint is live from here on, which is what makes
+	// never_fired sayable at all: from this moment an instrumented hook that
+	// stays silent really has not fired. Before it, silence meant nothing.
+	if home, err := os.UserHomeDir(); err == nil {
+		if err := markHookTelemetryObserving(home, time.Now()); err != nil {
+			d.logger.Warn("hook telemetry observing stamp failed", "error", err)
+		}
+	}
+
 	d.logger.Info("health server listening", "addr", ln.Addr().String())
 	if err := srv.Serve(ln); err != nil && err != http.ErrServerClosed {
 		d.logger.Warn("health server error", "error", err)
+	}
+}
+
+// hookFiredHandler records that a Multica hook just ran, on this machine.
+//
+// This is the ONLY way a firing is learned. Nothing here parses a log or
+// infers a run from side effects: a guessed firing is worse than no firing,
+// because it makes "never fired" unfalsifiable. The hook script posts here
+// itself, or the firing is not known.
+//
+// The endpoint is on the daemon's loopback health server, so it needs no
+// credentials and never leaves the machine. It stores a hook name and a
+// timestamp -- no arguments, no payload from the hook's own stdin.
+func (d *Daemon) hookFiredHandler() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+		var req struct {
+			Hook  string `json:"hook"`
+			Event string `json:"event"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			http.Error(w, "invalid request body: "+err.Error(), http.StatusBadRequest)
+			return
+		}
+		req.Hook = strings.TrimSpace(req.Hook)
+		req.Event = strings.TrimSpace(req.Event)
+		if req.Hook == "" {
+			http.Error(w, "hook is required", http.StatusBadRequest)
+			return
+		}
+		home, err := os.UserHomeDir()
+		if err != nil {
+			http.Error(w, "resolve user home: "+err.Error(), http.StatusInternalServerError)
+			return
+		}
+		if err := recordHookFired(home, req.Event, req.Hook, time.Now()); err != nil {
+			d.logger.Warn("record hook firing failed", "hook", req.Hook, "event", req.Event, "error", err)
+			http.Error(w, "failed to record hook firing", http.StatusInternalServerError)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
 	}
 }
 

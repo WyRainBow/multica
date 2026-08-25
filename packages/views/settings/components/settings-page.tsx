@@ -16,6 +16,7 @@ import {
   Keyboard,
   ListTodo,
   Zap,
+  Webhook,
 } from "lucide-react";
 import { GitHubMark } from "./github-mark";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@multica/ui/components/ui/tabs";
@@ -35,6 +36,7 @@ import { IntegrationsTab } from "./integrations-tab";
 import { LabsTab } from "./labs-tab";
 import { NotificationsTab } from "./notifications-tab";
 import { LabelsTab } from "./labels-tab";
+import { HooksTab } from "./hooks-tab";
 import { PropertiesTab } from "./properties-tab";
 import { QuickActionsTab } from "./quick-actions-tab";
 import { KeyboardShortcutsTab } from "./keyboard-shortcuts-tab";
@@ -59,6 +61,7 @@ const WORKSPACE_TAB_KEYS = [
   "integrations",
   "labs",
   "members",
+  "hooks",
   "labels",
   "properties",
   "quick_actions",
@@ -70,6 +73,7 @@ const WORKSPACE_TAB_VALUES = {
   integrations: "integrations",
   labs: "labs",
   members: "members",
+  hooks: "hooks",
   labels: "labels",
   properties: "properties",
   quick_actions: "quick-actions",
@@ -81,6 +85,7 @@ const WORKSPACE_TAB_ICONS = {
   integrations: Plug,
   labs: FlaskConical,
   members: Users,
+  hooks: Webhook,
   labels: Tags,
   properties: SlidersHorizontal,
   quick_actions: Zap,
@@ -219,7 +224,7 @@ export function SettingsPage({ extraAccountTabs }: SettingsPageProps = {}) {
 
       {/* Right content */}
       <div className="min-w-0 flex-1 md:overflow-y-auto">
-        <div className={`mx-auto w-full p-4 sm:p-6 md:p-8 ${activeTab === "labels" || activeTab === "properties" || activeTab === "quick-actions"
+        <div className={`mx-auto w-full p-4 sm:p-6 md:p-8 ${activeTab === "labels" || activeTab === "properties" || activeTab === "quick-actions" || activeTab === "hooks"
               ? "max-w-5xl"
               : "max-w-3xl"}`}>
           <TabsContent value="profile"><AccountTab /></TabsContent>
@@ -235,6 +240,7 @@ export function SettingsPage({ extraAccountTabs }: SettingsPageProps = {}) {
           <TabsContent value="integrations"><IntegrationsTab /></TabsContent>
           <TabsContent value="labs"><LabsTab /></TabsContent>
           <TabsContent value="members"><MembersTab /></TabsContent>
+          <TabsContent value="hooks"><HooksTab /></TabsContent>
           <TabsContent value="labels"><LabelsTab /></TabsContent>
           <TabsContent value="properties"><PropertiesTab /></TabsContent>
           <TabsContent value="quick-actions"><QuickActionsTab /></TabsContent>
