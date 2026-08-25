@@ -115,6 +115,7 @@ type NavKey =
   | "squads"
   | "usage"
   | "runtimes"
+  | "hooks"
   | "skills"
   | "docs"
   | "settings";
@@ -132,6 +133,7 @@ type NavLabelKey =
   | "squads"
   | "usage"
   | "runtimes"
+  | "hooks"
   | "skills"
   | "docs"
   | "settings";
@@ -156,6 +158,7 @@ const workspaceNav: { key: NavKey; labelKey: NavLabelKey }[] = [
 
 const configureNav: { key: NavKey; labelKey: NavLabelKey }[] = [
   { key: "runtimes", labelKey: "runtimes" },
+  { key: "hooks", labelKey: "hooks" },
   { key: "skills", labelKey: "skills" },
   // Sits with the workspace's own content, not under Configure: a card is
   // something a person writes, like an issue, not a setting.
