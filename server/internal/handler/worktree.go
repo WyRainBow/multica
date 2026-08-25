@@ -125,12 +125,19 @@ type WorktreeResponse struct {
 	// than quietly wrong.
 	VerifiedAt *string                 `json:"verified_at"`
 	Session    WorktreeSessionResponse `json:"session"`
-	DependsOn  []string                `json:"depends_on"`
-	Artifacts  []string                `json:"artifacts"`
-	ParentID   *string                 `json:"parent_id"`
-	EntryCount int64                   `json:"entry_count"`
-	CreatedAt  string                  `json:"created_at"`
-	UpdatedAt  string                  `json:"updated_at"`
+	// IssueStatus is the card's status, joined at read time and never stored.
+	// The ledger records code progress and the card records the decision; a
+	// copy of one inside the other goes stale between syncs, and the two are
+	// meant to be comparable precisely because neither is derived from the
+	// other.
+	IssueStatus string   `json:"issue_status"`
+	Project     string   `json:"project"`
+	DependsOn   []string `json:"depends_on"`
+	Artifacts   []string `json:"artifacts"`
+	ParentID    *string  `json:"parent_id"`
+	EntryCount  int64    `json:"entry_count"`
+	CreatedAt   string   `json:"created_at"`
+	UpdatedAt   string   `json:"updated_at"`
 }
 
 type WorktreeEntryResponse struct {
@@ -312,6 +319,44 @@ func writeLedgerError(w http.ResponseWriter, r *http.Request, action string, err
 
 // --- worktree CRUD ---
 
+// joinIssueFacts fills the card-side fields on a ledger row: the card's current
+// status and the project it belongs to.
+//
+// Joined on every read, never stored. The ledger and the card answer different
+// questions and drift apart routinely — a card closes while its branch is
+// still open, a branch merges before anyone touches the card — and that drift
+// is exactly what a reader needs to see. A copy written at sync time would be
+// wrong between syncs and would quietly hide the drift instead of showing it.
+//
+// Best effort: an unresolvable card leaves the fields empty rather than failing
+// the list. An account can name a card that was never filed, or one that was
+// deleted, and neither should blank the page.
+func (h *Handler) joinIssueFacts(r *http.Request, rows []WorktreeResponse) {
+	projects := map[string]string{}
+	for i := range rows {
+		if rows[i].Issue == "" {
+			continue
+		}
+		issue, found := h.lookupIssueQuietly(r, rows[i].Issue)
+		if !found {
+			continue
+		}
+		rows[i].IssueStatus = issue.Status
+		if !issue.ProjectID.Valid {
+			continue
+		}
+		key := uuidToString(issue.ProjectID)
+		title, seen := projects[key]
+		if !seen {
+			if p, err := h.Queries.GetProject(r.Context(), issue.ProjectID); err == nil {
+				title = p.Title
+			}
+			projects[key] = title
+		}
+		rows[i].Project = title
+	}
+}
+
 // ListWorktrees handles GET /api/worktrees.
 func (h *Handler) ListWorktrees(w http.ResponseWriter, r *http.Request) {
 	records, err := h.ledger().List(h.resolveWorkspaceID(r))
@@ -323,6 +368,7 @@ func (h *Handler) ListWorktrees(w http.ResponseWriter, r *http.Request) {
 	for _, rec := range records {
 		resp = append(resp, worktreeToResponse(rec))
 	}
+	h.joinIssueFacts(r, resp)
 	writeJSON(w, http.StatusOK, map[string]any{"worktrees": resp})
 }
 
@@ -332,7 +378,11 @@ func (h *Handler) GetWorktree(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	writeJSON(w, http.StatusOK, worktreeToResponse(rec))
+	// One-element slice so the join writes into the value that is served:
+	// passing a fresh literal would mutate a copy and discard it.
+	rows := []WorktreeResponse{worktreeToResponse(rec)}
+	h.joinIssueFacts(r, rows)
+	writeJSON(w, http.StatusOK, rows[0])
 }
 
 type createWorktreeRequest struct {

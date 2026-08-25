@@ -755,6 +755,9 @@ export const WorktreeSchema = z.object({
   issue: z.string().default(""),
   issue_id: z.string().default(""),
   work_branch: z.string().default(""),
+  // Joined at read time from the card, never stored on the ledger.
+  issue_status: z.string().default(""),
+  project: z.string().default(""),
   depends_on: z.array(z.string()).default([]),
   artifacts: z.array(z.string()).default([]),
   parent_id: z.string().nullish().transform((v) => v ?? null),
@@ -1013,6 +1016,9 @@ export const IssueSchema = z.object({
   creator_id: z.string(),
   parent_issue_id: z.string().nullable(),
   project_id: z.string().nullable(),
+  // Older backends predate this field; default to empty so a card filed before
+  // it existed parses as "no session recorded" rather than failing.
+  created_by_session: z.string().default(""),
   position: z.number(),
   // Older backends predate `stage`; default to null so a missing field parses
   // cleanly into the non-optional Issue.stage (number | null).

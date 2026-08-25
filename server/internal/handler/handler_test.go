@@ -921,8 +921,12 @@ func TestCreateIssueRejectsActiveDuplicate(t *testing.T) {
 	}
 
 	w := httptest.NewRecorder()
+	// This test seeds a project of its own, which makes the workspace one where
+	// a card must name one (COC-352). Naming it here rather than exempting the
+	// test keeps the fixture honest about the rule it is running under.
 	req := newRequest("POST", "/api/issues?workspace_id="+testWorkspaceID, map[string]any{
-		"title": "Duplicate guard parent " + suffix,
+		"title":      "Duplicate guard parent " + suffix,
+		"project_id": projectID,
 	})
 	testHandler.CreateIssue(w, req)
 	if w.Code != http.StatusCreated {

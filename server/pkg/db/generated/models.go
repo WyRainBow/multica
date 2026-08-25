@@ -672,6 +672,7 @@ type Issue struct {
 	ParkedFromIssueID   pgtype.UUID        `json:"parked_from_issue_id"`
 	StatusChangedAt     pgtype.Timestamptz `json:"status_changed_at"`
 	DescriptionRevision int64              `json:"description_revision"`
+	CreatedBySession    string             `json:"created_by_session"`
 }
 
 type IssueDeliveryReceipt struct {

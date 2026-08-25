@@ -6,6 +6,7 @@ import { ChevronRight, GitBranch } from "lucide-react";
 import { copyText } from "@multica/ui/lib/clipboard";
 import { useWorkspaceId } from "@multica/core/hooks";
 import { issueSessionsOptions } from "@multica/core/worktrees/queries";
+import { issueDetailOptions } from "@multica/core/issues/queries";
 import type { IssueSession } from "@multica/core/types";
 import { useT, useTimeAgo } from "../../i18n";
 
@@ -30,6 +31,8 @@ export function IssueSessionSidebar({ issueId }: { issueId: string }) {
   const [open, setOpen] = useState(true);
 
   const { data: sessions = [] } = useQuery(issueSessionsOptions(wsId, issueId));
+  const { data: issue } = useQuery(issueDetailOptions(wsId, issueId));
+  const filedBy = issue?.created_by_session ?? "";
 
   return (
     <div>
@@ -50,6 +53,14 @@ export function IssueSessionSidebar({ issueId }: { issueId: string }) {
       </button>
       {open && (
         <div className="flex flex-col gap-3 pl-2">
+          {/* Which session filed the card. One line, always first: it is the
+            oldest fact here and the only one that never changes, so it reads as
+            provenance rather than as another driver to contact. */}
+          {filedBy !== "" && (
+            <p className="truncate text-caption text-muted-foreground" title={filedBy}>
+              {t(($) => $.sessions.filed_by, { id: filedBy })}
+            </p>
+          )}
           {sessions.length === 0 ? (
             <p className="text-caption text-muted-foreground">
               {t(($) => $.sessions.empty)}

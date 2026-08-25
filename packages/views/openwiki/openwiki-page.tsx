@@ -4,7 +4,7 @@
 // silhouettes at 16px rather than for the most literal metaphor. Two books next
 // to each other read as one repeated icon, which is what the previous set did
 // with the two wikis.
-import { Anchor, Blocks, BookOpen, Library, ListChecks } from "lucide-react";
+import { Anchor, Blocks, BookCopy, BookOpen, PersonStanding } from "lucide-react";
 import { DocsPage } from "@multica/views/docs";
 import { SkillsPage } from "@multica/views/skills";
 import { HooksTab } from "../settings/components/hooks-tab";
@@ -60,13 +60,13 @@ export function OpenwikiPage({ tab = "wiki" }: { tab?: OpenwikiTab }) {
     {
       key: "instructions",
       label: t(($) => $.tab_instructions),
-      icon: ListChecks,
+      icon: PersonStanding,
       href: paths.workspaceInstructions(),
     },
     {
       key: "agentwiki",
       label: t(($) => $.tab_agentwiki),
-      icon: Library,
+      icon: BookCopy,
       href: paths.workspaceAgentWiki(),
     },
     {
