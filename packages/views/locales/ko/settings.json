@@ -182,6 +182,7 @@
       "integrations": "연동",
       "labs": "실험실",
       "members": "멤버",
+      "hooks": "훅",
       "labels": "레이블",
       "properties": "속성",
       "quick_actions": "퀵 액션"
@@ -868,5 +869,39 @@
     "byo_cancel": "취소",
     "byo_success_toast": "WeCom 봇을 연결했어요",
     "byo_failed_toast": "WeCom 봇을 연결하지 못했어요"
+  },
+  "hooks": {
+    "title": "훅",
+    "description": "데몬이 각 런타임에서 찾은 Multica 훅과 실제로 실행된 기록이 있는지 보여줍니다. 읽기 전용이며, 훅 설치와 제거는 해당 머신에서 진행합니다.",
+    "loading": "훅 목록을 불러오는 중…",
+    "empty": {
+      "title": "아직 런타임이 없습니다",
+      "description": "런타임을 연결하면 데몬이 찾은 Multica 훅을 보고합니다."
+    },
+    "runtime": {
+      "online": "온라인",
+      "stale": "오프라인",
+      "stale_since": "오프라인 · 마지막 접속 {{when}}",
+      "observed_at": "{{when}} 스캔됨",
+      "never_observed": "스캔된 적 없음",
+      "unsupported": "여기서는 훅을 사용할 수 없습니다",
+      "unsupported_hint": "{{provider}}에는 훅 메커니즘이 없어 이 런타임에 설치할 것이 없습니다.",
+      "never_scanned": "스캔된 적 없음",
+      "never_scanned_hint": "이 런타임은 아직 훅 목록을 보고하지 않았습니다. 데몬을 업데이트하고 다음 하트비트를 기다리세요.",
+      "no_hooks": "설치된 Multica 훅 없음",
+      "no_hooks_hint": "최근 스캔에서 이 머신에 Multica 훅을 찾지 못했습니다."
+    },
+    "hook": {
+      "trigger": "트리거 조건",
+      "command": "명령",
+      "disabled": "비활성"
+    },
+    "telemetry": {
+      "fired": "실행됨",
+      "fired_at": "실행됨 · {{when}}",
+      "never_fired": "실행된 적 없음",
+      "unobserved": "아직 관측되지 않음",
+      "uncollectable": "수집 불가"
+    }
   }
 }

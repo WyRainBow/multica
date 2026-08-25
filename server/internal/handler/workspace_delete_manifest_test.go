@@ -113,9 +113,13 @@ var workspaceDeletionManifest = map[string]workspaceDeleteAction{
 	"vcs_connection":                 workspaceDelete,
 	"vcs_pull_request":               workspaceDelete,
 	"verification_code":              workspaceDeleteKeep,
-	"webhook_delivery":               workspaceDelete,
-	"workspace":                      workspaceDelete,
-	"workspace_invitation":           workspaceDelete,
+	// The hook inventory is an observation about a runtime's machine. Once
+	// the workspace is gone nothing can re-confirm or refute it, and no FK
+	// sweeps it, so the delete plan removes it explicitly.
+	"runtime_hook":         workspaceDelete,
+	"webhook_delivery":     workspaceDelete,
+	"workspace":            workspaceDelete,
+	"workspace_invitation": workspaceDelete,
 	// The code-progress ledger: a checkout tracked for one workspace's work,
 	// and the lines recorded in it. Both go with the workspace; the actual
 	// directory on disk is the user's and is never touched from here.

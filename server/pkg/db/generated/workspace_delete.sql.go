@@ -275,6 +275,11 @@ deleted_worktree_entries AS (
 deleted_worktrees AS (
     DELETE FROM worktree WHERE workspace_id = $1
 ),
+deleted_runtime_hooks AS (
+    -- runtime_hook carries no FK to agent_runtime by design, so nothing
+    -- sweeps it for us when the runtimes go below.
+    DELETE FROM runtime_hook WHERE workspace_id = $1
+),
 deleted_issue_phases AS (
     -- comment.phase_id points here but carries no FK, and the comments go in
     -- DeleteWorkspaceComments later in the same transaction, so the phases can
