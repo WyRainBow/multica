@@ -40,6 +40,8 @@ export const issueKeys = {
   listSorted: (wsId: string, sort?: IssueSortParam) =>
     [...issueKeys.list(wsId), sort ?? {}] as const,
   flatAll: (wsId: string) => [...issueKeys.all(wsId), "flat"] as const,
+  history: (wsId: string, issueId: string) =>
+    [...issueKeys.all(wsId), "history", issueId] as const,
   flat: (
     wsId: string,
     scope: string,
@@ -954,5 +956,21 @@ export function issueAttachmentsOptions(issueId: string) {
   return queryOptions({
     queryKey: issueKeys.attachments(issueId),
     queryFn: () => api.listAttachments(issueId),
+  });
+}
+
+/**
+ * One card's decisions, review rounds and documents.
+ *
+ * Server state, so it lives here rather than in a store: decision status is
+ * derived from the cards on every read, and a client-side copy would be a
+ * second answer to "what holds now" — exactly the thing the decision model
+ * exists to prevent.
+ */
+export function issueHistoryOptions(wsId: string, issueId: string) {
+  return queryOptions({
+    queryKey: issueKeys.history(wsId, issueId),
+    queryFn: () => api.listIssueHistory(issueId),
+    enabled: issueId !== "",
   });
 }

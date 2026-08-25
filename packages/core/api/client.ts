@@ -3,6 +3,7 @@ import type {
   Worktree,
   WorktreeEntry,
   IssueSession,
+  IssueHistory,
   CreateWorktreeRequest,
   UpdateWorktreeRequest,
   UpdateWorktreeSessionRequest,
@@ -235,6 +236,7 @@ import {
   WorktreeEntrySchema,
   WorktreeEntryListResponseSchema,
   IssueSessionListResponseSchema,
+  IssueHistoryResponseSchema,
   IssuePhaseSchema,
   IssuePhasesResponseSchema,
   ParentIssuesResponseSchema,
@@ -1254,6 +1256,25 @@ export class ApiClient {
       endpoint: "GET /api/issues/:id/sessions",
     });
     return parsed.sessions;
+  }
+
+  /**
+   * One card's decisions, review rounds and documents, in one call.
+   *
+   * Read-only. Decision status is derived server-side from the cards
+   * themselves, so there is nothing here a client could write back without
+   * creating a second answer to "what holds now".
+   */
+  async listIssueHistory(issueId: string): Promise<IssueHistory> {
+    const raw = await this.fetch<unknown>(
+      `/api/issues/${encodeURIComponent(issueId)}/history`,
+    );
+    return parseWithFallback(
+      raw,
+      IssueHistoryResponseSchema,
+      { decisions: [], rounds: [], documents: [] },
+      { endpoint: "GET /api/issues/:id/history" },
+    );
   }
 
   async listRecentWorktreeEntries(limit?: number): Promise<WorktreeEntry[]> {

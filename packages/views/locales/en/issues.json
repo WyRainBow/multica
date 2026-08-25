@@ -809,5 +809,30 @@
     "waiting": "Waiting on you",
     "mentioned": "mentioned",
     "copied": "Copied"
+  },
+  "history": {
+    "title": "History",
+    "subtitle": "Decisions, review rounds and documents are kept apart; each has its own source of truth.",
+    "tab_decisions": "Decisions",
+    "tab_rounds": "Review rounds",
+    "tab_documents": "Snapshots",
+    "col_id": "ID",
+    "col_status": "Status",
+    "col_question": "Question",
+    "col_decision": "Decision",
+    "col_decided_by": "Decided by",
+    "col_decided_at": "Decided at",
+    "status_open": "Open",
+    "status_current": "Current",
+    "status_superseded": "Superseded",
+    "status_superseded_by": "Superseded by {{id}}",
+    "status_gap": "Gap",
+    "undecided": "Not decided",
+    "gap_note": "No decision was filed under this number; it is not renumbered or filled in",
+    "legacy_title": "Legacy format · status unknown",
+    "legacy_note": "Hand-written before the command existed, with no machine header. Not derived, and never guessed.",
+    "rounds_legacy_title": "Retired system · no longer written",
+    "rounds_legacy_note": "reviews/ came before rounds/ and is kept read-only.",
+    "documents_live_title": "Live documents"
   }
 }

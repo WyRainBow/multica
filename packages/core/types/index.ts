@@ -300,3 +300,11 @@ export type {
   RuntimeHookTelemetry,
   ListWorkspaceHooksResponse,
 } from "./runtime-hook";
+
+export type {
+  IssueDecisionRowStatus,
+  IssueHistoryDecisionRow,
+  IssueHistoryRound,
+  IssueHistoryDocument,
+  IssueHistory,
+} from "./issue-history";

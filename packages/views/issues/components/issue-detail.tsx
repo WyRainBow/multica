@@ -151,6 +151,7 @@ import { CommentCard } from "./comment-card";
 import { IssueResourcesSection } from "./issue-resources-section";
 import { IssueDocsSection, IssueNamespaceSection } from "../../docs";
 import { IssueSessionSidebar } from "./issue-session-sidebar";
+import { IssueHistorySection } from "./issue-history-section";
 import { PhaseTrack } from "./phase-track";
 import { phaseAtTime } from "./phase-window";
 import type { IssuePhase } from "@multica/core/types";
@@ -3624,9 +3625,11 @@ export function IssueDetail({
               the document you need all of it. */}
             <IssueDocsSection issueId={id} />
 
-            {/* Where this card's code is, and whose session is driving it.
-              Renders nothing unless the card names a tree, which most never
-              do. */}
+            {/* How this card got here: decisions, review rounds, snapshots.
+              Below the documents list because the list answers "what does this
+              card say" and this answers "why does it say that" — the second
+              question is asked less often and always after the first. */}
+            <IssueHistorySection issueId={id} />
 
             {/* Sub-issues — Linear-style */}
             {childIssues.length === 0 && (

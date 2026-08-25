@@ -777,5 +777,30 @@
     "waiting": "답변 대기",
     "mentioned": "언급",
     "copied": "복사됨"
+  },
+  "history": {
+    "title": "히스토리",
+    "subtitle": "결정, 리뷰 라운드, 문서는 각각 독립된 원본을 가지며 분리해 보관합니다.",
+    "tab_decisions": "결정",
+    "tab_rounds": "리뷰 라운드",
+    "tab_documents": "스냅샷",
+    "col_id": "ID",
+    "col_status": "상태",
+    "col_question": "질문",
+    "col_decision": "결정",
+    "col_decided_by": "결정자",
+    "col_decided_at": "결정 시각",
+    "status_open": "미결",
+    "status_current": "현재 유효",
+    "status_superseded": "대체됨",
+    "status_superseded_by": "{{id}}(으)로 대체됨",
+    "status_gap": "결번",
+    "undecided": "미결정",
+    "gap_note": "해당 번호로 기록된 결정이 없습니다. 번호를 채우거나 재정렬하지 않습니다",
+    "legacy_title": "구형식 · 상태 불명",
+    "legacy_note": "명령 도입 전 손으로 쓴 카드로 기계 판독 헤더가 없습니다. 상태를 추론하지 않습니다.",
+    "rounds_legacy_title": "구체계 · 신규 추가 중단",
+    "rounds_legacy_note": "reviews/ 는 rounds/ 이전 체계이며 읽기 전용으로 남깁니다.",
+    "documents_live_title": "현재 문서"
   }
 }

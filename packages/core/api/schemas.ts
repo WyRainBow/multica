@@ -806,6 +806,55 @@ export const IssueSessionListResponseSchema = z.object({
   sessions: z.array(IssueSessionSchema).default([]),
 }).loose();
 
+// The card's history (`GET /api/issues/:id/history`). Read-only: decisions are
+// write-once and their status is derived, so nothing here has a write twin.
+export const IssueHistoryDecisionRowSchema = z.object({
+  id: z.string().default(""),
+  // Server-driven enum kept as a plain string: a row kind this build has not
+  // heard of should render as itself rather than disappear from the table.
+  status: z.string().default("current"),
+  doc_id: z.string().default(""),
+  number: z.number().default(0),
+  question: z.string().default(""),
+  summary: z.string().default(""),
+  decided_by: z.string().default(""),
+  recorded_by: z.string().default(""),
+  decided_at: z.string().default(""),
+  superseded_by: z.string().default(""),
+  raised_by: z.string().default(""),
+  affects: z.array(z.string()).default([]),
+  title: z.string().default(""),
+}).loose();
+
+export const IssueHistoryRoundSchema = z.object({
+  id: z.string().default(""),
+  number: z.number().default(0),
+  station: z.string().default(""),
+  verdict: z.string().default(""),
+  summary: z.string().default(""),
+  doc_id: z.string().default(""),
+  title: z.string().default(""),
+  closed_at: z.string().default(""),
+  legacy: z.boolean().default(false),
+}).loose();
+
+export const IssueHistoryDocumentSchema = z.object({
+  id: z.string().default(""),
+  kind: z.string().default(""),
+  title: z.string().default(""),
+  snapshot: z.boolean().default(false),
+  snapshot_of: z.string().default(""),
+  taken_at: z.string().default(""),
+  updated_at: z.string().default(""),
+  created_at: z.string().default(""),
+}).loose();
+
+export const IssueHistoryResponseSchema = z.object({
+  decisions: z.array(IssueHistoryDecisionRowSchema).default([]),
+  rounds: z.array(IssueHistoryRoundSchema).default([]),
+  documents: z.array(IssueHistoryDocumentSchema).default([]),
+}).loose();
+
 // The hook inventory (`GET /api/workspaces/:id/hooks`). Read-only.
 //
 // Every optional field defaults so a drifting backend degrades one row instead
