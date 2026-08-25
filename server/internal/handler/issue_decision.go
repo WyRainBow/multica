@@ -35,6 +35,11 @@ type IssueDecision struct {
 	Summary    string `json:"summary,omitempty"`     // what was chosen
 	DecidedBy  string `json:"decided_by,omitempty"`  // who made the call
 	RecordedBy string `json:"recorded_by,omitempty"` // who wrote it down; often not the same
+	// DecidedAt is the header's own timestamp, passed through as written. Kept
+	// as a string rather than parsed into a time: the card is write-once, so
+	// this is a quotation, and normalising it would silently rewrite what the
+	// recorder actually put on the card.
+	DecidedAt string `json:"decided_at,omitempty"`
 	// Superseded is derived: some later card names this one. The card itself is
 	// never touched, which is why this cannot be read off it.
 	Superseded bool `json:"superseded,omitempty"`
@@ -62,6 +67,7 @@ type decisionCard struct {
 	summary    string
 	decidedBy  string
 	recordedBy string
+	decidedAt  string
 	open       []string
 	closes     []string
 	supersedes []string
@@ -110,7 +116,7 @@ func DeriveIssueDecisions(cards []struct{ ID, Kind, Content string }) ([]IssueDe
 		decisions = append(decisions, IssueDecision{
 			ID: c.id, DocID: c.docID,
 			Question: c.question, Summary: c.summary,
-			DecidedBy: c.decidedBy, RecordedBy: c.recordedBy,
+			DecidedBy: c.decidedBy, RecordedBy: c.recordedBy, DecidedAt: c.decidedAt,
 			Superseded: by != "", SupersededBy: by, Affects: c.affects,
 		})
 		// A superseded card's open questions go with it. The decision that
@@ -175,6 +181,8 @@ func parseDecisionCard(docID, kind, content string) (decisionCard, bool) {
 			c.decidedBy = value
 		case "recorded_by":
 			c.recordedBy = value
+		case "decided_at":
+			c.decidedAt = value
 		case "open":
 			c.open = append(c.open, value)
 		case "closes":

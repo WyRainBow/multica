@@ -777,5 +777,30 @@
     "waiting": "返信待ち",
     "mentioned": "言及",
     "copied": "コピーしました"
+  },
+  "history": {
+    "title": "履歴",
+    "subtitle": "決定・レビューラウンド・ドキュメントはそれぞれ独立した正本を持ち、分けて保持します。",
+    "tab_decisions": "決定",
+    "tab_rounds": "レビューラウンド",
+    "tab_documents": "スナップショット",
+    "col_id": "ID",
+    "col_status": "状態",
+    "col_question": "問い",
+    "col_decision": "決定",
+    "col_decided_by": "決定者",
+    "col_decided_at": "決定時刻",
+    "status_open": "未決",
+    "status_current": "有効",
+    "status_superseded": "置き換え済み",
+    "status_superseded_by": "{{id}} に置き換え",
+    "status_gap": "欠番",
+    "undecided": "未決定",
+    "gap_note": "対応する決定文書がありません。採番し直しも補填もしません",
+    "legacy_title": "旧形式 · 状態不明",
+    "legacy_note": "コマンド実装前の手書きカードで、機械可読ヘッダがありません。状態は導出せず、推測もしません。",
+    "rounds_legacy_title": "旧体系 · 新規追加は停止",
+    "rounds_legacy_note": "reviews/ は rounds/ の前の体系で、読み取り専用です。",
+    "documents_live_title": "現在のドキュメント"
   }
 }

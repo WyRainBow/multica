@@ -777,5 +777,30 @@
     "waiting": "等待人回复",
     "mentioned": "提及",
     "copied": "已复制"
+  },
+  "history": {
+    "title": "历史",
+    "subtitle": "决策、评审轮次和文档三类记录分开保存，各自有独立正身。",
+    "tab_decisions": "决策",
+    "tab_rounds": "评审轮次",
+    "tab_documents": "文档快照",
+    "col_id": "ID",
+    "col_status": "状态",
+    "col_question": "问题",
+    "col_decision": "决策",
+    "col_decided_by": "拍板者",
+    "col_decided_at": "决策时间",
+    "status_open": "未决",
+    "status_current": "当前有效",
+    "status_superseded": "已被取代",
+    "status_superseded_by": "已被 {{id}} 取代",
+    "status_gap": "历史空档",
+    "undecided": "未决定",
+    "gap_note": "没有对应决策文档，不补号、不重排",
+    "legacy_title": "旧格式 · 状态未知",
+    "legacy_note": "命令实装前的手写卡，没有机器可读头。不参与状态推导，不猜它们当前是否有效。",
+    "rounds_legacy_title": "旧体系 · 已停止新增",
+    "rounds_legacy_note": "reviews/ 是 rounds/ 之前的一套，只读保留。",
+    "documents_live_title": "当前文档"
   }
 }

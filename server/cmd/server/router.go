@@ -1342,6 +1342,9 @@ func NewRouterWithOptions(pool *pgxpool.Pool, hub *realtime.Hub, bus *events.Bus
 					// The card's side of the code-progress ledger: which
 					// sessions worked on it and where they left off.
 					r.Get("/sessions", h.ListIssueWorktreeSessions)
+					// The card's history in its three real shapes:
+					// decisions, review rounds, documents.
+					r.Get("/history", h.ListIssueHistory)
 					// Delivery receipts gate done on a real verification (COC-282).
 					r.Post("/delivery-receipt", h.CreateDeliveryReceipt)
 					r.Get("/delivery-receipt", h.GetDeliveryReceipt)
