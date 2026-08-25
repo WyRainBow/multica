@@ -46,6 +46,7 @@ type worktreeRow struct {
 	ID         string                 `json:"id"`
 	Name       string                 `json:"name"`
 	Issue      string                 `json:"issue"`
+	WorkBranch string                 `json:"work_branch"`
 	DependsOn  []string               `json:"depends_on"`
 	Artifacts  []string               `json:"artifacts"`
 	Path       string                 `json:"path"`
@@ -242,6 +243,8 @@ func init() {
 	worktreeSetCmd.Flags().String("name", "", "Rename the tree")
 	worktreeSetCmd.Flags().Bool("clear-parent", false, "Detach from its parent tree")
 	worktreeSetCmd.Flags().StringSlice("artifact", nil, "Where this card's output landed; replaces the recorded list")
+	worktreeSetCmd.Flags().String("work-branch", "",
+		"The branch this card's work was done on. Seeded from --branch at registration and never re-measured, so it survives the merge that rewrites --branch to the base")
 
 	worktreeLogCmd.Flags().String("kind", "progress",
 		"progress, branch, merge, blocked, handoff or verify")
@@ -565,6 +568,7 @@ func runWorktreeSet(cmd *cobra.Command, args []string) error {
 	for flag, field := range map[string]string{
 		"name": "name", "path": "path", "repo": "repo", "branch": "branch",
 		"base": "base_ref", "role": "role", "status": "status", "issue": "issue",
+		"work-branch": "work_branch",
 	} {
 		if cmd.Flags().Changed(flag) {
 			value, _ := cmd.Flags().GetString(flag)

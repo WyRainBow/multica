@@ -3,6 +3,7 @@ import type {
   Worktree,
   WorktreeEntry,
   IssueSession,
+  IssuePRLink,
   IssueHistory,
   CreateWorktreeRequest,
   UpdateWorktreeRequest,
@@ -236,6 +237,8 @@ import {
   WorktreeEntrySchema,
   WorktreeEntryListResponseSchema,
   IssueSessionListResponseSchema,
+  IssuePRLinkListResponseSchema,
+  IssuePRLinkSchema,
   IssueHistoryResponseSchema,
   IssuePhaseSchema,
   IssuePhasesResponseSchema,
@@ -1274,6 +1277,44 @@ export class ApiClient {
       IssueHistoryResponseSchema,
       { decisions: [], rounds: [], documents: [] },
       { endpoint: "GET /api/issues/:id/history" },
+    );
+  }
+
+  /**
+   * Review requests recorded by hand against a card.
+   *
+   * Separate from listIssuePullRequests, which returns what GitHub told us.
+   * These carry no verified state — only a URL and who vouched for it — and
+   * merging the two lists would let an unverifiable row borrow the credibility
+   * of a verified one.
+   */
+  async listIssuePRLinks(issueId: string): Promise<IssuePRLink[]> {
+    const raw = await this.fetch<unknown>(
+      `/api/issues/${encodeURIComponent(issueId)}/pr-links`,
+    );
+    const parsed = parseWithFallback(raw, IssuePRLinkListResponseSchema, { pr_links: [] }, {
+      endpoint: "GET /api/issues/:id/pr-links",
+    });
+    return parsed.pr_links;
+  }
+
+  async createIssuePRLink(
+    issueId: string,
+    body: { url: string; title?: string },
+  ): Promise<IssuePRLink | null> {
+    const raw = await this.fetch<unknown>(
+      `/api/issues/${encodeURIComponent(issueId)}/pr-links`,
+      { method: "POST", body: JSON.stringify(body) },
+    );
+    return parseWithFallback(raw, IssuePRLinkSchema, null, {
+      endpoint: "POST /api/issues/:id/pr-links",
+    });
+  }
+
+  async deleteIssuePRLink(issueId: string, linkId: string): Promise<void> {
+    await this.fetch<unknown>(
+      `/api/issues/${encodeURIComponent(issueId)}/pr-links/${encodeURIComponent(linkId)}`,
+      { method: "DELETE" },
     );
   }
 

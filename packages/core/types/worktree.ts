@@ -14,7 +14,12 @@ export interface Worktree {
   name: string;
   path: string;
   repo: string;
+  /** What the checkout currently has, re-measured by every sync. Reads as the
+   *  base branch once the work lands. */
   branch: string;
+  /** The branch this card's work was opened on. Never re-measured, so it
+   *  survives the merge that rewrites `branch`. */
+  work_branch: string;
   base_ref: string;
   /** Pipeline position: base → feature → integration → launch. */
   role: string;
@@ -68,6 +73,7 @@ export interface IssueSession {
   role: string;
   status: string;
   branch: string;
+  work_branch: string;
   agent: string;
   session_id: string;
   resume: string;
@@ -151,4 +157,19 @@ export interface CreateWorktreeEntryRequest {
   body: string;
   sha?: string;
   issue_id?: string;
+}
+
+/** A review request recorded by hand against a card.
+ *
+ *  A URL and who recorded it, nothing fetched. This workspace integrates with
+ *  no forge, so there is no state to show and none is claimed. */
+export interface IssuePRLink {
+  id: string;
+  url: string;
+  title: string;
+  /** Display name as it stood when the link was recorded — a snapshot, because
+   *  this is a log line. */
+  added_by: string;
+  added_by_type: string;
+  added_at: string;
 }

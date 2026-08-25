@@ -18,9 +18,10 @@ import { useT, useTimeAgo } from "../../i18n";
  * replaces. That comment was a per-card copy of a pointer, so it went stale one
  * card at a time and nobody could tell which copy was current.
  *
- * Nothing renders when no session has touched the card. Most cards never get
- * one, and a heading over an empty state on every card is noise in the one
- * place a reader most needs signal.
+ * A fixed slot: the heading is always there, empty or not. "No session yet"
+ * and "this card has no such thing" are different facts, and hiding the whole
+ * section conflated them — a reader could not tell an unclaimed card from one
+ * whose section had simply never been built.
  */
 export function IssueSessionSidebar({ issueId }: { issueId: string }) {
   const { t } = useT("issues");
@@ -29,7 +30,6 @@ export function IssueSessionSidebar({ issueId }: { issueId: string }) {
   const [open, setOpen] = useState(true);
 
   const { data: sessions = [] } = useQuery(issueSessionsOptions(wsId, issueId));
-  if (sessions.length === 0) return null;
 
   return (
     <div>
@@ -39,22 +39,30 @@ export function IssueSessionSidebar({ issueId }: { issueId: string }) {
         onClick={() => setOpen(!open)}
       >
         {t(($) => $.sessions.title)}
-        <span className="rounded-full bg-muted px-1.5 text-caption tabular-nums text-muted-foreground">
-          {sessions.length}
-        </span>
+        {sessions.length > 0 && (
+          <span className="rounded-full bg-muted px-1.5 text-caption tabular-nums text-muted-foreground">
+            {sessions.length}
+          </span>
+        )}
         <ChevronRight
           className={`!size-3 shrink-0 stroke-[2.5] text-muted-foreground transition-transform ${open ? "rotate-90" : ""}`}
         />
       </button>
       {open && (
         <div className="flex flex-col gap-3 pl-2">
-          {sessions.map((session: IssueSession) => (
-            <SessionRow
-              key={session.worktree_id + session.session_id}
-              session={session}
-              timeAgo={timeAgo}
-            />
-          ))}
+          {sessions.length === 0 ? (
+            <p className="text-caption text-muted-foreground">
+              {t(($) => $.sessions.empty)}
+            </p>
+          ) : (
+            sessions.map((session: IssueSession) => (
+              <SessionRow
+                key={session.worktree_id + session.session_id}
+                session={session}
+                timeAgo={timeAgo}
+              />
+            ))
+          )}
         </div>
       )}
     </div>
@@ -106,10 +114,15 @@ function SessionRow({
         )}
       </div>
 
-      {session.branch !== "" && (
+      {/* The branch the work was opened on, not the one the checkout happens to
+        have now. After a merge the measured branch reads as the base, which
+        loses the name a reader needs to find the diff. */}
+      {(session.work_branch || session.branch) !== "" && (
         <div className="flex min-w-0 items-center gap-1 text-caption text-muted-foreground">
           <GitBranch className="!size-3 shrink-0" />
-          <span className="truncate">{session.branch}</span>
+          <span className="truncate">
+            {session.work_branch === "" ? session.branch : session.work_branch}
+          </span>
         </div>
       )}
 

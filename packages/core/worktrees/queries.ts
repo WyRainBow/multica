@@ -47,3 +47,12 @@ export function issueSessionsOptions(wsId: string, issueId: string) {
     enabled: issueId !== "",
   });
 }
+
+/** Review requests recorded by hand against a card. */
+export function issuePRLinksOptions(wsId: string, issueId: string) {
+  return queryOptions({
+    queryKey: [...worktreeKeys.all(wsId), "pr-links", issueId] as const,
+    queryFn: () => api.listIssuePRLinks(issueId),
+    enabled: issueId !== "",
+  });
+}

@@ -69,3 +69,26 @@ export function useCreateWorktreeEntry() {
     onSettled: invalidate,
   });
 }
+
+/**
+ * Recording a review link is a create that stays on the page and rarely fails,
+ * but it is not optimistic either: the server assigns the id, stamps who
+ * recorded it, and returns an existing row unchanged when the same URL is
+ * pasted twice. A locally invented row would get all three wrong.
+ */
+export function useCreateIssuePRLink(issueId: string) {
+  const invalidate = useWorktreeInvalidation();
+  return useMutation({
+    mutationFn: (body: { url: string; title?: string }) =>
+      api.createIssuePRLink(issueId, body),
+    onSettled: invalidate,
+  });
+}
+
+export function useDeleteIssuePRLink(issueId: string) {
+  const invalidate = useWorktreeInvalidation();
+  return useMutation({
+    mutationFn: (linkId: string) => api.deleteIssuePRLink(issueId, linkId),
+    onSettled: invalidate,
+  });
+}

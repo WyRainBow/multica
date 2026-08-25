@@ -1401,6 +1401,12 @@ func NewRouterWithOptions(pool *pgxpool.Pool, hub *realtime.Hub, bus *events.Bus
 					r.Put("/properties/{propertyId}", h.SetIssueProperty)
 					r.Delete("/properties/{propertyId}", h.DeleteIssueProperty)
 					r.Get("/pull-requests", h.ListPullRequestsForIssue)
+					// Review requests recorded by hand. Separate from the
+					// GitHub-derived list above because these carry no
+					// verified state — only a URL and who vouched for it.
+					r.Get("/pr-links", h.ListIssuePRLinks)
+					r.Post("/pr-links", h.CreateIssuePRLink)
+					r.Delete("/pr-links/{linkID}", h.DeleteIssuePRLink)
 				})
 			})
 

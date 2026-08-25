@@ -808,7 +808,8 @@
     "no_agent": "Unclaimed",
     "waiting": "Waiting on you",
     "mentioned": "mentioned",
-    "copied": "Copied"
+    "copied": "Copied",
+    "empty": "No session has claimed this card yet. After cutting a branch, run multica worktree add <name> --issue <card>."
   },
   "history": {
     "title": "History",
@@ -834,5 +835,14 @@
     "rounds_legacy_title": "Retired system · no longer written",
     "rounds_legacy_note": "reviews/ came before rounds/ and is kept read-only.",
     "documents_live_title": "Live documents"
+  },
+  "pr_links": {
+    "placeholder": "Paste a PR / MR link",
+    "add": "Record",
+    "empty": "No review recorded yet. Paste a link, or run multica issue pr add <card> <url>.",
+    "added_by": "recorded by {{who}}",
+    "added_unknown": "recorder unknown",
+    "remove": "Remove",
+    "add_failed": "Not recorded. The link must be absolute, starting with http:// or https://."
   }
 }

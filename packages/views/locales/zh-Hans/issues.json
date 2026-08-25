@@ -776,7 +776,8 @@
     "no_agent": "未认领",
     "waiting": "等待人回复",
     "mentioned": "提及",
-    "copied": "已复制"
+    "copied": "已复制",
+    "empty": "还没有 session 认领这张卡。开分支后跑 multica worktree add <名> --issue <卡号>。"
   },
   "history": {
     "title": "历史",
@@ -802,5 +803,14 @@
     "rounds_legacy_title": "旧体系 · 已停止新增",
     "rounds_legacy_note": "reviews/ 是 rounds/ 之前的一套，只读保留。",
     "documents_live_title": "当前文档"
+  },
+  "pr_links": {
+    "placeholder": "粘贴 PR / MR 地址",
+    "add": "记下",
+    "empty": "还没有记录 PR。粘贴地址，或用 multica issue pr add <卡号> <地址>。",
+    "added_by": "{{who}} 记的",
+    "added_unknown": "记录者未知",
+    "remove": "移除",
+    "add_failed": "没记上。地址要是完整链接，以 http:// 或 https:// 开头。"
   }
 }

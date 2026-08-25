@@ -103,6 +103,28 @@ type Entry struct {
 	AuthorID   string    `yaml:"author_id,omitempty"`
 }
 
+// PullRequestLink is a review request recorded by hand.
+//
+// A URL and who put it there, nothing fetched. This workspace talks to GitHub
+// and GitLab but integrates with neither, so there is no API to ask whether the
+// request is open, and pretending to know would be worse than saying nothing.
+// What the link is worth is that it exists and that somebody vouched for it,
+// which is why the actor travels with it.
+type PullRequestLink struct {
+	// ID is assigned at write time so a link can be removed without depending
+	// on its position, which shifts as others are added.
+	ID    string `yaml:"id"`
+	URL   string `yaml:"url"`
+	Title string `yaml:"title,omitempty"`
+	// AddedBy is the display name as it stood when the link was recorded. A
+	// snapshot on purpose: this is a log line, and a log line that renames
+	// itself later stops being a record of what happened.
+	AddedBy     string    `yaml:"added_by,omitempty"`
+	AddedByType string    `yaml:"added_by_type,omitempty"`
+	AddedByID   string    `yaml:"added_by_id,omitempty"`
+	At          time.Time `yaml:"at"`
+}
+
 // Record is one card's account.
 type Record struct {
 	// Key is the file stem and the stable identity. It is the card identifier
@@ -117,19 +139,29 @@ type Record struct {
 	Issue   string `yaml:"issue,omitempty"`
 	IssueID string `yaml:"issue_id,omitempty"`
 
-	Repo    string `yaml:"repo,omitempty"`
-	Path    string `yaml:"path,omitempty"`
-	Branch  string `yaml:"branch,omitempty"`
-	BaseRef string `yaml:"base_ref,omitempty"`
-	Role    string `yaml:"role"`
-	Status  string `yaml:"status"`
-	Parent  string `yaml:"parent,omitempty"`
+	Repo string `yaml:"repo,omitempty"`
+	Path string `yaml:"path,omitempty"`
+	// Branch is what the checkout currently has, re-measured by every sync.
+	// After a merge it reads "main", which is correct and also useless for
+	// answering "which branch was this card's work done on".
+	Branch string `yaml:"branch,omitempty"`
+	// WorkBranch is that answer: the branch recorded when the account was
+	// opened, which sync never touches. Without it a card loses the name of
+	// its own branch the moment the branch lands, and the name is what a
+	// reader needs to find the diff.
+	WorkBranch string `yaml:"work_branch,omitempty"`
+	BaseRef    string `yaml:"base_ref,omitempty"`
+	Role       string `yaml:"role"`
+	Status     string `yaml:"status"`
+	Parent     string `yaml:"parent,omitempty"`
 
 	// DependsOn holds the keys of accounts this one waits on. Keys, not free
 	// text, so a reader can follow them.
 	DependsOn []string `yaml:"depends_on,omitempty"`
 	// Artifacts is where this card's output landed: paths, documents, links.
 	Artifacts []string `yaml:"artifacts,omitempty"`
+	// PullRequests are the review requests recorded against this card.
+	PullRequests []PullRequestLink `yaml:"pull_requests,omitempty"`
 
 	Facts   Facts   `yaml:"facts,omitempty"`
 	Session Session `yaml:"session,omitempty"`
