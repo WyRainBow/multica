@@ -120,11 +120,6 @@ var workspaceDeletionManifest = map[string]workspaceDeleteAction{
 	"webhook_delivery":     workspaceDelete,
 	"workspace":            workspaceDelete,
 	"workspace_invitation": workspaceDelete,
-	// The code-progress ledger: a checkout tracked for one workspace's work,
-	// and the lines recorded in it. Both go with the workspace; the actual
-	// directory on disk is the user's and is never touched from here.
-	"worktree":       workspaceDelete,
-	"worktree_entry": workspaceDelete,
 }
 
 func TestWorkspaceDeletionManifestCoversPublicSchema(t *testing.T) {
