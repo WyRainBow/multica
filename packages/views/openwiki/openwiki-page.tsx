@@ -1,6 +1,10 @@
 "use client";
 
-import { BookMarked, BookOpen, ScrollText, Sparkles, Webhook } from "lucide-react";
+// Five tabs sit side by side, so the icons are picked for distinct
+// silhouettes at 16px rather than for the most literal metaphor. Two books next
+// to each other read as one repeated icon, which is what the previous set did
+// with the two wikis.
+import { Anchor, Blocks, BookOpen, Library, ListChecks } from "lucide-react";
 import { DocsPage } from "@multica/views/docs";
 import { SkillsPage } from "@multica/views/skills";
 import { HooksTab } from "../settings/components/hooks-tab";
@@ -50,25 +54,25 @@ export function OpenwikiPage({ tab = "wiki" }: { tab?: OpenwikiTab }) {
     {
       key: "skills",
       label: t(($) => $.tab_skills),
-      icon: Sparkles,
+      icon: Blocks,
       href: paths.workspaceSkills(),
     },
     {
       key: "instructions",
       label: t(($) => $.tab_instructions),
-      icon: ScrollText,
+      icon: ListChecks,
       href: paths.workspaceInstructions(),
     },
     {
       key: "agentwiki",
       label: t(($) => $.tab_agentwiki),
-      icon: BookMarked,
+      icon: Library,
       href: paths.workspaceAgentWiki(),
     },
     {
       key: "hooks",
       label: t(($) => $.tab_hooks),
-      icon: Webhook,
+      icon: Anchor,
       href: paths.workspaceHooks(),
     },
   ];

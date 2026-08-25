@@ -320,43 +320,6 @@ func worktreeFactsAge(verifiedAt *string) string {
 	return shortTimestamp(*verifiedAt)
 }
 
-// The metadata key that points a card at the tree its code is being written in.
-// The ledger reads it to tell which cards a tree carries; without it the two
-// halves only meet in someone's head.
-const issueWorktreeKey = "git.worktree"
-
-// bindIssueToWorktree points a card at this tree the first time work on it is
-// logged here, so the link is a by-product of recording the work rather than a
-// second command to remember. An existing pointer is left alone: a card worked
-// in a feature tree and later carried by an integration tree still belongs, for
-// navigation, to the tree where the work happened.
-//
-// Advisory. Failing to bind must not lose the ledger line that was just
-// written, so this reports and returns rather than erroring.
-func bindIssueToWorktree(ctx context.Context, client *cli.APIClient, issueID, treeName string) {
-	// There is no read route for a single key, so the whole map is fetched.
-	// Being unable to read it is not licence to overwrite: stop rather than
-	// risk clobbering a pointer someone set by hand.
-	var result map[string]any
-	base := "/api/issues/" + url.PathEscape(issueID) + "/metadata"
-	if err := client.GetJSON(ctx, base, &result); err != nil {
-		fmt.Fprintf(os.Stderr, "Note: the line was written, but the card's existing pointer could not be read, so it was left alone (%v).\n", err)
-		return
-	}
-	existing, _ := result["metadata"].(map[string]any)
-	if name, ok := existing[issueWorktreeKey].(string); ok && strings.TrimSpace(name) != "" {
-		return
-	}
-
-	var written map[string]any
-	path := base + "/" + url.PathEscape(issueWorktreeKey)
-	if err := client.PutJSON(ctx, path, map[string]any{"value": treeName}, &written); err != nil {
-		fmt.Fprintf(os.Stderr, "Note: the line was written, but the card could not be pointed at %s (%v).\n", treeName, err)
-		return
-	}
-	fmt.Fprintf(os.Stderr, "Pointed the card at %s.\n", treeName)
-}
-
 // Agents that tell a child process which session it is running inside. Both
 // set the variable for the commands they spawn rather than for themselves, so
 // a command run from the session reads its own id exactly.
@@ -687,10 +650,6 @@ func runWorktreeLog(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("write entry: %w", err)
 	}
 	fmt.Fprintf(os.Stderr, "Logged to %s.\n", args[0])
-
-	if entry.IssueID != nil {
-		bindIssueToWorktree(ctx, client, *entry.IssueID, args[0])
-	}
 
 	if output, _ := cmd.Flags().GetString("output"); output == "table" {
 		return nil
