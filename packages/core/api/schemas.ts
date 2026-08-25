@@ -754,6 +754,7 @@ export const WorktreeSchema = z.object({
   }),
   issue: z.string().default(""),
   issue_id: z.string().default(""),
+  work_branch: z.string().default(""),
   depends_on: z.array(z.string()).default([]),
   artifacts: z.array(z.string()).default([]),
   parent_id: z.string().nullish().transform((v) => v ?? null),
@@ -792,6 +793,7 @@ export const IssueSessionSchema = z.object({
   role: z.string().default("feature"),
   status: z.string().default("active"),
   branch: z.string().default(""),
+  work_branch: z.string().default(""),
   agent: z.string().default(""),
   session_id: z.string().default(""),
   resume: z.string().default(""),
@@ -847,6 +849,22 @@ export const IssueHistoryDocumentSchema = z.object({
   taken_at: z.string().default(""),
   updated_at: z.string().default(""),
   created_at: z.string().default(""),
+}).loose();
+
+// Review requests recorded by hand (`/api/issues/:id/pr-links`). No state is
+// carried: this workspace integrates with no forge, and a status nobody can
+// verify is worse on a card than no status at all.
+export const IssuePRLinkSchema = z.object({
+  id: z.string().default(""),
+  url: z.string().default(""),
+  title: z.string().default(""),
+  added_by: z.string().default(""),
+  added_by_type: z.string().default(""),
+  added_at: z.string().default(""),
+}).loose();
+
+export const IssuePRLinkListResponseSchema = z.object({
+  pr_links: z.array(IssuePRLinkSchema).default([]),
 }).loose();
 
 export const IssueHistoryResponseSchema = z.object({

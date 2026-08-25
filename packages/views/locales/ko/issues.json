@@ -776,7 +776,8 @@
     "no_agent": "미배정",
     "waiting": "답변 대기",
     "mentioned": "언급",
-    "copied": "복사됨"
+    "copied": "복사됨",
+    "empty": "아직 이 카드를 맡은 세션이 없습니다. 브랜치를 만든 뒤 multica worktree add <이름> --issue <카드> 를 실행하세요."
   },
   "history": {
     "title": "히스토리",
@@ -802,5 +803,14 @@
     "rounds_legacy_title": "구체계 · 신규 추가 중단",
     "rounds_legacy_note": "reviews/ 는 rounds/ 이전 체계이며 읽기 전용으로 남깁니다.",
     "documents_live_title": "현재 문서"
+  },
+  "pr_links": {
+    "placeholder": "PR / MR 링크 붙여넣기",
+    "add": "기록",
+    "empty": "아직 기록된 리뷰가 없습니다. 링크를 붙여넣거나 multica issue pr add <카드> <URL> 을 실행하세요.",
+    "added_by": "{{who}} 기록",
+    "added_unknown": "기록자 미상",
+    "remove": "제거",
+    "add_failed": "기록하지 못했습니다. http:// 또는 https:// 로 시작하는 절대 URL 이어야 합니다."
   }
 }

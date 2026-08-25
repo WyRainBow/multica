@@ -104,11 +104,15 @@ type WorktreeResponse struct {
 	// Issue is the card this account belongs to, as the identifier a person
 	// reads (COC-348). IssueID is the same card as a UUID, for the UI to link
 	// with. Either may be empty: an account can predate its card.
-	Issue      string `json:"issue"`
-	IssueID    string `json:"issue_id"`
-	Path       string `json:"path"`
-	Repo       string `json:"repo"`
+	Issue   string `json:"issue"`
+	IssueID string `json:"issue_id"`
+	Path    string `json:"path"`
+	Repo    string `json:"repo"`
+	// Branch is what the checkout currently has; WorkBranch is the branch the
+	// card's work was opened on and is never re-measured. They differ the
+	// moment the branch lands.
 	Branch     string `json:"branch"`
+	WorkBranch string `json:"work_branch"`
 	BaseRef    string `json:"base_ref"`
 	Role       string `json:"role"`
 	Status     string `json:"status"`
@@ -181,6 +185,7 @@ func worktreeToResponse(rec progressledger.Record) WorktreeResponse {
 		Path:        rec.Path,
 		Repo:        rec.Repo,
 		Branch:      rec.Branch,
+		WorkBranch:  rec.WorkBranch,
 		BaseRef:     rec.BaseRef,
 		Role:        rec.Role,
 		Status:      rec.Status,
@@ -441,6 +446,12 @@ func (h *Handler) CreateWorktree(w http.ResponseWriter, r *http.Request) {
 	rec.Path = refs["path"]
 	rec.Repo = refs["repo"]
 	rec.Branch = refs["branch"]
+	// The work branch is seeded once and then left alone. Re-pointing an
+	// adopted account is the one case that may move it: a card re-cut onto a
+	// new branch really is being worked somewhere else now.
+	if refs["branch"] != "" {
+		rec.WorkBranch = refs["branch"]
+	}
 	rec.BaseRef = refs["base_ref"]
 	rec.Role = role
 	rec.Status = status
@@ -476,17 +487,18 @@ func (h *Handler) CreateWorktree(w http.ResponseWriter, r *http.Request) {
 }
 
 type updateWorktreeRequest struct {
-	Name      *string   `json:"name"`
-	Path      *string   `json:"path"`
-	Repo      *string   `json:"repo"`
-	Branch    *string   `json:"branch"`
-	BaseRef   *string   `json:"base_ref"`
-	Role      *string   `json:"role"`
-	Status    *string   `json:"status"`
-	Issue     *string   `json:"issue"`
-	DependsOn *[]string `json:"depends_on"`
-	Artifacts *[]string `json:"artifacts"`
-	ParentID  *string   `json:"parent_id"`
+	Name       *string   `json:"name"`
+	Path       *string   `json:"path"`
+	Repo       *string   `json:"repo"`
+	Branch     *string   `json:"branch"`
+	WorkBranch *string   `json:"work_branch"`
+	BaseRef    *string   `json:"base_ref"`
+	Role       *string   `json:"role"`
+	Status     *string   `json:"status"`
+	Issue      *string   `json:"issue"`
+	DependsOn  *[]string `json:"depends_on"`
+	Artifacts  *[]string `json:"artifacts"`
+	ParentID   *string   `json:"parent_id"`
 }
 
 // UpdateWorktree handles PUT /api/worktrees/{id}.
@@ -526,6 +538,7 @@ func (h *Handler) UpdateWorktree(w http.ResponseWriter, r *http.Request) {
 		{"path", req.Path, &rec.Path},
 		{"repo", req.Repo, &rec.Repo},
 		{"branch", req.Branch, &rec.Branch},
+		{"work_branch", req.WorkBranch, &rec.WorkBranch},
 		{"base_ref", req.BaseRef, &rec.BaseRef},
 	}
 	for _, ref := range optionalRefs {
@@ -953,11 +966,14 @@ func (h *Handler) CreateWorktreeEntry(w http.ResponseWriter, r *http.Request) {
 // IssueSessionResponse is one session that worked on a card: who was driving,
 // how to resume them, and whether they are waiting on a person right now.
 type IssueSessionResponse struct {
-	Worktree        string  `json:"worktree"`
-	WorktreeID      string  `json:"worktree_id"`
-	Role            string  `json:"role"`
-	Status          string  `json:"status"`
+	Worktree   string `json:"worktree"`
+	WorktreeID string `json:"worktree_id"`
+	Role       string `json:"role"`
+	Status     string `json:"status"`
+	// Branch is the measured current branch; WorkBranch is the one the card's
+	// work was opened on and survives the merge that rewrites Branch.
 	Branch          string  `json:"branch"`
+	WorkBranch      string  `json:"work_branch"`
 	Agent           string  `json:"agent"`
 	SessionID       string  `json:"session_id"`
 	Resume          string  `json:"resume"`
@@ -1019,6 +1035,7 @@ func (h *Handler) ListIssueWorktreeSessions(w http.ResponseWriter, r *http.Reque
 			Role:            rec.Role,
 			Status:          rec.Status,
 			Branch:          rec.Branch,
+			WorkBranch:      rec.WorkBranch,
 			Agent:           rec.Session.Agent,
 			SessionID:       rec.Session.SessionID,
 			Resume:          rec.Session.Resume,

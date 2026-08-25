@@ -293,6 +293,7 @@ export type {
   UpdateWorktreeSessionRequest,
   CreateWorktreeEntryRequest,
   IssueSession,
+  IssuePRLink,
 } from "./worktree";
 export type {
   RuntimeHook,

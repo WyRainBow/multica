@@ -151,6 +151,7 @@ import { CommentCard } from "./comment-card";
 import { IssueResourcesSection } from "./issue-resources-section";
 import { IssueDocsSection, IssueNamespaceSection } from "../../docs";
 import { IssueSessionSidebar } from "./issue-session-sidebar";
+import { IssuePRLinks } from "./issue-pr-links";
 import { IssueHistorySection } from "./issue-history-section";
 import { PhaseTrack } from "./phase-track";
 import { phaseAtTime } from "./phase-window";
@@ -2961,10 +2962,14 @@ export function IssueDetail({
         </div>
       )}
 
-      {/* Pull requests — hidden when the workspace disables the PR sidebar
-          (or the GitHub master switch is off). Backend data is kept either
-          way so re-enabling restores the section instantly. */}
-      {githubSettings.prSidebar && (
+      {/* Pull requests — a fixed slot, always present.
+          Two lists live under it and are deliberately not merged: the links
+          recorded by hand carry no verified state, and the GitHub-derived rows
+          do, so combining them would let an unverifiable row borrow the
+          credibility of a verified one. The derived half still hides when the
+          workspace disables the PR sidebar; the hand-recorded half does not
+          depend on any integration and so never hides. */}
+      {(
         <div>
           <button
             type="button"
@@ -2977,8 +2982,9 @@ export function IssueDetail({
             />
           </button>
           {pullRequestsOpen && (
-            <div className="pl-2">
-              <PullRequestList issueId={id} />
+            <div className="flex flex-col gap-3 pl-2">
+              <IssuePRLinks issueId={id} />
+              {githubSettings.prSidebar && <PullRequestList issueId={id} />}
             </div>
           )}
         </div>

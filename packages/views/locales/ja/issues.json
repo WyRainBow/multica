@@ -776,7 +776,8 @@
     "no_agent": "未割当",
     "waiting": "返信待ち",
     "mentioned": "言及",
-    "copied": "コピーしました"
+    "copied": "コピーしました",
+    "empty": "このカードを担当したセッションはまだありません。ブランチを切ったら multica worktree add <名前> --issue <カード> を実行してください。"
   },
   "history": {
     "title": "履歴",
@@ -802,5 +803,14 @@
     "rounds_legacy_title": "旧体系 · 新規追加は停止",
     "rounds_legacy_note": "reviews/ は rounds/ の前の体系で、読み取り専用です。",
     "documents_live_title": "現在のドキュメント"
+  },
+  "pr_links": {
+    "placeholder": "PR / MR のリンクを貼り付け",
+    "add": "記録",
+    "empty": "まだレビューの記録がありません。リンクを貼るか multica issue pr add <カード> <URL> を実行してください。",
+    "added_by": "{{who}} が記録",
+    "added_unknown": "記録者不明",
+    "remove": "削除",
+    "add_failed": "記録できません。http:// または https:// で始まる絶対 URL が必要です。"
   }
 }
