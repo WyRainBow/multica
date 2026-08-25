@@ -30,7 +30,6 @@ describe("paths.workspace() shape", () => {
         "inbox",
         "myIssues",
         "runtimes",
-        "hooks",
         "skills",
         "docs",
         "squads",
@@ -41,6 +40,7 @@ describe("paths.workspace() shape", () => {
         "workspaceInstructions",
         "workspaceWorktree",
         "workspaceAgentWiki",
+        "workspaceHooks",
       ]),
     );
   });
@@ -63,7 +63,6 @@ describe("paths.workspace() shape", () => {
       ["inbox", "inbox"],
       ["myIssues", "my-issues"],
       ["runtimes", "runtimes"],
-      ["hooks", "hooks"],
       ["skills", "skills"],
       ["docs", "workspace/wiki"],
       ["squads", "squads"],
@@ -74,6 +73,7 @@ describe("paths.workspace() shape", () => {
       ["workspaceInstructions", "workspace/instructions"],
       ["workspaceWorktree", "workspace/worktree"],
       ["workspaceAgentWiki", "workspace/agentwiki"],
+      ["workspaceHooks", "workspace/hooks"],
     ];
     const wsAsAny = ws as unknown as Record<string, () => string>;
     for (const [method, segment] of expectedSegments) {

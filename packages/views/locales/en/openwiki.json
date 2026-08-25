@@ -6,6 +6,7 @@
   "worktree_loading": "Loading…",
   "worktree_empty": "No worktrees registered yet. Run `multica worktree add <name>` after cutting a branch, or use New.",
   "tab_agentwiki": "Agent Wiki",
+  "tab_hooks": "Hooks",
   "agentwiki": {
     "section_cases": "cases (distilled lessons)",
     "latest_cases": "Recently distilled cases",

@@ -1,9 +1,10 @@
 "use client";
 
-import { BookMarked, BookOpen, GitBranch, ScrollText, Sparkles } from "lucide-react";
+import { BookMarked, BookOpen, GitBranch, ScrollText, Sparkles, Webhook } from "lucide-react";
 import { DocsPage } from "@multica/views/docs";
 import { SkillsPage } from "@multica/views/skills";
 import { WorktreeLedger } from "./worktree-ledger";
+import { HooksTab } from "../settings/components/hooks-tab";
 import { InstructionsPage } from "./instructions-page";
 import { useWorkspacePaths } from "@multica/core/paths";
 import { cn } from "@multica/ui/lib/utils";
@@ -28,7 +29,8 @@ export type OpenwikiTab =
   | "skills"
   | "instructions"
   | "worktree"
-  | "agentwiki";
+  | "agentwiki"
+  | "hooks";
 
 export function OpenwikiPage({ tab = "wiki" }: { tab?: OpenwikiTab }) {
   const { t } = useT("openwiki");
@@ -70,6 +72,12 @@ export function OpenwikiPage({ tab = "wiki" }: { tab?: OpenwikiTab }) {
       label: t(($) => $.tab_agentwiki),
       icon: BookMarked,
       href: paths.workspaceAgentWiki(),
+    },
+    {
+      key: "hooks",
+      label: t(($) => $.tab_hooks),
+      icon: Webhook,
+      href: paths.workspaceHooks(),
     },
   ];
 
@@ -120,6 +128,13 @@ export function OpenwikiPage({ tab = "wiki" }: { tab?: OpenwikiTab }) {
       {tab === "worktree" && (
         <div className="min-h-0 flex-1 overflow-y-auto">
           <WorktreeLedger />
+        </div>
+      )}
+      {/* Same container as the ledger: a plain page that scrolls inside the
+        shell rather than bringing its own. */}
+      {tab === "hooks" && (
+        <div className="min-h-0 flex-1 overflow-y-auto p-4 sm:p-6">
+          <HooksTab />
         </div>
       )}
     </div>

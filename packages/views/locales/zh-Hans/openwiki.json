@@ -6,6 +6,7 @@
   "worktree_loading": "加载中…",
   "worktree_empty": "还没有登记工作树。开分支后用 `multica worktree add <名字>` 或右上角新建。",
   "tab_agentwiki": "Agent Wiki",
+  "tab_hooks": "Hook",
   "agentwiki": {
     "section_cases": "case 沉淀（经验蒸馏）",
     "latest_cases": "最近蒸馏的 case",

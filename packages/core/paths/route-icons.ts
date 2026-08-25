@@ -56,7 +56,6 @@ export type NavLabelKey =
   | "squads"
   | "usage"
   | "runtimes"
-  | "hooks"
   | "skills"
   | "docs"
   | "settings";
@@ -73,7 +72,6 @@ export type WorkspacePageKey =
   | "squads"
   | "usage"
   | "runtimes"
-  | "hooks"
   | "skills"
   | "docs"
   | "workspaceAssets"
@@ -81,6 +79,7 @@ export type WorkspacePageKey =
   | "workspaceSkills"
   | "workspaceInstructions"
   | "workspaceWorktree"
+  | "workspaceHooks"
   | "workspaceAgentWiki"
   | "settings";
 
@@ -108,9 +107,6 @@ export const WORKSPACE_PAGES: Record<WorkspacePageKey, WorkspacePage> = {
   squads: { segment: "squads", icon: "Users", navKey: "squads" },
   usage: { segment: "usage", icon: "BarChart3", navKey: "usage" },
   runtimes: { segment: "runtimes", icon: "Monitor", navKey: "runtimes" },
-  // Sits with runtimes under Configure: a hook is something a runtime
-  // carries, and the inventory is read per runtime.
-  hooks: { segment: "hooks", icon: "Webhook", navKey: "hooks" },
   skills: { segment: "skills", icon: "BookOpenText", navKey: "skills" },
   // The assets page and its four views. They share an icon and a nav entry:
   // the sidebar has one "workspace" destination, and which view it opens on is
@@ -122,6 +118,7 @@ export const WORKSPACE_PAGES: Record<WorkspacePageKey, WorkspacePage> = {
   workspaceInstructions: { segment: "workspace/instructions", icon: "FileText", navKey: "docs" },
   workspaceWorktree: { segment: "workspace/worktree", icon: "FileText", navKey: "docs" },
   workspaceAgentWiki: { segment: "workspace/agentwiki", icon: "FileText", navKey: "docs" },
+  workspaceHooks: { segment: "workspace/hooks", icon: "FileText", navKey: "docs" },
   settings: { segment: "settings", icon: "Settings", navKey: "settings" },
 };
 
