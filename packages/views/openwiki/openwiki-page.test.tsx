@@ -9,6 +9,7 @@ vi.mock("@multica/core/paths", () => ({
     workspaceInstructions: () => "/acme/workspace/instructions",
     workspaceWorktree: () => "/acme/workspace/worktree",
     workspaceAgentWiki: () => "/acme/workspace/agentwiki",
+    workspaceHooks: () => "/acme/workspace/hooks",
   }),
 }));
 

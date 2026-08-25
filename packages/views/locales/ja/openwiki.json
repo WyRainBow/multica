@@ -6,6 +6,7 @@
   "worktree_loading": "読み込み中…",
   "worktree_empty": "まだワークツリーが登録されていません。`multica worktree add <名前>` か右上の「新規」から追加します。",
   "tab_agentwiki": "Agent Wiki",
+  "tab_hooks": "フック",
   "agentwiki": {
     "section_cases": "ケース（蒸留された教訓）",
     "latest_cases": "最近蒸留されたケース",

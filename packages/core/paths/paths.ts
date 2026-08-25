@@ -48,7 +48,6 @@ function workspaceScoped(slug: string) {
       `${ws}/chat?session=${encode(sessionId)}`,
     myIssues: () => `${ws}/my-issues`,
     runtimes: () => `${ws}/runtimes`,
-    hooks: () => `${ws}/hooks`,
     runtimeDetail: (id: string) => `${ws}/runtimes/${encode(id)}`,
     runtimeSettings: (machineId: string, runtimeId: string) =>
       `${ws}/runtimes/${encode(machineId)}/runtime/${encode(runtimeId)}`,
@@ -67,6 +66,7 @@ function workspaceScoped(slug: string) {
     workspaceInstructions: () => `${ws}/workspace/instructions`,
     workspaceWorktree: () => `${ws}/workspace/worktree`,
     workspaceAgentWiki: () => `${ws}/workspace/agentwiki`,
+    workspaceHooks: () => `${ws}/workspace/hooks`,
     settings: () => `${ws}/settings`,
     attachmentPreview: (id: string) => `${ws}/attachments/${encode(id)}/preview`,
   };

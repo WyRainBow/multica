@@ -6,6 +6,7 @@
   "worktree_loading": "불러오는 중…",
   "worktree_empty": "등록된 워크트리가 없습니다. 브랜치를 만든 뒤 `multica worktree add <이름>` 또는 우측 상단 새로 만들기를 사용하세요.",
   "tab_agentwiki": "Agent Wiki",
+  "tab_hooks": "훅",
   "agentwiki": {
     "section_cases": "case(증류된 교훈)",
     "latest_cases": "최근 증류된 case",
