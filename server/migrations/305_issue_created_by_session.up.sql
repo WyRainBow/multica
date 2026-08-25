@@ -1,0 +1,15 @@
+-- Which agent session filed this card.
+--
+-- It was already being recorded, in prose, inside the automatic index comment
+-- every new card was born with. That made it a fact you had to read a comment
+-- to learn, and it went away entirely when the index comment retired (COC-352).
+-- A column is the honest home: one session per card, written once at birth,
+-- never updated.
+--
+-- Deliberately NOT the branch. A card is usually filed before any branch
+-- exists, and the branch belongs to the progress ledger, which measures it
+-- rather than being told (COC-350).
+--
+-- Empty is a real value and stays allowed: a card filed from the web UI has no
+-- agent session, and demanding one would mean inventing it.
+ALTER TABLE issue ADD COLUMN created_by_session TEXT NOT NULL DEFAULT '';

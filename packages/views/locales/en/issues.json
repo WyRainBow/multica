@@ -809,7 +809,8 @@
     "waiting": "Waiting on you",
     "mentioned": "mentioned",
     "copied": "Copied",
-    "empty": "No session has claimed this card yet. After cutting a branch, run multica worktree add <name> --issue <card>."
+    "empty": "No session has claimed this card yet. After cutting a branch, run multica worktree add <name> --issue <card>.",
+    "filed_by": "Filed by session {{id}}"
   },
   "history": {
     "title": "History",

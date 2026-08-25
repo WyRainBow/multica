@@ -69,7 +69,11 @@ type IssueCreateParams struct {
 	DueDate       pgtype.Date
 	OriginType    pgtype.Text
 	OriginID      pgtype.UUID
-	AttachmentIDs []pgtype.UUID
+	// CreatedBySession is the agent session that filed the card, as a snapshot
+	// taken at birth and never updated. Empty is a real value: a card filed
+	// from the web UI has no agent session behind it.
+	CreatedBySession string
+	AttachmentIDs    []pgtype.UUID
 	// LabelIDs are the issue-scoped labels to attach to the new issue. They
 	// are validated and written inside the create transaction (see Create),
 	// so the issue is never committed with a partial or wrong label set. An
@@ -272,43 +276,45 @@ func (s *IssueService) Create(ctx context.Context, p IssueCreateParams, opts Iss
 	var assignedTask db.AgentTaskQueue
 	if p.OriginType.Valid {
 		issue, err = qtx.CreateIssueWithOrigin(ctx, db.CreateIssueWithOriginParams{
-			WorkspaceID:   p.WorkspaceID,
-			Title:         p.Title,
-			Description:   p.Description,
-			Status:        p.Status,
-			Priority:      p.Priority,
-			AssigneeType:  p.AssigneeType,
-			AssigneeID:    p.AssigneeID,
-			CreatorType:   p.CreatorType,
-			CreatorID:     p.CreatorID,
-			ParentIssueID: p.ParentIssueID,
-			Position:      newPosition,
-			StartDate:     p.StartDate,
-			DueDate:       p.DueDate,
-			Number:        issueNumber,
-			ProjectID:     projectID,
-			OriginType:    p.OriginType,
-			OriginID:      p.OriginID,
-			Stage:         p.Stage,
+			WorkspaceID:      p.WorkspaceID,
+			Title:            p.Title,
+			Description:      p.Description,
+			Status:           p.Status,
+			Priority:         p.Priority,
+			AssigneeType:     p.AssigneeType,
+			AssigneeID:       p.AssigneeID,
+			CreatorType:      p.CreatorType,
+			CreatorID:        p.CreatorID,
+			ParentIssueID:    p.ParentIssueID,
+			Position:         newPosition,
+			StartDate:        p.StartDate,
+			DueDate:          p.DueDate,
+			Number:           issueNumber,
+			ProjectID:        projectID,
+			OriginType:       p.OriginType,
+			OriginID:         p.OriginID,
+			Stage:            p.Stage,
+			CreatedBySession: p.CreatedBySession,
 		})
 	} else {
 		issue, err = qtx.CreateIssue(ctx, db.CreateIssueParams{
-			WorkspaceID:   p.WorkspaceID,
-			Title:         p.Title,
-			Description:   p.Description,
-			Status:        p.Status,
-			Priority:      p.Priority,
-			AssigneeType:  p.AssigneeType,
-			AssigneeID:    p.AssigneeID,
-			CreatorType:   p.CreatorType,
-			CreatorID:     p.CreatorID,
-			ParentIssueID: p.ParentIssueID,
-			Position:      newPosition,
-			StartDate:     p.StartDate,
-			DueDate:       p.DueDate,
-			Number:        issueNumber,
-			ProjectID:     projectID,
-			Stage:         p.Stage,
+			WorkspaceID:      p.WorkspaceID,
+			Title:            p.Title,
+			Description:      p.Description,
+			Status:           p.Status,
+			Priority:         p.Priority,
+			AssigneeType:     p.AssigneeType,
+			AssigneeID:       p.AssigneeID,
+			CreatorType:      p.CreatorType,
+			CreatorID:        p.CreatorID,
+			ParentIssueID:    p.ParentIssueID,
+			Position:         newPosition,
+			StartDate:        p.StartDate,
+			DueDate:          p.DueDate,
+			Number:           issueNumber,
+			ProjectID:        projectID,
+			Stage:            p.Stage,
+			CreatedBySession: p.CreatedBySession,
 		})
 	}
 	if err != nil {

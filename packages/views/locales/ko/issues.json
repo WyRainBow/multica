@@ -777,7 +777,8 @@
     "waiting": "답변 대기",
     "mentioned": "언급",
     "copied": "복사됨",
-    "empty": "아직 이 카드를 맡은 세션이 없습니다. 브랜치를 만든 뒤 multica worktree add <이름> --issue <카드> 를 실행하세요."
+    "empty": "아직 이 카드를 맡은 세션이 없습니다. 브랜치를 만든 뒤 multica worktree add <이름> --issue <카드> 를 실행하세요.",
+    "filed_by": "생성 세션 {{id}}"
   },
   "history": {
     "title": "히스토리",

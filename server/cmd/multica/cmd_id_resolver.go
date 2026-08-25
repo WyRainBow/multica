@@ -338,7 +338,40 @@ func resolveAutopilotTriggerID(ctx context.Context, client *cli.APIClient, autop
 	return resolveIDByPrefix(ctx, client, "autopilot trigger", input, fetch)
 }
 
+// resolveProjectID accepts a UUID prefix or the project's title.
+//
+// Titles first, because nobody types a project by uuid: a card is filed into
+// "Multica" or "ark workflow", and requiring the id turns a required field into
+// a lookup errand. An exact title match wins outright; otherwise a
+// case-insensitive substring is accepted only when exactly one project matches,
+// since filing a card into the wrong project is worse than being asked again.
 func resolveProjectID(ctx context.Context, client *cli.APIClient, input string) (resolvedID, error) {
+	trimmed := strings.TrimSpace(input)
+	if trimmed == "" {
+		return resolvedID{}, fmt.Errorf("project is required")
+	}
+	candidates, err := fetchProjectCandidates(ctx, client)
+	if err == nil {
+		var partial []idCandidate
+		for _, c := range candidates {
+			if strings.EqualFold(c.Display, trimmed) {
+				return resolvedID{ID: c.ID, Display: c.Display}, nil
+			}
+			if strings.Contains(strings.ToLower(c.Display), strings.ToLower(trimmed)) {
+				partial = append(partial, c)
+			}
+		}
+		if len(partial) == 1 {
+			return resolvedID{ID: partial[0].ID, Display: partial[0].Display}, nil
+		}
+		if len(partial) > 1 {
+			names := make([]string, 0, len(partial))
+			for _, c := range partial {
+				names = append(names, c.Display)
+			}
+			return resolvedID{}, fmt.Errorf("%q matches more than one project: %s", trimmed, strings.Join(names, ", "))
+		}
+	}
 	return resolveIDByPrefix(ctx, client, "project", input, fetchProjectCandidates)
 }
 

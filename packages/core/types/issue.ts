@@ -119,6 +119,13 @@ export interface Issue {
   creator_id: string;
   parent_issue_id: string | null;
   project_id: string | null;
+  /** The agent session that filed this card, snapshotted at birth and never
+   *  updated. Empty when it was filed outside any agent session.
+   *
+   *  Optional on the type, required on nothing: a card filed by a backend that
+   *  predates the field parses without it, and every fixture in the repo would
+   *  otherwise have to name a value it does not care about. */
+  created_by_session?: string;
   position: number;
   // Ordered barrier group among sibling sub-issues (null = unstaged). The
   // parent assignee is notified/woken only when every sub-issue in a stage

@@ -777,7 +777,8 @@
     "waiting": "返信待ち",
     "mentioned": "言及",
     "copied": "コピーしました",
-    "empty": "このカードを担当したセッションはまだありません。ブランチを切ったら multica worktree add <名前> --issue <カード> を実行してください。"
+    "empty": "このカードを担当したセッションはまだありません。ブランチを切ったら multica worktree add <名前> --issue <カード> を実行してください。",
+    "filed_by": "作成セッション {{id}}"
   },
   "history": {
     "title": "履歴",

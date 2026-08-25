@@ -648,7 +648,8 @@ func init() {
 	issueCreateCmd.Flags().Bool("no-assignee", false, "Create the issue unassigned instead of assigning it to you")
 	issueCreateCmd.Flags().String("parent", "", "Parent issue ID")
 	issueCreateCmd.Flags().Int("stage", 0, "Stage ordinal (>=1) grouping this sub-issue into an ordered barrier group under its parent; omit for unstaged. The parent assignee is woken only when every sub-issue in a stage finishes.")
-	issueCreateCmd.Flags().String("project", "", "Project ID")
+	issueCreateCmd.Flags().String("project", "",
+		"Project this card belongs to — name or UUID. Required for a top-level card: one with no project is invisible to every project-scoped view, and the only way back to it is already knowing it exists. A sub-issue inherits its parent's and may omit this.")
 	issueCreateCmd.Flags().String("start-date", "", "Start date (calendar day, YYYY-MM-DD)")
 	issueCreateCmd.Flags().String("due-date", "", "Due date (calendar day, YYYY-MM-DD)")
 	issueCreateCmd.Flags().Bool("allow-duplicate", false, "Allow creating an issue even when an active duplicate exists")
@@ -1429,6 +1430,13 @@ func runIssueCreate(cmd *cobra.Command, _ []string) error {
 		}
 		body["project_id"] = project.ID
 	}
+	// Which session filed the card, read from the environment rather than
+	// typed. It used to be prose inside the index comment that every card was
+	// born with; now it is a field on the card, so it survives the comment
+	// retiring and can be queried instead of read.
+	if session := resolveIssueIndexSession(cmd); session != "" {
+		body["created_by_session"] = session
+	}
 	if cmd.Flags().Changed("stage") {
 		stage, _ := cmd.Flags().GetInt("stage")
 		if stage < 1 {
@@ -1521,10 +1529,6 @@ func runIssueCreate(cmd *cobra.Command, _ []string) error {
 		}
 		fmt.Fprintf(os.Stderr, "Uploaded %s\n", att.path)
 	}
-
-	// Give the new card its pinned ledger index, so the rule holds without
-	// anyone having to remember it. Best effort — see postIssueIndexComment.
-	postIssueIndexComment(ctx, client, issueID, strVal(result, "identifier"), resolveIssueIndexSession(cmd))
 
 	output, _ := cmd.Flags().GetString("output")
 	if output == "table" {

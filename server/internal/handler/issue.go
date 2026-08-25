@@ -47,7 +47,11 @@ type IssueResponse struct {
 	CreatorID     string  `json:"creator_id"`
 	ParentIssueID *string `json:"parent_issue_id"`
 	ProjectID     *string `json:"project_id"`
-	Position      float64 `json:"position"`
+	// CreatedBySession is the agent session that filed the card, snapshotted at
+	// birth and never updated. Empty is a real answer: a card filed from the
+	// web has no agent session behind it.
+	CreatedBySession string  `json:"created_by_session"`
+	Position         float64 `json:"position"`
 	// Stage groups sub-issues under the same parent into ordered barrier
 	// groups (null = unstaged). See issue_child_done.go for how a closed
 	// stage gates the child-done -> parent wake.
@@ -115,30 +119,31 @@ func validateIssueEnum(w http.ResponseWriter, field, value string, allowed []str
 func issueToResponse(i db.Issue, issuePrefix string) IssueResponse {
 	identifier := issuePrefix + "-" + strconv.Itoa(int(i.Number))
 	return IssueResponse{
-		ID:            uuidToString(i.ID),
-		WorkspaceID:   uuidToString(i.WorkspaceID),
-		Number:        i.Number,
-		Identifier:    identifier,
-		Title:         i.Title,
-		Description:   textToPtr(i.Description),
-		Status:        i.Status,
-		Priority:      i.Priority,
-		AssigneeType:  textToPtr(i.AssigneeType),
-		AssigneeID:    uuidToPtr(i.AssigneeID),
-		CreatorType:   i.CreatorType,
-		CreatorID:     uuidToString(i.CreatorID),
-		ParentIssueID: uuidToPtr(i.ParentIssueID),
-		ProjectID:     uuidToPtr(i.ProjectID),
-		Position:      i.Position,
-		Stage:         int4ToPtr(i.Stage),
-		StartDate:     dateToPtr(i.StartDate),
-		DueDate:       dateToPtr(i.DueDate),
-		CreatedAt:     timestampToString(i.CreatedAt),
-		UpdatedAt:     timestampToString(i.UpdatedAt),
-		Metadata:      parseIssueMetadata(i.Metadata),
-		Properties:    parseIssueProperties(i.Properties),
-		ArchivedAt:    timestampToPtr(i.ArchivedAt),
-		ArchivedBy:    uuidToPtr(i.ArchivedBy),
+		ID:               uuidToString(i.ID),
+		WorkspaceID:      uuidToString(i.WorkspaceID),
+		Number:           i.Number,
+		Identifier:       identifier,
+		Title:            i.Title,
+		Description:      textToPtr(i.Description),
+		Status:           i.Status,
+		Priority:         i.Priority,
+		AssigneeType:     textToPtr(i.AssigneeType),
+		AssigneeID:       uuidToPtr(i.AssigneeID),
+		CreatorType:      i.CreatorType,
+		CreatorID:        uuidToString(i.CreatorID),
+		ParentIssueID:    uuidToPtr(i.ParentIssueID),
+		ProjectID:        uuidToPtr(i.ProjectID),
+		CreatedBySession: i.CreatedBySession,
+		Position:         i.Position,
+		Stage:            int4ToPtr(i.Stage),
+		StartDate:        dateToPtr(i.StartDate),
+		DueDate:          dateToPtr(i.DueDate),
+		CreatedAt:        timestampToString(i.CreatedAt),
+		UpdatedAt:        timestampToString(i.UpdatedAt),
+		Metadata:         parseIssueMetadata(i.Metadata),
+		Properties:       parseIssueProperties(i.Properties),
+		ArchivedAt:       timestampToPtr(i.ArchivedAt),
+		ArchivedBy:       uuidToPtr(i.ArchivedBy),
 
 		ParkedFromIssueID:   uuidToPtr(i.ParkedFromIssueID),
 		StatusChangedAt:     timestampToPtr(i.StatusChangedAt),
@@ -2523,18 +2528,23 @@ func readRuntimeCLIVersion(metadata []byte) string {
 }
 
 type CreateIssueRequest struct {
-	Title         string   `json:"title"`
-	Description   *string  `json:"description"`
-	Status        string   `json:"status"`
-	Priority      string   `json:"priority"`
-	AssigneeType  *string  `json:"assignee_type"`
-	AssigneeID    *string  `json:"assignee_id"`
-	ParentIssueID *string  `json:"parent_issue_id"`
-	ProjectID     *string  `json:"project_id"`
-	Stage         *int32   `json:"stage,omitempty"`
-	StartDate     *string  `json:"start_date"`
-	DueDate       *string  `json:"due_date"`
-	AttachmentIDs []string `json:"attachment_ids,omitempty"`
+	Title         string  `json:"title"`
+	Description   *string `json:"description"`
+	Status        string  `json:"status"`
+	Priority      string  `json:"priority"`
+	AssigneeType  *string `json:"assignee_type"`
+	AssigneeID    *string `json:"assignee_id"`
+	ParentIssueID *string `json:"parent_issue_id"`
+	ProjectID     *string `json:"project_id"`
+	// CreatedBySession is the agent session filing the card. The CLI fills it
+	// from CLAUDE_CODE_SESSION_ID / CODEX_SESSION_ID, so it arrives without
+	// anyone typing it; a card filed from the web carries none, which is a real
+	// answer rather than a missing one.
+	CreatedBySession *string  `json:"created_by_session"`
+	Stage            *int32   `json:"stage,omitempty"`
+	StartDate        *string  `json:"start_date"`
+	DueDate          *string  `json:"due_date"`
+	AttachmentIDs    []string `json:"attachment_ids,omitempty"`
 	// LabelIDs are issue-scoped labels to attach to the new issue in the same
 	// transaction as the create. Unknown or non-issue ids are rejected with
 	// 400 (service.ErrIssueLabelNotFound) rather than silently dropped.
@@ -2554,6 +2564,43 @@ func duplicateIssueMessage(issue IssueResponse) string {
 	return issueguard.DuplicateMessage(issue.Identifier, issue.Title, issue.Status)
 }
 
+// requireIssueProject enforces that a card is born inside a project.
+//
+// A card with no project is invisible to every project-scoped view, and the
+// only way to find it again is to already know it exists. That is how 241
+// cards ended up in one undifferentiated pile: nothing at creation time asked
+// the question, so nobody answered it. Asking once, at the only moment the
+// answer is cheap, is the whole fix.
+//
+// A sub-issue is exempt: it inherits its parent's project in IssueService.Create,
+// and demanding the answer twice would make filing a child worse than filing a
+// top-level card. Autopilot is exempt too — it does not come through here, and
+// its project comes from the automation's own configuration.
+//
+// The error names the projects that exist, because "project_id is required" on
+// its own leaves the caller to go find the list.
+func (h *Handler) requireIssueProject(w http.ResponseWriter, r *http.Request, wsUUID pgtype.UUID, projectID string, hasParent bool) bool {
+	if strings.TrimSpace(projectID) != "" || hasParent {
+		return true
+	}
+	// A workspace with no projects cannot be asked to pick one. That is not a
+	// loophole, it is the rule stated completely: the requirement is "choose
+	// from the projects this workspace has", and an empty list makes the demand
+	// unanswerable. It also keeps the first card in a brand-new workspace
+	// fileable, which a hard requirement would make impossible.
+	rows, err := h.Queries.ListProjects(r.Context(), db.ListProjectsParams{WorkspaceID: wsUUID})
+	if err != nil || len(rows) == 0 {
+		return true
+	}
+	names := make([]string, 0, len(rows))
+	for _, p := range rows {
+		names = append(names, p.Title)
+	}
+	writeError(w, http.StatusBadRequest,
+		"project is required: every card belongs to a project. This workspace has: "+strings.Join(names, ", "))
+	return false
+}
+
 func (h *Handler) CreateIssue(w http.ResponseWriter, r *http.Request) {
 	var req CreateIssueRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -2569,6 +2616,14 @@ func (h *Handler) CreateIssue(w http.ResponseWriter, r *http.Request) {
 	workspaceID := h.resolveWorkspaceID(r)
 	wsUUID, ok := parseUUIDOrBadRequest(w, workspaceID, "workspace_id")
 	if !ok {
+		return
+	}
+
+	projectRef := ""
+	if req.ProjectID != nil {
+		projectRef = *req.ProjectID
+	}
+	if !h.requireIssueProject(w, r, wsUUID, projectRef, req.ParentIssueID != nil && strings.TrimSpace(*req.ParentIssueID) != "") {
 		return
 	}
 
@@ -2767,6 +2822,12 @@ func (h *Handler) CreateIssue(w http.ResponseWriter, r *http.Request) {
 		AttachmentIDs:  attachmentIDs,
 		LabelIDs:       labelIDs,
 		AllowDuplicate: req.AllowDuplicate,
+		CreatedBySession: func() string {
+			if req.CreatedBySession == nil {
+				return ""
+			}
+			return strings.TrimSpace(*req.CreatedBySession)
+		}(),
 	}, service.IssueCreateOpts{
 		ActorID:          actualCreatorID,
 		AnalyticsAgentID: analyticsAgentID,

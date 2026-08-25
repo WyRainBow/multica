@@ -38,6 +38,11 @@ export interface Worktree {
    *  UUID. Either may be empty: an account can predate its card. */
   issue: string;
   issue_id: string;
+  /** The card's current status and project, joined at read time and never
+   *  stored here. The ledger and the card drift apart routinely, and seeing
+   *  the drift is the point — a stored copy would hide it. */
+  issue_status: string;
+  project: string;
   /** Accounts this one waits on, by key. */
   depends_on: string[];
   /** Where this card's output landed. */
