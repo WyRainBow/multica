@@ -61,10 +61,14 @@ var (
 		"base": true, "feature": true, "integration": true,
 		"release": true, "hotfix": true, "discussion": true,
 	}
-	worktreeStatuses   = map[string]bool{"active": true, "blocked": true, "merged": true, "archived": true}
+	worktreeStatuses = map[string]bool{"active": true, "blocked": true, "merged": true, "archived": true}
+	// session records a claim: which session took the tree over, and when. The
+	// session slot itself holds one value and is overwritten, so without a line
+	// per claim a hand-off leaves no trace and the tree looks like it was
+	// always driven by whoever holds it now.
 	worktreeEntryKinds = map[string]bool{
 		"progress": true, "branch": true, "merge": true,
-		"blocked": true, "handoff": true, "verify": true,
+		"blocked": true, "handoff": true, "verify": true, "session": true,
 	}
 	// Full 40-character object names only. A short SHA is ambiguous and a
 	// branch name is mutable; either would make a merge claim unverifiable
@@ -741,6 +745,7 @@ func (h *Handler) UpdateWorktreeSession(w http.ResponseWriter, r *http.Request) 
 		writeError(w, http.StatusBadRequest, "invalid request body")
 		return
 	}
+	previousAgent, previousSessionID := rec.Session.Agent, rec.Session.SessionID
 	fields := []struct {
 		name  string
 		max   int
@@ -778,11 +783,50 @@ func (h *Handler) UpdateWorktreeSession(w http.ResponseWriter, r *http.Request) 
 	now := time.Now()
 	rec.Session.UpdatedAt = &now
 
+	// Append the claim to the log when the driver actually changes.
+	//
+	// The slot above is one value, overwritten: after three hand-offs it shows
+	// the third session and nothing about the first two. The log is where the
+	// relay lives, and it only gets a line when the pair actually moved —
+	// otherwise every `--next` edit would file a hand-off that never happened.
+	if changed := previousAgent != rec.Session.Agent || previousSessionID != rec.Session.SessionID; changed {
+		authorType, authorID := h.resolveActor(r, requestUserID(r), h.resolveWorkspaceID(r))
+		rec.Log = append(rec.Log, progressledger.Entry{
+			At:         now,
+			Kind:       "session",
+			Body:       sessionClaimLine(previousAgent, previousSessionID, rec.Session),
+			Issue:      rec.Issue,
+			IssueID:    rec.IssueID,
+			AuthorType: authorType,
+			AuthorID:   authorID,
+		})
+	}
+
 	if err := h.ledger().Save(&rec, "session("+rec.Key+"): "+firstNonEmpty(rec.Session.Agent, "update")); err != nil {
 		writeLedgerError(w, r, "update session", err)
 		return
 	}
 	writeJSON(w, http.StatusOK, worktreeToResponse(rec))
+}
+
+// sessionClaimLine renders one hand-off for the log.
+//
+// Names both ends when there was a previous driver, because "who has it now" is
+// already in the slot; what the log adds is who it came from. A first claim has
+// no previous half and does not invent one.
+func sessionClaimLine(previousAgent, previousSessionID string, now progressledger.Session) string {
+	to := firstNonEmpty(now.Agent, "(unnamed)")
+	if now.SessionID != "" {
+		to += " " + now.SessionID
+	}
+	if previousAgent == "" && previousSessionID == "" {
+		return "claimed by " + to
+	}
+	from := firstNonEmpty(previousAgent, "(unnamed)")
+	if previousSessionID != "" {
+		from += " " + previousSessionID
+	}
+	return "handed over from " + from + " to " + to
 }
 
 // --- machine facts ---
@@ -953,7 +997,7 @@ func (h *Handler) CreateWorktreeEntry(w http.ResponseWriter, r *http.Request) {
 		kind = "progress"
 	}
 	if !worktreeEntryKinds[kind] {
-		writeError(w, http.StatusBadRequest, "kind must be one of progress, branch, merge, blocked, handoff, verify")
+		writeError(w, http.StatusBadRequest, "kind must be one of progress, branch, merge, blocked, handoff, verify, session")
 		return
 	}
 	body := strings.TrimSpace(req.Body)

@@ -263,6 +263,9 @@ func TestAutoSessionReadsTheAgentItRunsIn(t *testing.T) {
 		for _, e := range sessionEnv {
 			t.Setenv(e.env, "")
 		}
+		// And no zcode rollout log either — on a real machine the detector
+		// would find one under the true home and report it as this session.
+		t.Setenv("HOME", t.TempDir())
 		if _, _, _, err := currentSession(""); err == nil {
 			t.Error("currentSession outside an agent session returned no error; a guessed pointer is worse than none")
 		}

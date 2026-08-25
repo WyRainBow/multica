@@ -344,21 +344,31 @@ var sessionEnv = []struct {
 // would name the wrong session whenever two are open, which is precisely when
 // the pointer is worth having.
 func currentSession(treePath string) (agent, resume, sessionID string, err error) {
+	withPath := func(cmd string) string {
+		// A session is resumed from the directory it was started in, so carry
+		// the checkout along when the ledger knows where it is.
+		if treePath == "" {
+			return cmd
+		}
+		return "cd " + treePath + " && " + cmd
+	}
 	for _, candidate := range sessionEnv {
 		id := strings.TrimSpace(os.Getenv(candidate.env))
 		if id == "" {
 			continue
 		}
-		resume = candidate.resume(id)
-		// A session is resumed from the directory it was started in, so carry
-		// the checkout along when the ledger knows where it is.
-		if treePath != "" {
-			resume = "cd " + treePath + " && " + resume
-		}
-		return candidate.agent, resume, id, nil
+		return candidate.agent, withPath(candidate.resume(id)), id, nil
+	}
+	// zcode sets no session variable, so its id is recovered from the rollout
+	// log it is writing. Same detection `issue create` uses, on purpose: two
+	// answers to "which session am I" would put two different ids on one card's
+	// paper trail.
+	if id := zcodeSessionFromRollout(""); id != "" {
+		return "zcode", withPath("zcode --resume " + id), id, nil
 	}
 	return "", "", "", errors.New(
-		"--auto found no session to record: none of CLAUDE_CODE_SESSION_ID, CODEX_SESSION_ID is set. " +
+		"--auto found no session to record: none of CLAUDE_CODE_SESSION_ID, CODEX_SESSION_ID is set " +
+			"and no zcode rollout log was found. " +
 			"Run it from inside an agent session, or pass --agent and --resume yourself")
 }
 

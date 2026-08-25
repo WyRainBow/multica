@@ -4,7 +4,10 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"path/filepath"
 	"testing"
+	"time"
 )
 
 // What `issue create` sends, so the session recorded on a new card can be
@@ -56,6 +59,10 @@ func createAndCapture(t *testing.T, capture *createCapture, env [2]string, flags
 	srv := newCreateCaptureServer(t, capture)
 	defer srv.Close()
 
+	// A real machine has zcode rollout logs under the real home, and the
+	// detector would find one and call it this session. Point HOME at an empty
+	// directory so "no session anywhere" actually means that.
+	t.Setenv("HOME", t.TempDir())
 	t.Setenv("MULTICA_SERVER_URL", srv.URL)
 	t.Setenv("MULTICA_WORKSPACE_ID", "ws-1")
 	t.Setenv("MULTICA_TOKEN", "mat_test-token")
@@ -139,5 +146,42 @@ func TestIssueCreateSessionFlagIsRegistered(t *testing.T) {
 	cmd := newIssueCreateTestCmd()
 	if cmd.Flags().Lookup("session") == nil {
 		t.Fatal("--session is not registered on issue create")
+	}
+}
+
+// TestZcodeSessionFromRollout covers the one runtime that does not say which
+// session it is. The id has to come from the log it is writing, and picking the
+// wrong file would put another session's id on the card.
+func TestZcodeSessionFromRollout(t *testing.T) {
+	root := t.TempDir()
+	write := func(name string, ageSeconds int) {
+		path := filepath.Join(root, name)
+		if err := os.WriteFile(path, []byte("{}\n"), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		when := time.Now().Add(-time.Duration(ageSeconds) * time.Second)
+		if err := os.Chtimes(path, when, when); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	if got := zcodeSessionFromRollout(root); got != "" {
+		t.Errorf("empty directory returned %q; there is no session to report", got)
+	}
+
+	write("model-io-sess_11111111-1111-1111-1111-111111111111.jsonl", 300)
+	write("model-io-sess_22222222-2222-2222-2222-222222222222.jsonl", 10)
+	// Neither of these is a rollout log, and treating one as a session id would
+	// put a value on the card that resumes nothing.
+	write("notes.txt", 1)
+	write("model-io-sess_short.jsonl", 1)
+
+	want := "sess_22222222-2222-2222-2222-222222222222"
+	if got := zcodeSessionFromRollout(root); got != want {
+		t.Errorf("zcodeSessionFromRollout = %q, want %q (the most recently written log)", got, want)
+	}
+
+	if got := zcodeSessionFromRollout(filepath.Join(root, "missing")); got != "" {
+		t.Errorf("missing directory returned %q; zcode is simply not installed here", got)
 	}
 }
