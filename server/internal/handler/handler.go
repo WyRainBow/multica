@@ -32,6 +32,7 @@ import (
 	"github.com/multica-ai/multica/server/internal/integrations/wecom"
 	obsmetrics "github.com/multica-ai/multica/server/internal/metrics"
 	"github.com/multica-ai/multica/server/internal/middleware"
+	"github.com/multica-ai/multica/server/internal/progressledger"
 	"github.com/multica-ai/multica/server/internal/realtime"
 	"github.com/multica-ai/multica/server/internal/service"
 	"github.com/multica-ai/multica/server/internal/storage"
@@ -173,8 +174,12 @@ type Handler struct {
 	LivenessStore          LivenessStore
 	HeartbeatScheduler     HeartbeatScheduler
 	Storage                storage.Storage
-	CFSigner               *auth.CloudFrontSigner
-	Analytics              analytics.Client
+	// ProgressLedger is the code-progress account, stored as YAML in a git
+	// repository rather than in this database. Nil-safe: the worktree handlers
+	// construct the default store on first use.
+	ProgressLedger *progressledger.Store
+	CFSigner       *auth.CloudFrontSigner
+	Analytics      analytics.Client
 	// DaemonPendingWork pushes "heartbeat now" hints for queued
 	// heartbeat-carried requests (MUL-5444). Optional: when nil,
 	// requestDaemonPendingWork falls back to the local DaemonHub, which is the

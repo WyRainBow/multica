@@ -770,5 +770,12 @@
     "measured": "{when}に計測",
     "never_measured": "未計測",
     "missing": "{name} を指していますが、台帳にありません。"
+  },
+  "sessions": {
+    "title": "関連セッション",
+    "no_agent": "未割当",
+    "waiting": "返信待ち",
+    "mentioned": "言及",
+    "copied": "コピーしました"
   }
 }

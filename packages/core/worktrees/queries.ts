@@ -11,6 +11,8 @@ export const worktreeKeys = {
     [...worktreeKeys.all(wsId), "entries", ref] as const,
   recentEntries: (wsId: string) =>
     [...worktreeKeys.all(wsId), "entries", "recent"] as const,
+  issueSessions: (wsId: string, issueId: string) =>
+    [...worktreeKeys.all(wsId), "issue-sessions", issueId] as const,
 };
 
 export function worktreeListOptions(wsId: string) {
@@ -34,5 +36,14 @@ export function recentWorktreeEntriesOptions(wsId: string, limit?: number) {
   return queryOptions({
     queryKey: worktreeKeys.recentEntries(wsId),
     queryFn: () => api.listRecentWorktreeEntries(limit),
+  });
+}
+
+/** The sessions that worked on one card, for the card's own sidebar. */
+export function issueSessionsOptions(wsId: string, issueId: string) {
+  return queryOptions({
+    queryKey: worktreeKeys.issueSessions(wsId, issueId),
+    queryFn: () => api.listIssueSessions(issueId),
+    enabled: issueId !== "",
   });
 }

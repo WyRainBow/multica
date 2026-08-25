@@ -232,7 +232,7 @@ func TestAutoSessionReadsTheAgentItRunsIn(t *testing.T) {
 			}
 			t.Setenv(c.env, "s-1")
 
-			agent, resume, err := currentSession("")
+			agent, resume, sessionID, err := currentSession("")
 			if err != nil {
 				t.Fatalf("currentSession: %v", err)
 			}
@@ -242,9 +242,14 @@ func TestAutoSessionReadsTheAgentItRunsIn(t *testing.T) {
 			if resume != c.want {
 				t.Errorf("resume = %q, want %q", resume, c.want)
 			}
+			// The raw id goes on the account too: the sidebar groups by it, and
+			// digging it back out of the resume string would be guesswork.
+			if sessionID != "s-1" {
+				t.Errorf("sessionID = %q, want %q", sessionID, "s-1")
+			}
 
 			// With a checkout on the row the pointer takes you there first.
-			_, resume, err = currentSession("/tmp/tree")
+			_, resume, _, err = currentSession("/tmp/tree")
 			if err != nil {
 				t.Fatalf("currentSession with path: %v", err)
 			}
@@ -258,7 +263,7 @@ func TestAutoSessionReadsTheAgentItRunsIn(t *testing.T) {
 		for _, e := range sessionEnv {
 			t.Setenv(e.env, "")
 		}
-		if _, _, err := currentSession(""); err == nil {
+		if _, _, _, err := currentSession(""); err == nil {
 			t.Error("currentSession outside an agent session returned no error; a guessed pointer is worse than none")
 		}
 	})
@@ -352,7 +357,6 @@ func TestLogBindsTheCardOnlyWhenItIsUnbound(t *testing.T) {
 		})
 	}
 }
-
 
 // TestSyncRefusesToMeasureTheWrongCheckout guards the facts account against the
 // easy slip: `sync <name>` names a row, not a directory, so running it from the

@@ -1,9 +1,8 @@
 "use client";
 
-import { BookMarked, BookOpen, GitBranch, ScrollText, Sparkles, Webhook } from "lucide-react";
+import { BookMarked, BookOpen, ScrollText, Sparkles, Webhook } from "lucide-react";
 import { DocsPage } from "@multica/views/docs";
 import { SkillsPage } from "@multica/views/skills";
-import { WorktreeLedger } from "./worktree-ledger";
 import { HooksTab } from "../settings/components/hooks-tab";
 import { InstructionsPage } from "./instructions-page";
 import { useWorkspacePaths } from "@multica/core/paths";
@@ -13,7 +12,7 @@ import { useNavigation } from "../navigation";
 
 /**
  * The workspace's own assets: what it knows (wiki), what its agents are mounted
- * with (skills), where its code is (the worktree ledger), and the experience
+ * with (skills), which hooks fire on this machine, and the experience
  * distilled out of finished work (Agent Wiki).
  *
  * Each view has an address. They were tabs in component state, which meant a
@@ -28,7 +27,6 @@ export type OpenwikiTab =
   | "wiki"
   | "skills"
   | "instructions"
-  | "worktree"
   | "agentwiki"
   | "hooks";
 
@@ -60,12 +58,6 @@ export function OpenwikiPage({ tab = "wiki" }: { tab?: OpenwikiTab }) {
       label: t(($) => $.tab_instructions),
       icon: ScrollText,
       href: paths.workspaceInstructions(),
-    },
-    {
-      key: "worktree",
-      label: t(($) => $.tab_worktree),
-      icon: GitBranch,
-      href: paths.workspaceWorktree(),
     },
     {
       key: "agentwiki",
@@ -125,11 +117,6 @@ export function OpenwikiPage({ tab = "wiki" }: { tab?: OpenwikiTab }) {
       {/* Its own scroll: the editor fills the pane and must not add a second
         scrollbar inside the shell's. */}
       {tab === "instructions" && <InstructionsPage />}
-      {tab === "worktree" && (
-        <div className="min-h-0 flex-1 overflow-y-auto">
-          <WorktreeLedger />
-        </div>
-      )}
       {/* Same container as the ledger: a plain page that scrolls inside the
         shell rather than bringing its own. */}
       {tab === "hooks" && (

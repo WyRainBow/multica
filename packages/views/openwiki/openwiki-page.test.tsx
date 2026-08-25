@@ -7,7 +7,6 @@ vi.mock("@multica/core/paths", () => ({
     workspaceWiki: () => "/acme/workspace/wiki",
     workspaceSkills: () => "/acme/workspace/skills",
     workspaceInstructions: () => "/acme/workspace/instructions",
-    workspaceWorktree: () => "/acme/workspace/worktree",
     workspaceAgentWiki: () => "/acme/workspace/agentwiki",
     workspaceHooks: () => "/acme/workspace/hooks",
   }),
@@ -31,8 +30,8 @@ vi.mock("@multica/views/docs", () => ({
 vi.mock("@multica/views/skills", () => ({
   SkillsPage: () => <div data-testid="skills">skills</div>,
 }));
-vi.mock("./worktree-ledger", () => ({
-  WorktreeLedger: () => <div data-testid="worktree">worktree</div>,
+vi.mock("../settings/components/hooks-tab", () => ({
+  HooksTab: () => <div data-testid="hooks">hooks</div>,
 }));
 vi.mock("./instructions-page", () => ({
   InstructionsPage: () => <div data-testid="instructions">instructions</div>,
@@ -45,7 +44,7 @@ const TABS: OpenwikiTab[] = [
   "wiki",
   "skills",
   "instructions",
-  "worktree",
+  "hooks",
   "agentwiki",
 ];
 
@@ -80,7 +79,7 @@ describe("OpenwikiPage", () => {
       unmount();
     }
 
-    for (const tab of ["worktree"] as OpenwikiTab[]) {
+    for (const tab of ["hooks"] as OpenwikiTab[]) {
       const { unmount } = renderWithI18n(<OpenwikiPage tab={tab} />);
       const container = scrollContainerOf(screen.getByTestId(tab));
       expect(

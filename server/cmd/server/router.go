@@ -1339,6 +1339,9 @@ func NewRouterWithOptions(pool *pgxpool.Pool, hub *realtime.Hub, bus *events.Bus
 					// only read that shows the slots nobody has written into
 					// yet (COC-338). Every other card read filters them out.
 					r.Get("/namespace", h.GetIssueNamespace)
+					// The card's side of the code-progress ledger: which
+					// sessions worked on it and where they left off.
+					r.Get("/sessions", h.ListIssueWorktreeSessions)
 					// Delivery receipts gate done on a real verification (COC-282).
 					r.Post("/delivery-receipt", h.CreateDeliveryReceipt)
 					r.Get("/delivery-receipt", h.GetDeliveryReceipt)

@@ -33,16 +33,21 @@ import (
 // is worse.
 
 type worktreeSessionPayload struct {
-	Agent      string  `json:"agent"`
-	Resume     string  `json:"resume"`
-	Owner      string  `json:"owner"`
-	NextAction string  `json:"next_action"`
-	UpdatedAt  *string `json:"updated_at"`
+	Agent           string  `json:"agent"`
+	Resume          string  `json:"resume"`
+	Owner           string  `json:"owner"`
+	SessionID       string  `json:"session_id"`
+	WaitingForHuman bool    `json:"waiting_for_human"`
+	NextAction      string  `json:"next_action"`
+	UpdatedAt       *string `json:"updated_at"`
 }
 
 type worktreeRow struct {
 	ID         string                 `json:"id"`
 	Name       string                 `json:"name"`
+	Issue      string                 `json:"issue"`
+	DependsOn  []string               `json:"depends_on"`
+	Artifacts  []string               `json:"artifacts"`
 	Path       string                 `json:"path"`
 	Repo       string                 `json:"repo"`
 	Branch     string                 `json:"branch"`
@@ -226,7 +231,9 @@ func init() {
 		cmd.Flags().String("repo", "", "Repository this checkout belongs to")
 		cmd.Flags().String("branch", "", "Branch checked out here")
 		cmd.Flags().String("base", "", "Branch this one is based on")
-		cmd.Flags().String("role", "", "Pipeline position: base, feature, integration, release or hotfix")
+		cmd.Flags().String("role", "", "Pipeline position: base, feature, integration, release, hotfix, or discussion for a card that produced a decision rather than a branch")
+		cmd.Flags().String("issue", "", "Card this account belongs to (COC-348); inferred from the branch when omitted")
+		cmd.Flags().StringSlice("depends-on", nil, "Accounts this one waits on, by key")
 		cmd.Flags().String("parent", "", "Name of the tree this one merges into")
 		cmd.Flags().String("output", "json", "Output format: table or json")
 	}
@@ -234,6 +241,7 @@ func init() {
 	worktreeSetCmd.Flags().String("status", "", "active, blocked, merged or archived")
 	worktreeSetCmd.Flags().String("name", "", "Rename the tree")
 	worktreeSetCmd.Flags().Bool("clear-parent", false, "Detach from its parent tree")
+	worktreeSetCmd.Flags().StringSlice("artifact", nil, "Where this card's output landed; replaces the recorded list")
 
 	worktreeLogCmd.Flags().String("kind", "progress",
 		"progress, branch, merge, blocked, handoff or verify")
@@ -248,6 +256,8 @@ func init() {
 	worktreeSessionCmd.Flags().String("resume", "", "Exact command that resumes that session")
 	worktreeSessionCmd.Flags().String("owner", "", "Person accountable for the tree")
 	worktreeSessionCmd.Flags().String("next", "", "One line: what happens next")
+	worktreeSessionCmd.Flags().String("session-id", "", "The session's own id, as the agent reports it")
+	worktreeSessionCmd.Flags().Bool("waiting", false, "This session is stopped waiting on a person")
 	worktreeSessionCmd.Flags().Bool("auto", false, "Record the agent session this command is running inside")
 	worktreeSessionCmd.Flags().String("output", "json", "Output format: table or json")
 
@@ -367,7 +377,7 @@ var sessionEnv = []struct {
 // Only an exact answer counts. Picking the newest transcript on disk instead
 // would name the wrong session whenever two are open, which is precisely when
 // the pointer is worth having.
-func currentSession(treePath string) (agent, resume string, err error) {
+func currentSession(treePath string) (agent, resume, sessionID string, err error) {
 	for _, candidate := range sessionEnv {
 		id := strings.TrimSpace(os.Getenv(candidate.env))
 		if id == "" {
@@ -379,9 +389,9 @@ func currentSession(treePath string) (agent, resume string, err error) {
 		if treePath != "" {
 			resume = "cd " + treePath + " && " + resume
 		}
-		return candidate.agent, resume, nil
+		return candidate.agent, resume, id, nil
 	}
-	return "", "", errors.New(
+	return "", "", "", errors.New(
 		"--auto found no session to record: none of CLAUDE_CODE_SESSION_ID, CODEX_SESSION_ID is set. " +
 			"Run it from inside an agent session, or pass --agent and --resume yourself")
 }
@@ -551,11 +561,14 @@ func runWorktreeAdd(cmd *cobra.Command, args []string) error {
 	body := map[string]any{"name": strings.TrimSpace(args[0])}
 	for flag, field := range map[string]string{
 		"path": "path", "repo": "repo", "branch": "branch",
-		"base": "base_ref", "role": "role", "status": "status",
+		"base": "base_ref", "role": "role", "status": "status", "issue": "issue",
 	} {
 		if value, _ := cmd.Flags().GetString(flag); strings.TrimSpace(value) != "" {
 			body[field] = strings.TrimSpace(value)
 		}
+	}
+	if depends, _ := cmd.Flags().GetStringSlice("depends-on"); len(depends) > 0 {
+		body["depends_on"] = depends
 	}
 	if parent, _ := cmd.Flags().GetString("parent"); strings.TrimSpace(parent) != "" {
 		parentTree, err := fetchWorktree(ctx, client, strings.TrimSpace(parent))
@@ -588,12 +601,20 @@ func runWorktreeSet(cmd *cobra.Command, args []string) error {
 	body := map[string]any{}
 	for flag, field := range map[string]string{
 		"name": "name", "path": "path", "repo": "repo", "branch": "branch",
-		"base": "base_ref", "role": "role", "status": "status",
+		"base": "base_ref", "role": "role", "status": "status", "issue": "issue",
 	} {
 		if cmd.Flags().Changed(flag) {
 			value, _ := cmd.Flags().GetString(flag)
 			body[field] = strings.TrimSpace(value)
 		}
+	}
+	if cmd.Flags().Changed("depends-on") {
+		depends, _ := cmd.Flags().GetStringSlice("depends-on")
+		body["depends_on"] = depends
+	}
+	if cmd.Flags().Changed("artifact") {
+		artifacts, _ := cmd.Flags().GetStringSlice("artifact")
+		body["artifacts"] = artifacts
 	}
 	if clear, _ := cmd.Flags().GetBool("clear-parent"); clear {
 		body["parent_id"] = ""
@@ -733,6 +754,7 @@ func runWorktreeSession(cmd *cobra.Command, args []string) error {
 	body := map[string]any{}
 	for flag, field := range map[string]string{
 		"agent": "agent", "resume": "resume", "owner": "owner", "next": "next_action",
+		"session-id": "session_id",
 	} {
 		if cmd.Flags().Changed(flag) {
 			value, _ := cmd.Flags().GetString(flag)
@@ -744,7 +766,7 @@ func runWorktreeSession(cmd *cobra.Command, args []string) error {
 		if err != nil {
 			return fmt.Errorf("get worktree: %w", err)
 		}
-		agent, resume, err := currentSession(tree.Path)
+		agent, resume, sessionID, err := currentSession(tree.Path)
 		if err != nil {
 			return err
 		}
@@ -756,9 +778,19 @@ func runWorktreeSession(cmd *cobra.Command, args []string) error {
 		if _, given := body["resume"]; !given {
 			body["resume"] = resume
 		}
+		if _, given := body["session_id"]; !given {
+			body["session_id"] = sessionID
+		}
+	}
+	// Waiting on a person is recorded, never inferred: the ledger cannot tell a
+	// real block from a session that simply stopped talking, and a guessed wait
+	// status is one nobody can disprove.
+	if cmd.Flags().Changed("waiting") {
+		waiting, _ := cmd.Flags().GetBool("waiting")
+		body["waiting_for_human"] = waiting
 	}
 	if len(body) == 0 {
-		return fmt.Errorf("nothing to set; pass --auto, or at least one of --agent, --resume, --owner, --next")
+		return fmt.Errorf("nothing to set; pass --auto, or at least one of --agent, --resume, --owner, --next, --session-id, --waiting")
 	}
 
 	var tree worktreeRow
