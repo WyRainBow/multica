@@ -770,5 +770,12 @@
     "measured": "{when}实测",
     "never_measured": "未实测",
     "missing": "指向 {name}，但总账里没有这棵树。"
+  },
+  "sessions": {
+    "title": "关联 session",
+    "no_agent": "未认领",
+    "waiting": "等待人回复",
+    "mentioned": "提及",
+    "copied": "已复制"
   }
 }

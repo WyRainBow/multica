@@ -150,7 +150,7 @@ import { LocalDirectoryHint } from "../../projects/components/local-directory-hi
 import { CommentCard } from "./comment-card";
 import { IssueResourcesSection } from "./issue-resources-section";
 import { IssueDocsSection, IssueNamespaceSection } from "../../docs";
-import { IssueWorktreeSection } from "./issue-worktree-section";
+import { IssueSessionSidebar } from "./issue-session-sidebar";
 import { PhaseTrack } from "./phase-track";
 import { phaseAtTime } from "./phase-window";
 import type { IssuePhase } from "@multica/core/types";
@@ -2989,6 +2989,12 @@ export function IssueDetail({
           Hides itself when there are no runs to show. */}
       <ExecutionLogSection issueId={id} identifier={issue.identifier} />
 
+      {/* Sessions — who worked this card and where they left off, read from
+        the code-progress ledger. Sits under the execution log because both
+        answer "what is happening to this card right now", one from the
+        product's runs and one from the checkouts. */}
+      <IssueSessionSidebar issueId={id} />
+
       {/* Details — creator and timestamps. Sits below the execution log
           because it is the least-read block in the sidebar: the values
           never change once the issue exists, while the log above it is
@@ -3621,7 +3627,6 @@ export function IssueDetail({
             {/* Where this card's code is, and whose session is driving it.
               Renders nothing unless the card names a tree, which most never
               do. */}
-            <IssueWorktreeSection issueId={id} />
 
             {/* Sub-issues — Linear-style */}
             {childIssues.length === 0 && (

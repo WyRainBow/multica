@@ -770,5 +770,12 @@
     "measured": "{when} 측정",
     "never_measured": "측정된 적 없음",
     "missing": "{name}을(를) 가리키지만 원장에 없습니다."
+  },
+  "sessions": {
+    "title": "연결된 세션",
+    "no_agent": "미배정",
+    "waiting": "답변 대기",
+    "mentioned": "언급",
+    "copied": "복사됨"
   }
 }

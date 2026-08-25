@@ -720,6 +720,8 @@ export const WorktreeSessionSchema = z.object({
   agent: z.string().default(""),
   resume: z.string().default(""),
   owner: z.string().default(""),
+  session_id: z.string().default(""),
+  waiting_for_human: z.boolean().default(false),
   next_action: z.string().default(""),
   updated_at: z.string().nullish().transform((v) => v ?? null),
 }).loose();
@@ -745,9 +747,15 @@ export const WorktreeSchema = z.object({
     agent: "",
     resume: "",
     owner: "",
+    session_id: "",
+    waiting_for_human: false,
     next_action: "",
     updated_at: null,
   }),
+  issue: z.string().default(""),
+  issue_id: z.string().default(""),
+  depends_on: z.array(z.string()).default([]),
+  artifacts: z.array(z.string()).default([]),
   parent_id: z.string().nullish().transform((v) => v ?? null),
   entry_count: z.number().default(0),
   created_at: z.string().default(""),
@@ -763,6 +771,7 @@ export const WorktreeEntrySchema = z.object({
   workspace_id: z.string().default(""),
   worktree_id: z.string().default(""),
   issue_id: z.string().nullish().transform((v) => v ?? null),
+  issue: z.string().default(""),
   kind: z.string().default("progress"),
   body: z.string().default(""),
   sha: z.string().default(""),
@@ -773,6 +782,28 @@ export const WorktreeEntrySchema = z.object({
 
 export const WorktreeEntryListResponseSchema = z.object({
   entries: z.array(WorktreeEntrySchema).default([]),
+}).loose();
+
+// One session that worked on a card (`GET /api/issues/:id/sessions`). Read-only:
+// the ledger is written by the worktree commands, never from this page.
+export const IssueSessionSchema = z.object({
+  worktree: z.string().default(""),
+  worktree_id: z.string().default(""),
+  role: z.string().default("feature"),
+  status: z.string().default("active"),
+  branch: z.string().default(""),
+  agent: z.string().default(""),
+  session_id: z.string().default(""),
+  resume: z.string().default(""),
+  owner: z.string().default(""),
+  next_action: z.string().default(""),
+  waiting_for_human: z.boolean().default(false),
+  updated_at: z.string().nullish().transform((v) => v ?? null),
+  direct: z.boolean().default(false),
+}).loose();
+
+export const IssueSessionListResponseSchema = z.object({
+  sessions: z.array(IssueSessionSchema).default([]),
 }).loose();
 
 // The hook inventory (`GET /api/workspaces/:id/hooks`). Read-only.

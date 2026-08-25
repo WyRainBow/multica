@@ -2,6 +2,7 @@ import type {
   Card,
   Worktree,
   WorktreeEntry,
+  IssueSession,
   CreateWorktreeRequest,
   UpdateWorktreeRequest,
   UpdateWorktreeSessionRequest,
@@ -233,6 +234,7 @@ import {
   WorktreeListResponseSchema,
   WorktreeEntrySchema,
   WorktreeEntryListResponseSchema,
+  IssueSessionListResponseSchema,
   IssuePhaseSchema,
   IssuePhasesResponseSchema,
   ParentIssuesResponseSchema,
@@ -1235,6 +1237,23 @@ export class ApiClient {
       endpoint: "GET /api/worktrees/:ref/entries",
     });
     return parsed.entries;
+  }
+
+  /**
+   * The sessions that worked on one card, read from the code-progress ledger.
+   *
+   * Read-only on purpose: the ledger is written by `multica worktree` and by
+   * the hooks that call it, so there is no path from this page that could put a
+   * second, hand-typed version of the same pointer into circulation.
+   */
+  async listIssueSessions(issueId: string): Promise<IssueSession[]> {
+    const raw = await this.fetch<unknown>(
+      `/api/issues/${encodeURIComponent(issueId)}/sessions`,
+    );
+    const parsed = parseWithFallback(raw, IssueSessionListResponseSchema, { sessions: [] }, {
+      endpoint: "GET /api/issues/:id/sessions",
+    });
+    return parsed.sessions;
   }
 
   async listRecentWorktreeEntries(limit?: number): Promise<WorktreeEntry[]> {

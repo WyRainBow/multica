@@ -802,5 +802,12 @@
     "measured": "measured {when}",
     "never_measured": "never measured",
     "missing": "Points at {name}, which the ledger does not have."
+  },
+  "sessions": {
+    "title": "Sessions",
+    "no_agent": "Unclaimed",
+    "waiting": "Waiting on you",
+    "mentioned": "mentioned",
+    "copied": "Copied"
   }
 }

@@ -1,7 +1,6 @@
 {
   "tab_docs": "Multica wiki",
   "tab_skills": "Skills",
-  "tab_worktree": "워크트리",
   "worktree_hint": "코드 진행 원장: 어떤 체크아웃이 움직이고, 어떤 브랜치를 들고 있고, 누가 맡고 있으며, 이번 회차에 무엇을 바꿨는지. 카드는 결정의 진행을, 워크트리는 코드의 위치를 기록합니다.",
   "worktree_loading": "불러오는 중…",
   "worktree_empty": "등록된 워크트리가 없습니다. 브랜치를 만든 뒤 `multica worktree add <이름>` 또는 우측 상단 새로 만들기를 사용하세요.",

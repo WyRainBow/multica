@@ -1,7 +1,6 @@
 {
   "tab_docs": "Multica wiki",
   "tab_skills": "Skills",
-  "tab_worktree": "Worktree",
   "worktree_hint": "The code-progress ledger: which checkout is moving, what branch it carries, who is driving it, and what changed this round. Cards track decisions; worktrees track code, and neither is inferred from the other.",
   "worktree_loading": "Loading…",
   "worktree_empty": "No worktrees registered yet. Run `multica worktree add <name>` after cutting a branch, or use New.",
