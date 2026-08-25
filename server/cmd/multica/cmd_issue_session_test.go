@@ -185,3 +185,37 @@ func TestZcodeSessionFromRollout(t *testing.T) {
 		t.Errorf("missing directory returned %q; zcode is simply not installed here", got)
 	}
 }
+
+func TestGrokSessionFromSessions(t *testing.T) {
+	root := t.TempDir()
+	writeUpdates := func(group, id string, ageSeconds int) {
+		dir := filepath.Join(root, group, id)
+		if err := os.MkdirAll(dir, 0o755); err != nil {
+			t.Fatal(err)
+		}
+		path := filepath.Join(dir, "updates.jsonl")
+		if err := os.WriteFile(path, []byte("{}\n"), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		when := time.Now().Add(-time.Duration(ageSeconds) * time.Second)
+		if err := os.Chtimes(path, when, when); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	if got := grokSessionFromSessions(root); got != "" {
+		t.Errorf("empty store returned %q; there is no session to report", got)
+	}
+
+	writeUpdates("%2FUsers%2Fmac%2Frepo", "11111111-1111-1111-1111-111111111111", 300)
+	writeUpdates("%2FUsers%2Fmac%2Frepo", "22222222-2222-2222-2222-222222222222", 10)
+	// A session dir with no updates.jsonl never ran; a non-uuid dir is noise.
+	if err := os.MkdirAll(filepath.Join(root, "g", "not-a-uuid"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	want := "22222222-2222-2222-2222-222222222222"
+	if got := grokSessionFromSessions(root); got != want {
+		t.Errorf("got %q, want newest session %q", got, want)
+	}
+}

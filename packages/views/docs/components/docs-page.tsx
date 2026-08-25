@@ -54,6 +54,10 @@ export function DocsPage({
   // empties (its last card was recategorised) must keep showing that tab's
   // empty state instead of silently jumping back to 全部.
   const [kind, setKind] = useState("");
+  // COC-356: quick type filter for the four high-frequency doc shapes. Suffix
+  // match on the kind path — "<card>/requirements" is a 需求底稿 wherever the
+  // card prefix came from — so no new field and no second taxonomy.
+  const [type, setType] = useState("");
   const [editing, setEditing] = useState<Card | null>(null);
   const [creating, setCreating] = useState(false);
 
@@ -117,7 +121,8 @@ export function DocsPage({
   // the category look deleted.
   const tree = useMemo(() => buildDocTree(cards), [cards]);
   const filtered = useMemo(() => {
-    const inTab = filterDocsByPath(cards, kind);
+    let inTab = filterDocsByPath(cards, kind);
+    if (type) inTab = inTab.filter((c) => (c.kind ?? "").endsWith("/" + type));
     const query = search.trim().toLowerCase();
     if (!query) return inTab;
     return inTab.filter(
@@ -125,7 +130,7 @@ export function DocsPage({
         card.title.toLowerCase().includes(query) ||
         card.content.toLowerCase().includes(query),
     );
-  }, [cards, kind, search]);
+  }, [cards, kind, type, search]);
 
   const groups = useMemo(() => groupCardsByDay(filtered), [filtered]);
 
@@ -137,6 +142,7 @@ export function DocsPage({
           {t(($) => $.page.count, { count: cards.length })}
         </span>
         <div className="ml-auto flex items-center gap-2">
+          <TypeChips value={type} onChange={setType} />
           <Input
             value={search}
             onChange={(event) => setSearch(event.target.value)}
@@ -318,6 +324,45 @@ function EmptyState({
           {t(($) => $.page.new)}
         </Button>
       )}
+    </div>
+  );
+}
+
+// TypeChips filters by doc shape (COC-356). The "all" chip clears the filter;
+// a shape with zero documents still shows, because a missing chip reads as
+// "this workspace never writes those" rather than "none exist right now".
+function TypeChips({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const { t } = useT("docs");
+  const shapes = ["requirements", "design", "spec", "decisions"] as const;
+  const labels = {
+    requirements: t(($) => $.page.type_requirements),
+    design: t(($) => $.page.type_design),
+    spec: t(($) => $.page.type_spec),
+    decisions: t(($) => $.page.type_decisions),
+  };
+  return (
+    <div className="flex items-center gap-1">
+      <button
+        type="button"
+        onClick={() => onChange("")}
+        className={`rounded-full px-2.5 py-0.5 text-caption ${
+          value === "" ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
+        }`}
+      >
+        {t(($) => $.page.all_kinds)}
+      </button>
+      {shapes.map((shape) => (
+        <button
+          key={shape}
+          type="button"
+          onClick={() => onChange(value === shape ? "" : shape)}
+          className={`rounded-full px-2.5 py-0.5 text-caption ${
+            value === shape ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
+          }`}
+        >
+          {labels[shape]}
+        </button>
+      ))}
     </div>
   );
 }

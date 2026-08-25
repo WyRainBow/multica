@@ -7,7 +7,11 @@
     "empty": "아직 문서가 없습니다. 계속 최신으로 유지할 것을 여기에.",
     "no_matches": "일치하는 항목이 없습니다.",
     "day_count_other": "{{count}}개",
-    "all_kinds": "전체"
+    "all_kinds": "전체",
+    "type_requirements": "요구사항",
+    "type_design": "기술 방안",
+    "type_spec": "Spec",
+    "type_decisions": "결정 이력"
   },
   "editor": {
     "new_title": "새 문서",

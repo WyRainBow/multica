@@ -366,9 +366,15 @@ func currentSession(treePath string) (agent, resume, sessionID string, err error
 	if id := zcodeSessionFromRollout(""); id != "" {
 		return "zcode", withPath("zcode --resume " + id), id, nil
 	}
+	// grok also sets no session variable; its id is recovered from the session
+	// store it is writing. Same detection issue create uses, for the same
+	// reason: one answer to "which session am I" across every entry point.
+	if id := grokSessionFromSessions(""); id != "" {
+		return "grok", withPath("grok --continue"), id, nil
+	}
 	return "", "", "", errors.New(
 		"--auto found no session to record: none of CLAUDE_CODE_SESSION_ID, CODEX_SESSION_ID is set " +
-			"and no zcode rollout log was found. " +
+			"and no zcode rollout log or grok session store was found. " +
 			"Run it from inside an agent session, or pass --agent and --resume yourself")
 }
 

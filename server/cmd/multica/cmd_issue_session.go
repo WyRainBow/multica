@@ -36,7 +36,10 @@ func detectAgentSession() string {
 			return id
 		}
 	}
-	return zcodeSessionFromRollout("")
+	if id := zcodeSessionFromRollout(""); id != "" {
+		return id
+	}
+	return grokSessionFromSessions("")
 }
 
 // zcodeRolloutSessionRE pulls the session id out of a rollout file name:
@@ -94,6 +97,69 @@ func zcodeSessionFromRollout(root string) string {
 	}
 	// Newest first. Ties break on the id so the answer is stable rather than
 	// dependent on directory order, which is not guaranteed.
+	sort.Slice(found, func(i, j int) bool {
+		if found[i].modTime != found[j].modTime {
+			return found[i].modTime > found[j].modTime
+		}
+		return found[i].session > found[j].session
+	})
+	return found[0].session
+}
+
+// rollout is one candidate (session id, last-write time) shared by the
+// zcode rollout probe and the grok session-store probe.
+type rollout struct {
+	session string
+	modTime int64
+}
+
+// grokSessionFromSessions reads grok's session store to recover the session
+// running right now. grok sets no session variable either (measured), and
+// unlike zcode there is no single rollout log: sessions live one directory per
+// id under ~/.grok/sessions/<encoded-cwd>/<uuid>/, each writing updates.jsonl
+// as it runs. The newest updates.jsonl across all cwd groups is therefore the
+// session doing something now — with the same one-wrong-case caveat as the
+// zcode probe (two concurrent grok sessions), accepted for the same reason:
+// the value is a provenance note, nothing downstream acts on it.
+//
+// root is for tests; empty means the real location under the user's home.
+func grokSessionFromSessions(root string) string {
+	if root == "" {
+		home, err := os.UserHomeDir()
+		if err != nil {
+			return ""
+		}
+		root = filepath.Join(home, ".grok", "sessions")
+	}
+	cwdGroups, err := os.ReadDir(root)
+	if err != nil {
+		return ""
+	}
+	uuidRE := regexp.MustCompile(`^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$`)
+	var found []rollout
+	for _, group := range cwdGroups {
+		if !group.IsDir() {
+			continue
+		}
+		ids, err := os.ReadDir(filepath.Join(root, group.Name()))
+		if err != nil {
+			continue
+		}
+		for _, id := range ids {
+			if !id.IsDir() || !uuidRE.MatchString(id.Name()) {
+				continue
+			}
+			probe := filepath.Join(root, group.Name(), id.Name(), "updates.jsonl")
+			info, err := os.Stat(probe)
+			if err != nil {
+				continue
+			}
+			found = append(found, rollout{session: id.Name(), modTime: info.ModTime().UnixNano()})
+		}
+	}
+	if len(found) == 0 {
+		return ""
+	}
 	sort.Slice(found, func(i, j int) bool {
 		if found[i].modTime != found[j].modTime {
 			return found[i].modTime > found[j].modTime
